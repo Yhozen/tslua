@@ -1,0 +1,228 @@
+# Porting guide: TypeScript 7 (Go) -> Lua 5.4
+
+`tslua` is a **mechanical, faithful** port of the TypeScript 7 compiler — the Go
+implementation in [microsoft/typescript-go](https://github.com/microsoft/typescript-go) — to
+Lua 5.4. Same algorithms, same function decomposition, same order of operations, same
+diagnostics (code, position, message, order). Behavior that matches the Go code is correct;
+"improvements" are bugs. Every Lua function must be recognizable next to its Go original.
+Performance is explicitly **not** a goal. Do not redesign.
+
+The approach follows [tsrs](https://github.com/oxc-project/tsrs) (the Rust port): the Go source
+is the specification and the upstream test baselines are the oracle.
+
+- Upstream pin: `UPSTREAM_COMMIT` at the repository root. `scripts/fetch-upstream.sh` checks it
+  out (with the TypeScript submodule) into `vendor/typescript-go` (git-ignored).
+- Go source of truth: `vendor/typescript-go/internal/`. Read the Go function, write the Lua
+  function. Do not port from memory of the old `checker.ts`; the Go port differs in details.
+
+## Scope
+
+In scope: what `tsc` does from the command line — parse, bind, check, report diagnostics, emit
+JavaScript and declarations, `tsconfig.json`, module resolution. Out of scope (for now): the
+language server (`ls`, `lsp`, `project`, `fourslash`), API server, watch mode, `--build`,
+incremental, tracing, pprof, localization (English only), goroutine parallelism.
+
+## Layout
+
+One Lua package per Go package, one Lua file per Go file, same base name:
+
+| Go (`internal/…`)                | Lua module                        | Directory                         |
+| -------------------------------- | --------------------------------- | --------------------------------- |
+| `ast/utilities.go`               | part of `tslua.ast`               | `src/tslua/ast/utilities.lua`     |
+| `checker/relater.go`             | part of `tslua.checker`           | `src/tslua/checker/relater.lua`   |
+| `transformers/estransforms/*.go` | `tslua.transformers.estransforms` | `src/tslua/transformers/estransforms/` |
+
+Keep functions in the same order as in the Go file. Very large Go files are split by line range
+into `name_1.lua`, `name_2.lua`, … (aim for ≤ ~4000 lines per Lua file).
+
+### Packages
+
+Each package directory has an `init.lua` that creates the package table, registers it in
+`package.loaded` *before* loading its files (so files of the same package can reference each
+other in any order), merges the generated constants, then loads every file:
+
+```lua
+-- src/tslua/scanner/init.lua
+local scanner = {}
+package.loaded["tslua.scanner"] = scanner
+for k, v in pairs(require("tslua.scanner.consts_generated")) do
+    scanner[k] = v
+end
+require("tslua.scanner.scanner")
+require("tslua.scanner.utilities")
+require("tslua.scanner.regexp")
+return scanner
+```
+
+Each file of the package starts with:
+
+```lua
+local scanner = require("tslua.scanner") -- the (possibly still loading) package table
+local ast = require("tslua.ast")           -- other packages: always require the package, never a file
+local core = require("tslua.core")
+```
+
+Rules:
+
+- **Never** `require` an individual file of another package (`tslua.ast.utilities`); require the
+  package (`tslua.ast`).
+- **Every** package-level Go function, exported or not, is a field of the package table:
+  `func IsIdentifier(n *Node) bool` -> `function ast.IsIdentifier(n)`;
+  `func isDeclarationStatementKind(k Kind) bool` -> `function ast.isDeclarationStatementKind(k)`.
+  Call them through the table (`ast.IsIdentifier(n)`), also within the same file. This avoids
+  Lua's 200-locals / 255-upvalues limits and load-order problems.
+- Do not cache a package function in a file-level local at load time (`local f = ast.Foo`): it may
+  not be defined yet. Caching **constants tables** is fine (`local Kind = ast.Kind`), since
+  generated constants are merged before any file loads.
+- Package-level Go `var`s are fields of the package table too.
+- Go has no import cycles, so Lua packages have none. Within a package, the init pattern above
+  allows any reference order at call time.
+
+## Naming
+
+- **Functions, methods and types keep their Go names exactly** (`getTypeOfSymbol`,
+  `IsIdentifier`, `NewScanner`, `Checker`). This keeps grep across the two code bases trivial.
+- Methods: `func (c *Checker) getTypeOfSymbol(s *ast.Symbol) *Type` ->
+  `function Checker:getTypeOfSymbol(s)`; call as `c:getTypeOfSymbol(s)`.
+- **Struct fields are lowerCamelCase of the Go field name**: the leading run of capitals is
+  lowered (`Text` -> `text`, `TypeParameters` -> `typeParameters`, `ID` -> `id`,
+  `JSDoc` -> `jsDoc`, `URLPath` -> `urlPath`). Unexported Go fields are already lowerCamel.
+  Because methods keep their (usually capitalized) Go names, a getter `Text()` and the field
+  `text` never collide. If a struct has both `foo` and `Foo` fields, the exported one is `foo`
+  and the unexported one is `foo_`.
+- Lua keywords used as names get a trailing `_`: `end_`, `in_`, `then_`, `repeat_`, `until_`,
+  `not_`, `and_`, `or_`, `function_`, `local_`, `nil_`, `true_`, `false_`, `goto_`, `break_`,
+  `return_`, `while_`, `do_`, `else_`, `elseif_`, `if_`, `for_`.
+- Constants come from the generated `consts_generated.lua` of each package
+  (`scripts/gen/goconsts`, which evaluates the real Go constants with `go/types`):
+  - typed constants are grouped by Go type with the type prefix removed:
+    `ast.KindIdentifier` -> `ast.Kind.Identifier`, `checker.TypeFlagsObject` ->
+    `checker.TypeFlags.Object`, `core.ScriptTargetES2015` -> `core.ScriptTarget.ES2015`;
+    when the name does not start with the type name it is kept whole
+    (e.g. `ast.Kind.KindFirstKeyword` only if needed — check the generated file);
+  - each enum has a reverse map `<Type>_names` (`ast.Kind_names[kind]` -> `"Identifier"`), used
+    to port Go `String()` stringers;
+  - untyped constants keep their Go name at the top level (`ast.InternalSymbolNameCall`).
+  Never hard-code a numeric enum value.
+- Diagnostic messages: `diagnostics.Cannot_find_name_0` (generated from
+  `diagnostics_generated.go` by `scripts/gen/diagnostics.mjs`).
+
+## Classes (Go structs with methods)
+
+```lua
+local Scanner = {}
+Scanner.__index = Scanner
+scanner.Scanner = Scanner
+
+function scanner.NewScanner()
+    local s = setmetatable({}, Scanner)
+    -- initialize EVERY numeric/bool/string field to its Go zero value
+    s.pos = 0
+    s.token = ast.Kind.Unknown
+    s.tokenFlags = 0
+    return s
+end
+
+function Scanner:Scan() ... end
+```
+
+- **Zero values**: Lua's default is `nil`, Go's is `0`/`false`/`""`. A constructor (or struct
+  literal translation) must initialize every numeric, boolean, and string field that the Go code
+  reads without first writing. `nil & 1` is a runtime error. Pointer, slice and map fields may be
+  left `nil` (Go nil).
+- Go value structs (`core.TextRange`, small option structs) are **immutable** tables in Lua:
+  never mutate one in place, always build a new one (`core.NewTextRange(pos, end_)`). That gives
+  Go's copy semantics for free. If a Go value struct is mutated after copying, copy explicitly.
+- Embedded structs are flattened: the fields of the embedded struct live directly on the table,
+  and methods of the embedded type are made available via the metatable chain
+  (`setmetatable(Derived, { __index = Base })`).
+- Interfaces: a Lua table with the required methods. Type switches on interfaces become checks of
+  a discriminator (`node.kind`, `t.flags`, or a `kind` field the porting file documents).
+- Generics vanish; type parameters are just values.
+
+## Values
+
+- Text positions are **0-based UTF-8 byte offsets**, exactly as in Go. Only convert at string
+  access: Go `text[i]` -> `string.byte(text, i + 1)`; Go `text[a:b]` -> `string.sub(text, a + 1, b)`;
+  `len(text)` -> `#text`. Runes: `utf8.codepoint`/`utf8.char` (see `tslua.core` helpers
+  `core.DecodeRune(s, pos)` -> `rune, size` with Go's `utf8.DecodeRuneInString` semantics,
+  including `RuneError, 1` for invalid bytes).
+- Go slices -> Lua arrays (storage is 1-based), but **index values keep Go's 0-based semantics
+  everywhere they exist as values**: variables, parameters, struct fields, return values, and the
+  index argument passed to callbacks (`core.FindIndex` returns `-1` or a 0-based index, like Go).
+  Only the actual array access adds one: Go `xs[i]` -> `xs[i + 1]`;
+  `for i := 0; i < len(xs); i++ { f(i, xs[i]) }` -> `for i = 0, #xs - 1 do f(i, xs[i + 1]) end`.
+  `for _, x := range xs` -> `for _, x in ipairs(xs)`; `for i, x := range xs` ->
+  `for i1, x in ipairs(xs) do local i = i1 - 1 ...`. `xs = append(xs, x)` -> `xs[#xs + 1] = x`
+  (or `core.Append` when `xs` may be nil); `xs[a:b]` -> `core.Slice(xs, a, b)` (0-based, half-open,
+  returns a new array — Go slices alias; when Go code relies on aliasing, restructure explicitly).
+  A Go `nil` slice may be `nil` in Lua: treat slice-typed values as possibly nil
+  (`core.Len(xs)` returns 0 for nil). Arrays never contain `nil` holes.
+- Go maps -> Lua tables. Keys must be non-nil; struct keys are encoded into a string key.
+  `v, ok := m[k]` -> `local v = m[k]` and `ok = v ~= nil` (if the map may store `false`, use a
+  separate presence check). Go map iteration order is random; ported code must not depend on
+  `pairs` order. If Go sorts afterwards, keep the sort. Where determinism matters, use
+  `collections.OrderedMap`/`OrderedSet` like Go does.
+- Ints: Lua 5.4 has 64-bit integers and bitwise operators. Go `x &^ y` -> `x & ~y`;
+  `x&F != 0` -> `x & F ~= 0`. Integer division `a / b` (ints) -> `a // b` **but** Go truncates
+  toward zero and Lua floors: for possibly-negative operands use `core.IntDiv`/`core.IntMod`.
+  Go `int32`/`uint32` overflow/wraparound must be emulated explicitly where the Go code relies on it.
+- Floats: Go `float64` -> Lua float. JS number semantics (formatting, parsing) go through
+  `tslua.jsnum`, never `tostring`/`string.format("%g")`. Note that Lua `1 == 1.0` and table keys
+  `t[1]`/`t[1.0]` coincide; `math.type` distinguishes them where needed.
+- Strings: `strings.Builder` -> a buffer table + `table.concat` (helper `core.StringBuilder`).
+  `fmt.Sprintf` -> `string.format` only for `%d`/`%s`; otherwise build the string by hand to match
+  Go's formatting exactly.
+- Booleans: Lua `0` and `""` are truthy. Port `if x != 0` as `if x ~= 0`, never `if x`.
+- Tristate: `core.Tristate.Unknown/False/True` (generated).
+
+## Control flow
+
+- `panic(x)` -> `error(x, 0)` (or `error(x)`); `recover` -> `pcall`. `debug.Assert` -> `debug.Assert`
+  in `tslua.debug` (a no-op-free assert that raises).
+- `defer` -> restructure to run on every return path (or `pcall` + rethrow when panics must pass
+  through).
+- `switch` -> `if/elseif` chains (or dispatch tables keyed by kind when the switch is huge;
+  keep case order). `fallthrough` and labeled `break`/`continue` -> `goto` labels
+  (`goto continue` + `::continue::` at the end of the loop body).
+- Goroutines, `sync.WaitGroup`, work groups, `core.WorkGroup` -> sequential code in the same order
+  Go uses when single-threaded (`--singleThreaded`). Mutexes and atomics -> plain fields.
+  `sync.Once` / `sync.OnceValue` -> a memoizing field.
+- Iterators (`iter.Seq`, `for x := range seq`) -> either a materialized array or a Lua iterator
+  function; document which one the API returns.
+- Deep recursion is fine (Lua's stack grows to ~1M slots), but avoid `pcall` in recursive hot
+  paths (C-stack limit ~200 nested C calls).
+
+## AST
+
+See [AST.md](AST.md) for the node contract (flattened node tables, `NodeList`, factories,
+`ForEachChild`, visitors).
+
+## Tests
+
+- The oracle is the upstream baseline suite:
+  `vendor/typescript-go/testdata/tests/cases/{compiler,conformance}` (+ the TypeScript submodule's
+  `tests/cases`) with reference baselines in `vendor/typescript-go/testdata/baselines/reference/`.
+  `bin/tslua-test` (port of `internal/testrunner` + `internal/testutil`) runs a case and diffs
+  `.errors.txt`, `.js`, `.types`, `.symbols`. `tests/passing/*.txt` lists the cases that currently
+  pass; CI fails if a listed case regresses.
+- Focused unit tests live in `spec/` (busted) only for small low-level pieces (scanner tokens,
+  jsnum formatting, path utilities). Prefer baseline fixtures for compiler behavior.
+- Run: `make test` (busted + lint), `make baselines` (full suite, slow).
+
+## Working rules for agents
+
+- The Go source is the specification. Keep comments the Go source has when they explain *why*.
+  No `-- ported from` banners, no comments restating the code.
+- Never leave a stub for in-scope behavior without `error("not implemented: <Go name>")` **and**
+  listing it in your final report. Silent stubs are forbidden.
+- Every file you write must pass `luac -p` and `luacheck` (`make lint`). Load your package with
+  `lua -e 'package.path="src/?.lua;src/?/init.lua;"..package.path; require("tslua.<pkg>")'`.
+- Only edit files in the package(s) you were assigned. If you need something from another
+  package that is missing or wrong, note it in your report (if tiny and clearly correct, add it and
+  say so).
+- Commit early and often, only your own paths: `git add src/tslua/<pkg> && git commit -m "<pkg>: <what>"`.
+  If `git` reports `index.lock`, wait and retry. Never `git add -A`, never rebase/reset/stash,
+  never touch other agents' uncommitted files.
+- Scratch files go in `.context/scratch/<agent-name>/` (git-ignored).
+- Report back concisely: what is done, what is not, known deviations from Go, what other packages need.

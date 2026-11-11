@@ -1,0 +1,8 @@
+/vendor/
+/.context/
+/luarocks/
+/lua_modules/
+/.luarocks/
+/tests/out/
+/luacov.*
+*.rock

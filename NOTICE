@@ -1,0 +1,6 @@
+tslua
+Copyright (c) the tslua authors.
+
+This product is a port of TypeScript (https://github.com/microsoft/typescript-go),
+Copyright (c) Microsoft Corporation, licensed under the Apache License, Version 2.0.
+The bundled lib.*.d.ts files and test baselines are from TypeScript.
