@@ -5,6 +5,7 @@ local core = require("tslua.core")
 local debug = require("tslua.debug")
 local diagnostics = require("tslua.diagnostics")
 local jsnum = require("tslua.jsnum")
+local locale = require("tslua.locale")
 local module = require("tslua.module")
 local parser = require("tslua.parser")
 local scanner = require("tslua.scanner")
@@ -310,7 +311,6 @@ function tsoptions.validateJsonOptionValue(
             errors = core.Append(errors, tsoptions.CreateDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, valueExpression, diag))
         end
     elseif opt.extraValidation == tsoptions.extraValidationLocale then
-        local locale = require("tslua.locale")
         local _, ok = locale.Parse(val)
         if not ok then
             errors = core.Append(errors, tsoptions.CreateDiagnosticForNodeInSourceFileOrCompilerDiagnostic(sourceFile, valueExpression, diagnostics.Locale_must_be_an_IETF_BCP_47_language_tag_Examples_Colon_0_1, "en", "ja-jp"))

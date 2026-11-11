@@ -2,6 +2,8 @@ local tsoptions = require("tslua.tsoptions")
 local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local glob = require("tslua.glob")
+local locale = require("tslua.locale")
 local outputpaths = require("tslua.outputpaths")
 local tspath = require("tslua.tspath")
 local vfsmatch = require("tslua.vfs.vfsmatch")
@@ -286,7 +288,6 @@ function ParsedCommandLine:WildcardDirectoryGlobs()
     if not self.includeGlobsOnce then
         self.includeGlobsOnce = true
         if self.includeGlobs == nil then
-            local glob = require("tslua.glob")
             local fileGlob, recursiveFileGlob = self:fileGlobPatterns()
             local globs = {}
             -- Go iterates the map in random order.
@@ -505,7 +506,7 @@ end
 function ParsedCommandLine:Locale()
     if not self.localeOnce then
         self.localeOnce = true
-        self.locale = require("tslua.locale").Parse(self:CompilerOptions().locale)
+        self.locale = locale.Parse(self:CompilerOptions().locale)
     end
     return self.locale
 end

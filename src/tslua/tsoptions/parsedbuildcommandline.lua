@@ -1,5 +1,6 @@
 local tsoptions = require("tslua.tsoptions")
 local core = require("tslua.core")
+local locale = require("tslua.locale")
 local tspath = require("tslua.tspath")
 
 -- ParsedBuildCommandLine: { buildOptions, compilerOptions, watchOptions, projects, errors, raw,
@@ -23,7 +24,7 @@ end
 function ParsedBuildCommandLine:Locale()
     if not self.localeOnce then
         self.localeOnce = true
-        self.locale = require("tslua.locale").Parse(self.compilerOptions.locale)
+        self.locale = locale.Parse(self.compilerOptions.locale)
     end
     return self.locale
 end
