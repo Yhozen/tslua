@@ -34,13 +34,14 @@ function ast.DefineStruct(name, embeds)
     return t
 end
 
-local function collectPromoted(name, depth, out, seen)
+-- own[name]: methods declared directly on a struct (snapshot taken before promotion).
+local function collectPromoted(own, name, depth, out, seen)
     local embeds = ast.structEmbeds[name]
     if embeds == nil then
         return
     end
     for _, base in ipairs(embeds) do
-        local t = ast[base]
+        local t = own[base] or ast[base]
         for k, v in pairs(t) do
             if type(v) == "function" and k ~= "__index" then
                 local prev = seen[k]
@@ -50,15 +51,23 @@ local function collectPromoted(name, depth, out, seen)
                 end
             end
         end
-        collectPromoted(base, depth + 1, out, seen)
+        collectPromoted(own, base, depth + 1, out, seen)
     end
 end
 
 function ast.FinalizeStructs()
+    local own = {}
+    for _, name in ipairs(ast.structNames) do
+        local snapshot = {}
+        for k, v in pairs(ast[name]) do
+            snapshot[k] = v
+        end
+        own[name] = snapshot
+    end
     for _, name in ipairs(ast.structNames) do
         local t = ast[name]
         local out, seen = {}, {}
-        collectPromoted(name, 1, out, seen)
+        collectPromoted(own, name, 1, out, seen)
         for k, v in pairs(out) do
             if rawget(t, k) == nil then
                 t[k] = v
