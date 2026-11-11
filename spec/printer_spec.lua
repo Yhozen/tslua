@@ -8,7 +8,7 @@ local printer = require("tslua.printer")
 
 local function parseTypeScript(text, jsx)
     local fileName = jsx and "/main.tsx" or "/main.ts"
-    return parser.ParseSourceFile({ fileName = fileName, path = fileName }, text, core.GetScriptKindFromFileName(fileName))
+    return parser.ParseSourceFile({ fileName = fileName, path = fileName, externalModuleIndicatorOptions = { jsx = false, force = false } }, text, core.GetScriptKindFromFileName(fileName))
 end
 
 local function emit(file, removeComments)
