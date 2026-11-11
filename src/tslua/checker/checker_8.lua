@@ -3,25 +3,17 @@ local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local jsnum = require("tslua.jsnum")
-local debug = require("tslua.debug")
 local scanner = require("tslua.scanner")
-local evaluator = require("tslua.evaluator")
 
 local Checker = checker.Checker
 local TypeFlags = checker.TypeFlags
 local ObjectFlags = checker.ObjectFlags
 local ElementFlags = checker.ElementFlags
-local CheckMode = checker.CheckMode
-local ContextFlags = checker.ContextFlags
-local TypeFacts = checker.TypeFacts
 local AccessFlags = checker.AccessFlags
 local IndexFlags = checker.IndexFlags
 local UnionReduction = checker.UnionReduction
 local IntersectionFlags = checker.IntersectionFlags
 local CachedTypeKind = checker.CachedTypeKind
-local NodeCheckFlags = checker.NodeCheckFlags
-local SignatureKind = checker.SignatureKind
-local SignatureFlags = checker.SignatureFlags
 local SymbolFlags = ast.SymbolFlags
 local CheckFlags = ast.CheckFlags
 local Kind = ast.Kind
@@ -153,7 +145,7 @@ function Checker:newObjectType(objectFlags, symbol)
         data = checker.ReverseMappedType_new()
     elseif objectFlags & ObjectFlags.EvolvingArray ~= 0 then
         data = checker.EvolvingArrayType_new()
-    elseif objectFlags & ObjectFlags.InstantiationExpressionType ~= 0 then
+    elseif objectFlags & checker.ObjectFlagsInstantiationExpressionType ~= 0 then
         data = checker.InstantiationExpressionType_new()
     elseif objectFlags & ObjectFlags.Anonymous ~= 0 then
         data = checker.ObjectType_new()
@@ -796,7 +788,7 @@ function Checker:getUnionTypeWorker(types, unionReduction, alias, origin)
         end
     end
     local objectFlags = core.IfElse(includes & TypeFlags.NotPrimitiveUnion ~= 0, ObjectFlags.None, ObjectFlags.PrimitiveUnion) |
-        core.IfElse(includes & TypeFlags.Intersection ~= 0, ObjectFlags.ContainsIntersections, ObjectFlags.None)
+        core.IfElse(includes & TypeFlags.Intersection ~= 0, checker.ObjectFlagsContainsIntersections, ObjectFlags.None)
     return self:getUnionTypeFromSortedList(typeSet, objectFlags, alias, origin)
 end
 
@@ -846,7 +838,7 @@ function Checker:addTypesToUnion(sourceTypes)
         if flags & TypeFlags.Instantiable ~= 0 then
             includes = includes | TypeFlags.IncludesInstantiable
         end
-        if flags & TypeFlags.Intersection ~= 0 and t.objectFlags & ObjectFlags.IsConstrainedTypeVariable ~= 0 then
+        if flags & TypeFlags.Intersection ~= 0 and t.objectFlags & checker.ObjectFlagsIsConstrainedTypeVariable ~= 0 then
             includes = includes | TypeFlags.IncludesConstrainedTypeVariable
         end
         if t == self.wildcardType then
@@ -959,7 +951,7 @@ function Checker:removeConstrainedTypeVariables(types)
     local typeVariables = nil
     -- First collect a list of the type variables occurring in constraining intersections.
     for _, t in ipairs(types) do
-        if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & ObjectFlags.IsConstrainedTypeVariable ~= 0 then
+        if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & checker.ObjectFlagsIsConstrainedTypeVariable ~= 0 then
             local index = 0
             if t:AsIntersectionType().types[1].flags & TypeFlags.TypeVariable == 0 then
                 index = 1
@@ -974,7 +966,7 @@ function Checker:removeConstrainedTypeVariables(types)
         local primitives = nil
         -- First collect the primitive types from the constraining intersections.
         for _, t in ipairs(types) do
-            if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & ObjectFlags.IsConstrainedTypeVariable ~= 0 then
+            if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & checker.ObjectFlagsIsConstrainedTypeVariable ~= 0 then
                 local index = 0
                 if t:AsIntersectionType().types[1].flags & TypeFlags.TypeVariable == 0 then
                     index = 1
@@ -992,7 +984,7 @@ function Checker:removeConstrainedTypeVariables(types)
             while i > 0 do
                 i = i - 1
                 local t = types[i + 1]
-                if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & ObjectFlags.IsConstrainedTypeVariable ~= 0 then
+                if t.flags & TypeFlags.Intersection ~= 0 and t.objectFlags & checker.ObjectFlagsIsConstrainedTypeVariable ~= 0 then
                     local index = 0
                     if t:AsIntersectionType().types[1].flags & TypeFlags.TypeVariable == 0 then
                         index = 1
@@ -1225,7 +1217,7 @@ function Checker:getIntersectionTypeEx(types, flags, alias)
                 -- the intersection further constrains the type variable. For example, given `T extends string | number`,
                 -- the intersection `T & "a"` is marked as a constrained type variable. Likewise, given `T extends "a" | 1`,
                 -- the intersection `T & number` is marked as a constrained type variable.
-                objectFlags = ObjectFlags.IsConstrainedTypeVariable
+                objectFlags = checker.ObjectFlagsIsConstrainedTypeVariable
             end
         end
     end
@@ -1242,7 +1234,7 @@ function Checker:getIntersectionTypeEx(types, flags, alias)
                 result = self:getIntersectionTypeEx(typeSet, flags, alias)
             elseif core.Every(typeSet, checker.isUnionWithUndefined) then
                 local containedUndefinedType = self.undefinedType
-                if core.Some(typeSet, function(t) return self:containsMissingType(t) end) then
+                if core.Some(typeSet, self.containsMissingType) then
                     containedUndefinedType = self.missingType
                 end
                 self:filterTypes(typeSet, checker.isNotUndefinedType)
@@ -1250,7 +1242,7 @@ function Checker:getIntersectionTypeEx(types, flags, alias)
             elseif core.Every(typeSet, checker.isUnionWithNull) then
                 self:filterTypes(typeSet, checker.isNotNullType)
                 result = self:getUnionTypeEx({ self:getIntersectionTypeEx(typeSet, flags, nil --[[alias]]), self.nullType }, UnionReduction.Literal, alias, nil --[[origin]])
-            elseif #typeSet >= 3 and #types > 2 then
+            elseif #typeSet >= 3 and core.Len(types) > 2 then
                 -- When we have three or more constituents, more than two inputs (to head off infinite reexpansion), some of which are unions, we employ a "divide and conquer" strategy
                 -- where A & B & C & D is processed as (A & B) & (C & D). Since intersections of unions often produce far smaller
                 -- unions of intersections than the full cartesian product (due to some intersections becoming `never`), this can
@@ -1645,7 +1637,7 @@ function Checker:filterType(t, f)
         end
         -- filtering could remove intersections so `ContainsIntersections` might be forwarded "incorrectly"
         -- it is purely an optimization hint so there is no harm in accidentally forwarding it
-        return self:getUnionTypeFromSortedList(filtered, t:AsUnionType().objectFlags & (ObjectFlags.PrimitiveUnion | ObjectFlags.ContainsIntersections), nil --[[alias]], newOrigin)
+        return self:getUnionTypeFromSortedList(filtered, t:AsUnionType().objectFlags & (ObjectFlags.PrimitiveUnion | checker.ObjectFlagsContainsIntersections), nil --[[alias]], newOrigin)
     end
     if t.flags & TypeFlags.Never ~= 0 or f(t) then
         return t
@@ -1675,7 +1667,7 @@ function Checker:removeType(t, targetType)
         for k = i + 2, #types do
             filtered[#filtered + 1] = types[k]
         end
-        return self:getUnionTypeFromSortedList(filtered, t:AsUnionType().objectFlags & (ObjectFlags.PrimitiveUnion | ObjectFlags.ContainsIntersections), nil --[[alias]], nil --[[origin]])
+        return self:getUnionTypeFromSortedList(filtered, t:AsUnionType().objectFlags & (ObjectFlags.PrimitiveUnion | checker.ObjectFlagsContainsIntersections), nil --[[alias]], nil --[[origin]])
     end
     return t
 end
@@ -1779,7 +1771,7 @@ function Checker:getIndexTypeEx(t, indexFlags)
 end
 
 function Checker:getExtractStringType(t)
-    local extractTypeAlias = self:getGlobalExtractSymbol()
+    local extractTypeAlias = self.getGlobalExtractSymbol()
     if extractTypeAlias ~= nil then
         return self:getTypeAliasInstantiation(extractTypeAlias, { t, self.stringType }, nil)
     end
@@ -1787,7 +1779,7 @@ function Checker:getExtractStringType(t)
 end
 
 function Checker:getLiteralTypeFromProperties(t, include, includeOrigin)
-    local key = checker.PropertiesTypesKey(t.id, include, includeOrigin, t.objectFlags & ObjectFlags.UnresolvedMembers ~= 0)
+    local key = checker.PropertiesTypesKey(t.id, include, includeOrigin, t.objectFlags & checker.ObjectFlagsUnresolvedMembers ~= 0)
     local cached = self.propertiesTypes[key]
     if cached ~= nil then
         return cached
@@ -2010,7 +2002,7 @@ function Checker:getIndexedAccessTypeOrUndefined(objectType, indexType, accessFl
     objectType = self:getReducedType(objectType)
     -- If the object type has a string index signature and no other members we know that the result will
     -- always be the type of that index signature and we can simplify accordingly.
-    if self:isStringIndexSignatureOnlyType(objectType) and indexType.flags & TypeFlags.Nullable == 0 and self:isTypeAssignableToKind(indexType, TypeFlags.String | TypeFlags.Number) then
+    if self.isStringIndexSignatureOnlyType(objectType) and indexType.flags & TypeFlags.Nullable == 0 and self:isTypeAssignableToKind(indexType, TypeFlags.String | TypeFlags.Number) then
         indexType = self.stringType
     end
     -- In noUncheckedIndexedAccess mode, indexed access operations that occur in an expression in a read position and resolve to
@@ -2122,7 +2114,7 @@ function Checker:getPropertyTypeForIndexType(originalObjectType, objectType, ind
             end
             if accessExpression ~= nil and checker.getAssignmentTargetKind(accessExpression) ~= checker.AssignmentKind.Definite then
                 return self:getFlowTypeOfReference(accessExpression, propType)
-            elseif accessNode ~= nil and ast.IsIndexedAccessTypeNode(accessNode) and self:containsMissingType(propType) then
+            elseif accessNode ~= nil and ast.IsIndexedAccessTypeNode(accessNode) and self.containsMissingType(propType) then
                 return self:getUnionType({ propType, self.undefinedType })
             else
                 return propType
@@ -2877,14 +2869,14 @@ end
 
 function Checker:isUnknownLikeUnionType(t)
     if self.strictNullChecks and t.flags & TypeFlags.Union ~= 0 then
-        if t.objectFlags & ObjectFlags.IsUnknownLikeUnionComputed == 0 then
-            t.objectFlags = t.objectFlags | ObjectFlags.IsUnknownLikeUnionComputed
+        if t.objectFlags & checker.ObjectFlagsIsUnknownLikeUnionComputed == 0 then
+            t.objectFlags = t.objectFlags | checker.ObjectFlagsIsUnknownLikeUnionComputed
             local types = t:Types()
             if #types >= 3 and types[1].flags & TypeFlags.Undefined ~= 0 and types[2].flags & TypeFlags.Null ~= 0 and core.Some(types, function(x) return self:IsEmptyAnonymousObjectType(x) end) then
-                t.objectFlags = t.objectFlags | ObjectFlags.IsUnknownLikeUnion
+                t.objectFlags = t.objectFlags | checker.ObjectFlagsIsUnknownLikeUnion
             end
         end
-        return t.objectFlags & ObjectFlags.IsUnknownLikeUnion ~= 0
+        return t.objectFlags & checker.ObjectFlagsIsUnknownLikeUnion ~= 0
     end
     return false
 end
@@ -2894,10 +2886,10 @@ end
 -- types, and (b) the union doesn't contain both enum literals and string or number literals.
 function Checker:isUniformUnionType(t)
     if t.objectFlags & ObjectFlags.PrimitiveUnion ~= 0 then
-        if t.objectFlags & ObjectFlags.IsUniformEnumComputed == 0 then
-            t.objectFlags = t.objectFlags | ObjectFlags.IsUniformEnumComputed | core.IfElse(self:computeIsUniformUnionType(t:Types()), ObjectFlags.IsUniformEnum, ObjectFlags.None)
+        if t.objectFlags & checker.ObjectFlagsIsUniformEnumComputed == 0 then
+            t.objectFlags = t.objectFlags | checker.ObjectFlagsIsUniformEnumComputed | core.IfElse(self:computeIsUniformUnionType(t:Types()), checker.ObjectFlagsIsUniformEnum, ObjectFlags.None)
         end
-        return t.objectFlags & ObjectFlags.IsUniformEnum ~= 0
+        return t.objectFlags & checker.ObjectFlagsIsUniformEnum ~= 0
     end
     return false
 end
@@ -2999,4 +2991,657 @@ function Checker:getSimplifiedIndexedAccessType(t, writing)
         self.cachedTypes[key] = result
     end
     return result
+end
+
+function Checker:getSimplifiedIndexedAccessTypeWorker(t, writing)
+    -- We recursively simplify the object type as it may in turn be an indexed access type. For example, with
+    -- '{ [P in T]: { [Q in U]: number } }[T][U]' we want to first simplify the inner indexed access type.
+    local objectType = self:getSimplifiedType(t:AsIndexedAccessType().objectType, writing)
+    local indexType = self:getSimplifiedType(t:AsIndexedAccessType().indexType, writing)
+    -- T[A | B] -> T[A] | T[B] (reading)
+    -- T[A | B] -> T[A] & T[B] (writing)
+    local distributedOverIndex = self:distributeObjectOverIndexType(objectType, indexType, writing)
+    if distributedOverIndex ~= nil then
+        return distributedOverIndex
+    end
+    -- Only do the inner distributions if the index can no longer be instantiated to cause index distribution again
+    if indexType.flags & TypeFlags.Instantiable == 0 then
+        -- (T | U)[K] -> T[K] | U[K] (reading)
+        -- (T | U)[K] -> T[K] & U[K] (writing)
+        -- (T & U)[K] -> T[K] & U[K]
+        local distributedOverObject = self:distributeIndexOverObjectType(objectType, indexType, writing)
+        if distributedOverObject ~= nil then
+            return distributedOverObject
+        end
+    end
+    -- So ultimately (reading):
+    -- ((A & B) | C)[K1 | K2] -> ((A & B) | C)[K1] | ((A & B) | C)[K2] -> (A & B)[K1] | C[K1] | (A & B)[K2] | C[K2] -> (A[K1] & B[K1]) | C[K1] | (A[K2] & B[K2]) | C[K2]
+    -- A generic tuple type indexed by a number exists only when the index type doesn't select a
+    -- fixed element. We simplify to either the combined type of all elements (when the index type
+    -- the actual number type) or to the combined type of all non-fixed elements.
+    if self:isGenericTupleType(objectType) and indexType.flags & TypeFlags.NumberLike ~= 0 then
+        local elementType = self:getElementTypeOfSliceOfTupleType(objectType, core.IfElse(indexType.flags & TypeFlags.Number ~= 0, 0, objectType:TargetTupleType().fixedLength), 0 --[[endSkipCount]], writing, false)
+        if elementType ~= nil then
+            return elementType
+        end
+    end
+    -- If the object type is a mapped type { [P in K]: E }, where K is generic, or { [P in K as N]: E }, where
+    -- K is generic and N is assignable to P, instantiate E using a mapper that substitutes the index type for P.
+    -- For example, for an index access { [P in K]: Box<T[P]> }[X], we construct the type Box<T[X]>.
+    if self:isGenericMappedType(objectType) then
+        if self:getMappedTypeNameTypeKind(objectType) ~= checker.MappedTypeNameTypeKind.Remapping then
+            return self:mapType(self:substituteIndexedMappedType(objectType, t:AsIndexedAccessType().indexType), function(x)
+                return self:getSimplifiedType(x, writing)
+            end)
+        end
+    end
+    return t
+end
+
+function Checker:distributeObjectOverIndexType(objectType, indexType, writing)
+    -- T[A | B] -> T[A] | T[B] (reading)
+    -- T[A | B] -> T[A] & T[B] (writing)
+    if indexType.flags & TypeFlags.Union ~= 0 then
+        local types = core.Map(indexType:Types(), function(t)
+            return self:getSimplifiedType(self:getIndexedAccessType(objectType, t), writing)
+        end)
+        if writing then
+            return self:getIntersectionType(types)
+        end
+        return self:getUnionType(types)
+    end
+    return nil
+end
+
+function Checker:distributeIndexOverObjectType(objectType, indexType, writing)
+    -- (T | U)[K] -> T[K] | U[K] (reading)
+    -- (T | U)[K] -> T[K] & U[K] (writing)
+    -- (T & U)[K] -> T[K] & U[K]
+    if objectType.flags & TypeFlags.Union ~= 0 or objectType.flags & TypeFlags.Intersection ~= 0 and not self:shouldDeferIndexType(objectType, IndexFlags.None) then
+        local types = core.Map(objectType:Types(), function(t)
+            return self:getSimplifiedType(self:getIndexedAccessType(t, indexType), writing)
+        end)
+        if objectType.flags & TypeFlags.Intersection ~= 0 or writing then
+            return self:getIntersectionType(types)
+        end
+        return self:getUnionType(types)
+    end
+    return nil
+end
+
+function Checker:getSimplifiedConditionalType(t, writing)
+    local checkType = t:AsConditionalType().checkType
+    local extendsType = t:AsConditionalType().extendsType
+    local trueType = self:getTrueTypeFromConditionalType(t)
+    local falseType = self:getFalseTypeFromConditionalType(t)
+    -- Simplifications for types of the form `T extends U ? T : never` and `T extends U ? never : T`.
+    if falseType.flags & TypeFlags.Never ~= 0 and self:getActualTypeVariable(trueType) == self:getActualTypeVariable(checkType) then
+        if checkType.flags & TypeFlags.Any ~= 0 or self:isTypeAssignableTo(self:getRestrictiveInstantiation(checkType), self:getRestrictiveInstantiation(extendsType)) then
+            return self:getSimplifiedType(trueType, writing)
+        elseif self:isIntersectionEmpty(checkType, extendsType) then
+            return self.neverType
+        end
+    elseif trueType.flags & TypeFlags.Never ~= 0 and self:getActualTypeVariable(falseType) == self:getActualTypeVariable(checkType) then
+        if checkType.flags & TypeFlags.Any == 0 and self:isTypeAssignableTo(self:getRestrictiveInstantiation(checkType), self:getRestrictiveInstantiation(extendsType)) then
+            return self.neverType
+        elseif checkType.flags & TypeFlags.Any ~= 0 or self:isIntersectionEmpty(checkType, extendsType) then
+            return self:getSimplifiedType(falseType, writing)
+        end
+    end
+    return t
+end
+
+-- Invokes union simplification logic to determine if an intersection is considered empty as a union constituent
+function Checker:isIntersectionEmpty(type1, type2)
+    return self:getUnionType({ self:intersectTypes(type1, type2), self.neverType }).flags & TypeFlags.Never ~= 0
+end
+
+function Checker:getSimplifiedTypeOrConstraint(t)
+    local simplified = self:getSimplifiedType(t, false --[[writing]])
+    if simplified ~= t then
+        return simplified
+    end
+    return self:getConstraintOfType(t)
+end
+
+function Checker:getNormalizedUnionOrIntersectionType(t, writing)
+    local reduced = self:getReducedType(t)
+    if reduced ~= t then
+        return reduced
+    end
+    if t.flags & TypeFlags.Intersection ~= 0 and self:shouldNormalizeIntersection(t) then
+        -- Normalization handles cases like
+        -- Partial<T>[K] & ({} | null) ==>
+        -- Partial<T>[K] & {} | Partial<T>[K} & null ==>
+        -- (T[K] | undefined) & {} | (T[K] | undefined) & null ==>
+        -- T[K] & {} | undefined & {} | T[K] & null | undefined & null ==>
+        -- T[K] & {} | T[K] & null
+        local types = t:Types()
+        local normalizedTypes = core.SameMap(types, function(u) return self:getNormalizedType(u, writing) end)
+        if not core.Same(normalizedTypes, types) then
+            return self:getIntersectionType(normalizedTypes)
+        end
+    end
+    return t
+end
+
+function Checker:shouldNormalizeIntersection(t)
+    local hasInstantiable = false
+    local hasNullableOrEmpty = false
+    for _, u in ipairs(t:Types()) do
+        hasInstantiable = hasInstantiable or u.flags & TypeFlags.Instantiable ~= 0
+        hasNullableOrEmpty = hasNullableOrEmpty or u.flags & TypeFlags.Nullable ~= 0 or self:IsEmptyAnonymousObjectType(u)
+        if hasInstantiable and hasNullableOrEmpty then
+            return true
+        end
+    end
+    return false
+end
+
+function Checker:getNormalizedTupleType(t, writing)
+    local elements = self:getElementTypes(t)
+    local normalizedElements = core.SameMap(elements, function(e)
+        if e.flags & TypeFlags.Simplifiable ~= 0 then
+            return self:getSimplifiedType(e, writing)
+        end
+        return e
+    end)
+    if not core.Same(elements, normalizedElements) then
+        return self:createNormalizedTupleType(t:Target(), normalizedElements)
+    end
+    return t
+end
+
+function Checker:getSingleBaseForNonAugmentingSubtype(t)
+    if t.objectFlags & ObjectFlags.Reference == 0 or t:Target().objectFlags & ObjectFlags.ClassOrInterface == 0 then
+        return nil
+    end
+    local key = checker.CachedTypeKey(CachedTypeKind.EquivalentBaseType, t.id)
+    if t.objectFlags & checker.ObjectFlagsIdenticalBaseTypeCalculated ~= 0 then
+        return self.cachedTypes[key]
+    end
+    t.objectFlags = t.objectFlags | checker.ObjectFlagsIdenticalBaseTypeCalculated
+    local target = t:Target()
+    if target.objectFlags & ObjectFlags.Class ~= 0 then
+        local baseTypeNode = checker.getBaseTypeNodeOfClass(target)
+        -- A base type expression may circularly reference the class itself (e.g. as an argument to function call), so we only
+        -- check for base types specified as simple qualified names.
+        if baseTypeNode ~= nil and not ast.IsIdentifier(baseTypeNode:Expression()) and not ast.IsPropertyAccessExpression(baseTypeNode:Expression()) then
+            return nil
+        end
+    end
+    local bases = self:getBaseTypes(target)
+    if core.Len(bases) ~= 1 then
+        return nil
+    end
+    if next(self:getMembersOfSymbol(t.symbol) or {}) ~= nil then
+        -- If the interface has any members, they may subtype members in the base, so we should do a full structural comparison
+        return nil
+    end
+    local instantiatedBase
+    local typeParameters = target:AsInterfaceType():TypeParameters()
+    if core.Len(typeParameters) == 0 then
+        instantiatedBase = bases[1]
+    else
+        instantiatedBase = self:instantiateType(bases[1], checker.newTypeMapper(typeParameters, core.Slice(self:getTypeArguments(t), 0, #typeParameters)))
+    end
+    if core.Len(self:getTypeArguments(t)) > core.Len(typeParameters) then
+        instantiatedBase = self:getTypeWithThisArgument(instantiatedBase, core.LastOrNil(self:getTypeArguments(t)), false)
+    end
+    self.cachedTypes[key] = instantiatedBase
+    return instantiatedBase
+end
+
+function Checker:getModifiersTypeFromMappedType(t)
+    local m = t:AsMappedType()
+    if m.modifiersType == nil then
+        if self:isMappedTypeWithKeyofConstraintDeclaration(t) then
+            -- If the constraint declaration is a 'keyof T' node, the modifiers type is T. We check
+            -- AST nodes here because, when T is a non-generic type, the logic below eagerly resolves
+            -- 'keyof T' to a literal union type and we can't recover T from that type.
+            m.modifiersType = self:instantiateType(self:getTypeFromTypeNode(self:getConstraintDeclarationForMappedType(t):Type()), m.mapper)
+        else
+            -- Otherwise, get the declared constraint type, and if the constraint type is a type parameter,
+            -- get the constraint of that type parameter. If the resulting type is an indexed type 'keyof T',
+            -- the modifiers type is T. Otherwise, the modifiers type is unknown.
+            local declaredType = self:getTypeFromMappedTypeNode(m.declaration:AsNode())
+            local constraint = self:getConstraintTypeFromMappedType(declaredType)
+            local extendedConstraint = constraint
+            if constraint ~= nil and constraint.flags & TypeFlags.TypeParameter ~= 0 then
+                extendedConstraint = self:getConstraintOfTypeParameter(constraint)
+            end
+            if extendedConstraint ~= nil and extendedConstraint.flags & TypeFlags.Index ~= 0 then
+                m.modifiersType = self:instantiateType(extendedConstraint:AsIndexType().target, m.mapper)
+            else
+                m.modifiersType = self.unknownType
+            end
+        end
+    end
+    return m.modifiersType
+end
+
+function Checker:extractTypesOfKind(t, kind)
+    return self:filterType(t, function(x) return x.flags & kind ~= 0 end)
+end
+
+function Checker:getRegularTypeOfObjectLiteral(t)
+    if not (checker.isObjectLiteralType(t) and t.objectFlags & ObjectFlags.FreshLiteral ~= 0) then
+        return t
+    end
+    local key = checker.CachedTypeKey(CachedTypeKind.RegularObjectLiteral, t.id)
+    local cached = self.cachedTypes[key]
+    if cached ~= nil then
+        return cached
+    end
+    local resolved = self:resolveStructuredTypeMembers(t)
+    local members = self:transformTypeOfMembers(t, function(x) return self:getRegularTypeOfObjectLiteral(x) end)
+    local regular = self:newAnonymousType(t.symbol, members, resolved:CallSignatures(), resolved:ConstructSignatures(), resolved.indexInfos)
+    regular.flags = resolved.flags
+    regular.objectFlags = regular.objectFlags | (resolved.objectFlags & ~ObjectFlags.FreshLiteral)
+    self.cachedTypes[key] = regular
+    return regular
+end
+
+function Checker:transformTypeOfMembers(t, f)
+    local members = ast.NewSymbolTable()
+    for _, property in ipairs(self:getPropertiesOfObjectType(t) or {}) do
+        local original = self:getTypeOfSymbol(property)
+        local updated = f(original)
+        if updated ~= original then
+            property = self:createSymbolWithType(property, updated)
+        end
+        members[property.name] = property
+    end
+    return members
+end
+
+function Checker:markLinkedReferences(location, hint, propSymbol, parentType)
+    if not self.canCollectSymbolAliasAccessibilityData then
+        return
+    end
+    if location.flags & NodeFlags.Ambient ~= 0 and not ast.IsPropertySignatureDeclaration(location) and not ast.IsPropertyDeclaration(location) then
+        -- References within types and declaration files are never going to contribute to retaining a JS import,
+        -- except for properties (which can be decorated).
+        return
+    end
+    local ReferenceHint = checker.ReferenceHint
+    if hint == ReferenceHint.Identifier then
+        self:markIdentifierAliasReferenced(location)
+    elseif hint == ReferenceHint.Property then
+        self:markPropertyAliasReferenced(location, propSymbol, parentType)
+    elseif hint == ReferenceHint.ExportAssignment then
+        self:markExportAssignmentAliasReferenced(location)
+    elseif hint == ReferenceHint.Jsx then
+        self:markJsxAliasReferenced(location)
+    elseif hint == ReferenceHint.ExportImportEquals then
+        self:markImportEqualsAliasReferenced(location)
+    elseif hint == ReferenceHint.ExportSpecifier then
+        self:markExportSpecifierAliasReferenced(location)
+    elseif hint == ReferenceHint.Decorator then
+        self:markDecoratorAliasReferenced(location)
+    elseif hint == ReferenceHint.Unspecified then
+        if location.flags & NodeFlags.InWithStatement ~= 0 then
+            -- We cannot answer semantic questions within a with block, do not proceed any further
+            return
+        end
+        if ast.IsJsxTagName(location) and checker.isJsxIntrinsicTagName(location) then
+            return -- builtin JSX tag names aren't real type refs by most metrics, but are expressions, so must be filtered
+        end
+        if ast.IsIdentifier(location) then
+            -- A shorthand property with an object-assignment-initializer (e.g. `{ s = 5 }`) is only valid inside a
+            -- destructuring assignment target. When it appears in an ordinary object literal expression, the checker
+            -- checks the initializer and never resolves the property name, so resolving it here would report a spurious
+            -- "No value exists in scope for the shorthand property" diagnostic. Skip such names to match checking.
+            local parent = location.parent
+            if ast.IsShorthandPropertyAssignment(parent) and
+                parent:Name() == location and
+                parent:AsShorthandPropertyAssignment().objectAssignmentInitializer ~= nil and
+                not ast.IsAssignmentTarget(parent.parent) then
+                return
+            end
+            local res = ast.FindManyAncestors(location, ast.IsMetaProperty, ast.IsDecorator, ast.IsForInOrOfStatement, ast.IsComputedPropertyName, ast.IsHeritageClause)
+            local metaProperty = res[1]
+            local decorator = res[2]
+            local forNode = res[3]
+            local computedName = res[4]
+            local heritageClause = res[5]
+            if metaProperty ~= nil then
+                return -- identifiers in meta properties shouldn't be resolved, but are expressions, so must be filtered
+            end
+            if decorator ~= nil then
+                -- Decorators on nodes that cannot be decorated (e.g. class expressions, static blocks,
+                -- `this` parameters) are never resolved during normal checking, so resolving them here would
+                -- report spurious diagnostics. Only bail out for such invalid-position decorators; valid
+                -- decorator expressions must still be resolved and marked for emit.
+                local decorated = decorator.parent
+                if decorated ~= nil and not ast.NodeCanBeDecorated(self.legacyDecorators, decorated, decorated.parent, decorated.parent.parent) then
+                    return
+                end
+            end
+            -- The right-hand side of a 'for-in'/'for-of' statement whose initializer is an empty variable
+            -- declaration list (a grammar error, e.g. `for (var of X)`) is never checked, because the RHS
+            -- is only checked while inferring the type of a variable declaration and there is none here.
+            -- Resolving identifiers in the RHS here would report spurious diagnostics.
+            if forNode ~= nil then
+                local data = forNode:AsForInOrOfStatement()
+                if ast.IsVariableDeclarationList(data.initializer) and
+                    #data.initializer:AsVariableDeclarationList().declarations.nodes == 0 and
+                    data.expression ~= nil and
+                    (location == data.expression or ast.IsNodeDescendantOf(location, data.expression)) then
+                    return
+                end
+            end
+            -- Computed property names on enum members are a grammar error and are never checked
+            -- (checkEnumMember only checks the member initializer, not the name), so resolving
+            -- identifiers in them here would report a spurious "Cannot find name" diagnostic.
+            if computedName ~= nil then
+                if ast.IsEnumMember(computedName.parent) then
+                    return
+                end
+                if checker.isInvalidComputedPropertyName(computedName) then
+                    return
+                end
+            end
+            if heritageClause ~= nil then
+                -- extends heritage clauses on interfaces are not expressions and are unchecked if they are
+                if ast.IsInterfaceDeclaration(heritageClause.parent) then
+                    return
+                end
+                -- On a class, only the first `extends` type is resolved as a value (the base class); any
+                -- additional `extends` types are grammar errors (e.g. `class C extends A extends B` or
+                -- `class C extends A, B`) and are never resolved during checking.
+                if ast.IsClassLike(heritageClause.parent) and
+                    heritageClause:AsHeritageClause().token == Kind.ExtendsKeyword then
+                    local firstExtends = ast.GetClassExtendsHeritageElement(heritageClause.parent)
+                    if firstExtends ~= nil and
+                        location ~= firstExtends and not ast.IsNodeDescendantOf(location, firstExtends) then
+                        return
+                    end
+                end
+            end
+            -- Identifiers in expression contexts are emitted, so we need to follow their referenced aliases and mark them as used
+            -- Some non-expression identifiers are also treated as expression identifiers for this purpose, eg, `a` in `b = {a}` or `q` in `import r = q`
+            -- This is the exception, rather than the rule - most non-expression identifiers are declaration names.
+            if (ast.IsExpressionNode(location) or
+                    ast.IsShorthandPropertyAssignment(location.parent)) and
+                checker.shouldMarkIdentifierAliasReferenced(location) then
+                if ast.IsPropertyAccessOrQualifiedName(location.parent) then
+                    local left
+                    if ast.IsPropertyAccessExpression(location.parent) then
+                        left = location.parent:Expression()
+                    else
+                        left = location.parent:AsQualifiedName().left
+                    end
+                    if left ~= location then
+                        return -- Only mark the LHS (the RHS is a property lookup)
+                    end
+                end
+                self:markIdentifierAliasReferenced(location)
+                return
+            end
+        end
+        if ast.IsPropertyAccessOrQualifiedName(location) then
+            local topProp = location
+            while ast.IsPropertyAccessOrQualifiedName(topProp) do
+                if ast.IsPartOfTypeNode(topProp) then
+                    return
+                end
+                topProp = topProp.parent
+            end
+            self:markPropertyAliasReferenced(location, nil --[[propSymbol]], nil --[[parentType]])
+            return
+        end
+        if ast.IsExportAssignment(location) then
+            self:markExportAssignmentAliasReferenced(location)
+            return
+        end
+        if ast.IsJsxOpeningLikeElement(location) or ast.IsJsxOpeningFragment(location) then
+            self:markJsxAliasReferenced(location)
+            return
+        end
+        if ast.IsImportEqualsDeclaration(location) then
+            if checker.isInternalModuleImportEqualsDeclaration(location) or self:checkExternalImportOrExportDeclaration(location) then
+                self:markImportEqualsAliasReferenced(location)
+                return
+            end
+            return
+        end
+        if ast.IsExportSpecifier(location) then
+            self:markExportSpecifierAliasReferenced(location)
+            return
+        end
+        if not core.Tristate_IsTrue(self.compilerOptions.emitDecoratorMetadata) then
+            return
+        end
+        if not ast.CanHaveDecorators(location) or not ast.HasDecorators(location) or location:Modifiers() == nil or not ast.NodeCanBeDecorated(self.legacyDecorators, location, location.parent, location.parent.parent) then
+            return
+        end
+
+        self:markDecoratorAliasReferenced(location)
+        return
+    else
+        error("Unhandled reference hint", 0)
+    end
+end
+
+function checker.isExportOrExportExpression(location)
+    return ast.FindAncestor(location, function(n)
+        local parent = n.parent
+        if parent ~= nil then
+            if ast.IsAnyExportAssignment(parent) then
+                return parent:Expression() == n and ast.IsEntityNameExpression(n)
+            end
+            if ast.IsExportSpecifier(parent) then
+                return parent:AsExportSpecifier():Name() == n or parent:PropertyName() == n
+            end
+        end
+        return false
+    end) ~= nil
+end
+
+function checker.shouldMarkIdentifierAliasReferenced(node)
+    local parent = node.parent
+    if parent ~= nil then
+        -- A property access expression LHS? checkPropertyAccessExpression will handle that.
+        if ast.IsPropertyAccessExpression(parent) and parent:Expression() == node then
+            return false
+        end
+        -- Next two check for an identifier inside a type only export.
+        if ast.IsExportSpecifier(parent) and parent:IsTypeOnly() then
+            return false
+        end
+        if parent.parent ~= nil then
+            local greatGrandparent = parent.parent.parent
+            if greatGrandparent ~= nil and ast.IsExportDeclaration(greatGrandparent) and greatGrandparent:IsTypeOnly() then
+                return false
+            end
+        end
+    end
+    return true
+end
+
+function checker.isInternalModuleImportEqualsDeclaration(node)
+    return node.kind == Kind.ImportEqualsDeclaration and
+        node:AsImportEqualsDeclaration().moduleReference.kind ~= Kind.ExternalModuleReference
+end
+
+function Checker:markIdentifierAliasReferenced(location)
+    if ast.IsThisInTypeQuery(location) then
+        return
+    end
+    local symbol = self:getResolvedSymbol(location)
+    if symbol ~= nil and symbol ~= self.argumentsSymbol and symbol ~= self.unknownSymbol then
+        self:markAliasReferenced(symbol, location)
+    end
+end
+
+function Checker:markPropertyAliasReferenced(location --[[PropertyAccessExpression | QualifiedName]], propSymbol, parentType)
+    if checker.isPartOfImportEqualsModuleReference(location) then
+        return
+    end
+    local left
+    if ast.IsPropertyAccessExpression(location) then
+        left = location:Expression()
+    else
+        left = location:AsQualifiedName().left
+    end
+    if ast.IsThisIdentifier(left) or not ast.IsIdentifier(left) then
+        return
+    end
+    local parentSymbol = self:getResolvedSymbol(left)
+    if parentSymbol == nil or parentSymbol == self.unknownSymbol then
+        return
+    end
+    -- In `Foo.Bar.Baz`, 'Foo' is not referenced if 'Bar' is a const enum or a module containing only const enums.
+    -- `Foo` is also not referenced in `enum FooCopy { Bar = Foo.Bar }`, because the enum member value gets inlined
+    -- here even if `Foo` is not a const enum.
+    --
+    -- The exceptions are:
+    --   1. if 'isolatedModules' is enabled, because the const enum value will not be inlined, and
+    --   2. if 'preserveConstEnums' is enabled and the expression is itself an export, e.g. `export = Foo.Bar.Baz`.
+    --
+    -- The property lookup is deferred as much as possible, in as many situations as possible, to avoid alias marking
+    -- pulling on types/symbols it doesn't strictly need to.
+    if self.compilerOptions:GetIsolatedModules() or (self.compilerOptions:ShouldPreserveConstEnums() and checker.isExportOrExportExpression(location)) then
+        self:markAliasReferenced(parentSymbol, location)
+        return
+    end
+    -- Hereafter, this relies on type checking - but every check prior to this only used symbol information
+    local leftType = parentType
+    if leftType == nil then
+        leftType = self:checkExpressionCached(left)
+    end
+    if checker.IsTypeAny(leftType) or leftType == self.silentNeverType then
+        self:markAliasReferenced(parentSymbol, location)
+        return
+    end
+    local prop = propSymbol
+    if prop == nil and parentType == nil then
+        local right
+        if ast.IsPropertyAccessExpression(location) then
+            right = location:AsPropertyAccessExpression():Name()
+        else
+            right = location:AsQualifiedName().right
+        end
+        local lexicallyScopedSymbol = nil
+        if ast.IsPrivateIdentifier(right) then
+            lexicallyScopedSymbol = self:lookupSymbolForPrivateIdentifierDeclaration(right:Text(), right)
+        end
+        local assignmentKind = checker.getAssignmentTargetKind(location)
+        local apparentType
+        if assignmentKind ~= checker.AssignmentKind.None or self:isMethodAccessForCall(location) then
+            apparentType = self:getApparentType(self:getWidenedType(leftType))
+        else
+            apparentType = self:getApparentType(leftType)
+        end
+        if ast.IsPrivateIdentifier(right) then
+            if lexicallyScopedSymbol ~= nil then
+                prop = self:getPrivateIdentifierPropertyOfType(apparentType, lexicallyScopedSymbol)
+            end
+        else
+            prop = self:getPropertyOfType(apparentType, right:Text())
+        end
+    end
+    if not (prop ~= nil and (checker.isConstEnumOrConstEnumOnlyModule(prop) or prop.flags & SymbolFlags.EnumMember ~= 0 and location.parent.kind == Kind.EnumMember)) then
+        self:markAliasReferenced(parentSymbol, location)
+    end
+end
+
+function checker.isPartOfImportEqualsModuleReference(location)
+    local importEquals = ast.FindAncestorKind(location, Kind.ImportEqualsDeclaration)
+    if importEquals == nil then
+        return false
+    end
+    local node = location
+    while node ~= nil and node ~= importEquals do
+        if node == importEquals:AsImportEqualsDeclaration().moduleReference then
+            return true
+        end
+        node = node.parent
+    end
+    return false
+end
+
+function Checker:markExportAssignmentAliasReferenced(location --[[ExportAssignment]])
+    local id = location:Expression()
+    if ast.IsIdentifier(id) then
+        local sym = self:getExportSymbolOfValueSymbolIfExported(self:resolveEntityName(id, SymbolFlags.All, true --[[ignoreErrors]], true --[[dontResolveAlias]], location))
+        if sym ~= nil then
+            self:markAliasReferenced(sym, id)
+        end
+    end
+end
+
+function Checker:markJsxAliasReferenced(node --[[JsxOpeningLikeElement | JsxOpeningFragment]])
+    if self:getJsxNamespaceContainerForImplicitImport(node) ~= nil then
+        return
+    end
+    -- The reactNamespace/jsxFactory's root symbol should be marked as 'used' so we don't incorrectly elide its import.
+    -- And if there is no reactNamespace/jsxFactory's symbol in scope when targeting React emit, we should issue an error.
+    local jsxFactoryRefErr = core.IfElse(self.compilerOptions.jsx == core.JsxEmit.React, diagnostics.This_JSX_tag_requires_0_to_be_in_scope_but_it_could_not_be_found, nil)
+    local jsxFactoryNamespace = self:getJsxNamespace(node)
+    local jsxFactoryLocation = node
+    if ast.IsJsxOpeningLikeElement(node) then
+        jsxFactoryLocation = node:TagName()
+    end
+    local shouldFactoryRefErr = self.compilerOptions.jsx ~= core.JsxEmit.Preserve and self.compilerOptions.jsx ~= core.JsxEmit.ReactNative
+    -- #38720/60122, allow null as jsxFragmentFactory
+    local jsxFactorySym = nil
+    if not (ast.IsJsxOpeningFragment(node) and jsxFactoryNamespace == "null") then
+        local flags = SymbolFlags.Value
+        if not shouldFactoryRefErr then
+            flags = flags & ~SymbolFlags.Enum
+        end
+        jsxFactorySym = self.resolveName(jsxFactoryLocation, jsxFactoryNamespace, flags, jsxFactoryRefErr, true --[[isUse]], false --[[excludeGlobals]])
+    end
+    if jsxFactorySym ~= nil then
+        -- Mark local symbol as referenced here because it might not have been marked
+        -- if jsx emit was not jsxFactory as there wont be error being emitted
+        self:symbolReferenced(jsxFactorySym, SymbolFlags.All)
+        -- If react/jsxFactory symbol is alias, mark it as referenced
+        if self.canCollectSymbolAliasAccessibilityData and jsxFactorySym.flags & SymbolFlags.Alias ~= 0 and self:getTypeOnlyAliasDeclaration(jsxFactorySym) == nil then
+            self:markAliasSymbolAsReferenced(jsxFactorySym)
+        end
+    end
+    -- if JsxFragment, additionally mark jsx pragma as referenced, since `getJsxNamespace` above would have resolved to only the fragment factory if they are distinct
+    if ast.IsJsxOpeningFragment(node) then
+        local file = ast.GetSourceFileOfNode(node)
+        local entity = self:getJsxFactoryEntity(file:AsNode())
+        if entity ~= nil then
+            local localJsxNamespace = ast.GetFirstIdentifier(entity):Text()
+            local flags = SymbolFlags.Value
+            if not shouldFactoryRefErr then
+                flags = flags & ~SymbolFlags.Enum
+            end
+            self.resolveName(jsxFactoryLocation, localJsxNamespace, flags, jsxFactoryRefErr, true --[[isUse]], false --[[excludeGlobals]])
+        end
+    end
+end
+
+function Checker:markImportEqualsAliasReferenced(location --[[ImportEqualsDeclaration]])
+    if ast.HasSyntacticModifier(location, ModifierFlags.Export) then
+        self:markExportAsReferenced(location)
+    end
+end
+
+function Checker:markExportSpecifierAliasReferenced(location)
+    if location.parent.parent:ModuleSpecifier() == nil and not location:IsTypeOnly() and not location.parent.parent:IsTypeOnly() then
+        local exportedName = location:PropertyNameOrName()
+        if exportedName.kind == Kind.StringLiteral then
+            return -- Skip for invalid syntax like this: export { "x" }
+        end
+        local symbol = self.resolveName(exportedName, exportedName:Text(), SymbolFlags.Value | SymbolFlags.Type | SymbolFlags.Namespace | SymbolFlags.Alias, nil --[[nameNotFoundMessage]], true --[[isUse]], false --[[excludeGlobals]])
+        if symbol ~= nil and (symbol == self.undefinedSymbol or symbol == self.globalThisSymbol or symbol.declarations ~= nil and ast.IsGlobalSourceFile(ast.GetDeclarationContainer(symbol.declarations[1]))) then -- luacheck: ignore 542
+            -- Do nothing, non-local symbol
+        else
+            local target = symbol
+            if target ~= nil and target.flags & SymbolFlags.Alias ~= 0 then
+                target = self:resolveAlias(target)
+            end
+            if target == nil or self:getSymbolFlags(target) & SymbolFlags.Value ~= 0 then
+                self:markExportAsReferenced(location) -- marks export as used
+                self:markIdentifierAliasReferenced(exportedName) -- marks target of export as used
+            end
+        end
+    end
 end
