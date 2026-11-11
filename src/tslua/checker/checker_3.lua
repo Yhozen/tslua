@@ -54,7 +54,7 @@ function Checker:unusedIsError(kind)
 end
 
 function Checker:checkUnusedClassMembers(node)
-    for _, member in ipairs(node:Members()) do
+    for _, member in ipairs(node:Members() or {}) do
         local k = member.kind
         if k == Kind.MethodDeclaration or k == Kind.PropertyDeclaration or k == Kind.GetAccessor or k == Kind.SetAccessor then
             if ast.IsSetAccessorDeclaration(member) and member:Symbol().flags & SymbolFlags.GetAccessor ~= 0 then
@@ -151,7 +151,7 @@ function Checker:reportUnusedParameters(node)
 end
 
 function Checker:reportUnusedBindingElements(node)
-    local declarations = node:Elements()
+    local declarations = node:Elements() or {}
     if #declarations > 1 and core.Every(declarations, function(d) return self:isUnreferencedVariableDeclaration(d) end) then
         self:reportUnusedVariable(node, checker.NewDiagnosticForNode(node, diagnostics.All_destructured_elements_are_unused))
     else
@@ -206,7 +206,7 @@ function Checker:reportUnusedImports(node, unuseds)
         if ast.IsNamespaceImport(namedBindings) then
             declarationCount = declarationCount + 1
         else
-            declarationCount = declarationCount + #namedBindings:Elements()
+            declarationCount = declarationCount + core.Len(namedBindings:Elements())
         end
     end
     if declarationCount > 1 and declarationCount == #unuseds then
@@ -1029,7 +1029,7 @@ function Checker:checkRegularExpressionLiteral(node)
 end
 
 function Checker:checkArrayLiteral(node, checkMode)
-    local elements = node:Elements()
+    local elements = node:Elements() or {}
     local elementTypes = {}
     local elementInfos = {}
     self:pushCachedContextualType(node)
@@ -1276,26 +1276,26 @@ end
 function Checker:checkImportCallExpression(node)
     -- Check grammar of dynamic import
     self:checkGrammarImportCallExpression(node)
-    local args = node:Arguments()
-    if #args == 0 then
+    local args = node:Arguments() or {}
+    if core.Len(args) == 0 then
         -- No call arguments exist, so there are no child expressions to check.
         return self:createPromiseReturnType(node, self.anyType)
     end
     local specifier = args[1]
     local specifierType = self:checkExpressionCached(specifier)
     local optionsType = nil
-    if #args > 1 then
+    if core.Len(args) > 1 then
         optionsType = self:checkExpressionCached(args[2])
     end
     -- Even though multiple arguments is grammatically incorrect, type-check extra arguments for completion
-    for i = 2, #args - 1 do
+    for i = 2, core.Len(args) - 1 do
         self:checkExpressionCached(args[i + 1])
     end
     if specifierType.flags & TypeFlags.Nullable ~= 0 or not self:isTypeAssignableTo(specifierType, self.stringType) then
         self:error(specifier, diagnostics.Dynamic_import_s_specifier_must_be_of_type_string_but_here_has_type_0, self:TypeToString(specifierType))
     end
     if optionsType ~= nil then
-        local importCallOptionsType = self:getGlobalImportCallOptionsTypeChecked()
+        local importCallOptionsType = self.getGlobalImportCallOptionsTypeChecked()
         if importCallOptionsType ~= self.emptyObjectType then
             self:checkTypeAssignableTo(optionsType, self:getNullableType(importCallOptionsType, TypeFlags.Undefined), args[2], nil)
         end
@@ -1399,7 +1399,7 @@ function Checker:isSymbolOrSymbolForCall(node)
         return false
     end
     -- make sure `Symbol` is the global symbol
-    local globalESSymbol = self:getGlobalESSymbolConstructorSymbolOrNil()
+    local globalESSymbol = self.getGlobalESSymbolConstructorSymbolOrNil()
     if globalESSymbol == nil then
         return false
     end
@@ -1482,7 +1482,7 @@ function Checker:resolveCallExpression(node, candidatesOutArray, checkMode)
     if node:Expression().kind == Kind.SuperKeyword then
         local superType = self:checkSuperExpression(node:Expression())
         if checker.IsTypeAny(superType) then
-            for _, arg in ipairs(node:Arguments()) do
+            for _, arg in ipairs(node:Arguments() or {}) do
                 -- Still visit arguments so they get marked for visibility, etc
                 self:checkExpression(arg)
             end
@@ -1551,7 +1551,7 @@ function Checker:resolveCallExpression(node, candidatesOutArray, checkMode)
             self:error(node, diagnostics.Value_of_type_0_is_not_callable_Did_you_mean_to_include_new, self:TypeToString(funcType))
         else
             local relatedInformation = nil
-            if #node:Arguments() == 1 then
+            if core.Len(node:Arguments()) == 1 then
                 local text = ast.GetSourceFileOfNode(node):Text()
                 local options = { stopAfterLineBreak = true }
                 if stringutil.IsLineBreak(string.byte(text, scanner.SkipTriviaEx(text, node:Expression():End(), options))) then
@@ -2129,7 +2129,7 @@ function Checker:hasCorrectArity(node, args, signature, signatureHelpTrailingCom
     local effectiveParameterCount = self:getParameterCount(signature)
     local effectiveMinimumArguments = self:getMinArgumentCount(signature)
     if ast.IsTaggedTemplateExpression(node) then
-        argCount = #args
+        argCount = core.Len(args)
         local template = node:AsTaggedTemplateExpression().template
         if ast.IsTemplateExpression(template) then
             -- If a tagged template expression lacks a tail literal, the call is incomplete.
@@ -2152,17 +2152,17 @@ function Checker:hasCorrectArity(node, args, signature, signatureHelpTrailingCom
         if callIsIncomplete then
             return true
         end
-        argCount = core.IfElse(effectiveMinimumArguments == 0, #args, 1)
-        effectiveParameterCount = core.IfElse(#args == 0, effectiveParameterCount, 1) -- class may have argumentless ctor functions - still resolve ctor and compare vs props member type
+        argCount = core.IfElse(effectiveMinimumArguments == 0, core.Len(args), 1)
+        effectiveParameterCount = core.IfElse(core.Len(args) == 0, effectiveParameterCount, 1) -- class may have argumentless ctor functions - still resolve ctor and compare vs props member type
         effectiveMinimumArguments = math.min(effectiveMinimumArguments, 1) -- sfc may specify context argument - handled by framework and not typechecked
     elseif ast.IsNewExpression(node) and node:ArgumentList() == nil then
         -- This only happens when we have something of the form: 'new C'
         return self:getMinArgumentCount(signature) == 0
     else
         if signatureHelpTrailingComma then
-            argCount = #args + 1
+            argCount = core.Len(args) + 1
         else
-            argCount = #args
+            argCount = core.Len(args)
         end
         -- If we are missing the close parenthesis, the call is incomplete.
         callIsIncomplete = node:ArgumentList():End() == node:End()
@@ -2295,9 +2295,9 @@ function Checker:isSignatureApplicable(node, args, signature, relation, checkMod
     local restType = self:getNonArrayRestType(signature)
     local argCount
     if restType ~= nil then
-        argCount = math.min(self:getParameterCount(signature) - 1, #args)
+        argCount = math.min(self:getParameterCount(signature) - 1, core.Len(args))
     else
-        argCount = #args
+        argCount = core.Len(args)
     end
     for i = 0, argCount - 1 do
         local arg = args[i + 1]
@@ -2321,8 +2321,8 @@ function Checker:isSignatureApplicable(node, args, signature, relation, checkMod
         end
     end
     if restType ~= nil then
-        local spreadType = self:getSpreadArgumentType(args, argCount, #args, restType, nil --[[context]], checkMode)
-        local restArgCount = #args - argCount
+        local spreadType = self:getSpreadArgumentType(args, argCount, core.Len(args), restType, nil --[[context]], checkMode)
+        local restArgCount = core.Len(args) - argCount
         local errorNode = nil
         if reportErrors then
             if restArgCount == 0 then
@@ -2331,7 +2331,7 @@ function Checker:isSignatureApplicable(node, args, signature, relation, checkMod
                 errorNode = self:getEffectiveCheckNode(args[argCount + 1])
             else
                 errorNode = self:createSyntheticExpression(node, spreadType, false, nil)
-                errorNode.loc = core.NewTextRange(args[argCount + 1]:Pos(), args[#args]:End())
+                errorNode.loc = core.NewTextRange(args[argCount + 1]:Pos(), args[core.Len(args)]:End())
             end
         end
         if not self:checkTypeRelatedToEx(spreadType, restType, relation, errorNode, headMessage, diagnosticOutput) then
@@ -2413,7 +2413,7 @@ function Checker:inferTypeArguments(node, signature, args, checkMode, context)
         local contextualType = self:getContextualType(node, core.IfElse(skipBindingPatterns, ContextFlags.SkipBindingPatterns, ContextFlags.None))
         if contextualType ~= nil then
             local inferenceTargetType = self:getReturnTypeOfSignature(signature)
-            if self:couldContainTypeVariables(inferenceTargetType) then
+            if self.couldContainTypeVariables(inferenceTargetType) then
                 local outerContext = self:getInferenceContext(node)
                 local isFromBindingPattern = not skipBindingPatterns and self:getContextualType(node, ContextFlags.SkipBindingPatterns) ~= contextualType
                 -- A return type inference from a binding pattern can be used in instantiating the contextual
@@ -2473,20 +2473,20 @@ function Checker:inferTypeArguments(node, signature, args, checkMode, context)
         end
     end
     local restType = self:getNonArrayRestType(signature)
-    local argCount = #args
+    local argCount = core.Len(args)
     if restType ~= nil then
         argCount = math.min(self:getParameterCount(signature) - 1, argCount)
     end
     if restType ~= nil and restType.flags & TypeFlags.TypeParameter ~= 0 then
         local info = core.Find(context.inferences, function(info) return info.typeParameter == restType end)
         if info ~= nil then
-            if core.FindIndex(core.Slice(args, argCount, #args), function(a) return checker.isSpreadArgument(a) end) < 0 then
-                info.impliedArity = #args - argCount
+            if core.FindIndex(core.Slice(args, argCount, core.Len(args)), function(a) return checker.isSpreadArgument(a) end) < 0 then
+                info.impliedArity = core.Len(args) - argCount
             end
         end
     end
     local thisType = self:getThisTypeOfSignature(signature)
-    if thisType ~= nil and self:couldContainTypeVariables(thisType) then
+    if thisType ~= nil and self.couldContainTypeVariables(thisType) then
         local thisArgumentNode = self:getThisArgumentOfCall(node)
         self:inferTypes(context.inferences, self:getThisArgumentType(thisArgumentNode), thisType, InferencePriority.None, false)
     end
@@ -2494,14 +2494,14 @@ function Checker:inferTypeArguments(node, signature, args, checkMode, context)
         local arg = args[i + 1]
         if arg.kind ~= Kind.OmittedExpression then
             local paramType = self:getTypeAtPosition(signature, i)
-            if self:couldContainTypeVariables(paramType) then
+            if self.couldContainTypeVariables(paramType) then
                 local argType = self:checkExpressionWithContextualType(arg, paramType, context, checkMode)
                 self:inferTypes(context.inferences, argType, paramType, InferencePriority.None, false)
             end
         end
     end
-    if restType ~= nil and self:couldContainTypeVariables(restType) then
-        local spreadType = self:getSpreadArgumentType(args, argCount, #args, restType, context, checkMode)
+    if restType ~= nil and self.couldContainTypeVariables(restType) then
+        local spreadType = self:getSpreadArgumentType(args, argCount, core.Len(args), restType, context, checkMode)
         self:inferTypes(context.inferences, spreadType, restType, InferencePriority.None, false)
     end
     return self:getInferredTypes(context)
@@ -2527,7 +2527,7 @@ function Checker:pickLongestCandidateSignature(node, candidates, args, checkMode
     -- Also, use explicitly-supplied type arguments if they are provided, so we can get a contextual signature in cases like:
     --     declare function f<T>(k: keyof T);
     --     f<Foo>("
-    local argCount = #args
+    local argCount = core.Len(args)
     if self.apparentArgumentCount ~= nil then
         argCount = self.apparentArgumentCount
     end
@@ -2735,10 +2735,10 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
         end
         maxCount = math.max(maxCount, maxParameter)
         -- shortest parameter count *longer than the call*/longest parameter count *shorter than the call*
-        if minParameter < #args and minParameter > maxBelow then
+        if minParameter < core.Len(args) and minParameter > maxBelow then
             maxBelow = minParameter
         end
-        if #args < maxParameter and maxParameter < minAbove then
+        if core.Len(args) < maxParameter and maxParameter < minAbove then
             minAbove = maxParameter
         end
     end
@@ -2751,7 +2751,7 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
     else
         parameterRange = tostring(minCount)
     end
-    local isVoidPromiseError = not hasRestParameter and parameterRange == "1" and #args == 0 and self:isPromiseResolveArityError(node)
+    local isVoidPromiseError = not hasRestParameter and parameterRange == "1" and core.Len(args) == 0 and self:isPromiseResolveArityError(node)
     local errorNode = checker.getErrorNodeForCallNode(node)
     if isVoidPromiseError and ast.IsInJSFile(node) then
         return checker.NewDiagnosticForNode(errorNode, diagnostics.Expected_1_argument_but_got_0_new_Promise_needs_a_JSDoc_hint_to_produce_a_resolve_that_can_be_called_without_arguments)
@@ -2770,22 +2770,22 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
     else
         message = diagnostics.Expected_0_arguments_but_got_1
     end
-    if minCount < #args and #args < maxCount then
+    if minCount < core.Len(args) and core.Len(args) < maxCount then
         -- between min and max, but with no matching overload
-        local diagnostic = checker.NewDiagnosticForNode(errorNode, diagnostics.No_overload_expects_0_arguments_but_overloads_do_exist_that_expect_either_1_or_2_arguments, #args, maxBelow, minAbove)
+        local diagnostic = checker.NewDiagnosticForNode(errorNode, diagnostics.No_overload_expects_0_arguments_but_overloads_do_exist_that_expect_either_1_or_2_arguments, core.Len(args), maxBelow, minAbove)
         if headMessage ~= nil then
             diagnostic = ast.NewDiagnosticChain(diagnostic, headMessage)
         end
         return diagnostic
-    elseif #args < minCount then
+    elseif core.Len(args) < minCount then
         -- too short: put the error span on the call expression, not any of the args
-        local diagnostic = checker.NewDiagnosticForNode(errorNode, message, parameterRange, #args)
+        local diagnostic = checker.NewDiagnosticForNode(errorNode, message, parameterRange, core.Len(args))
         if headMessage ~= nil then
             diagnostic = ast.NewDiagnosticChain(diagnostic, headMessage)
         end
         local parameter = nil
         if closestSignature ~= nil and closestSignature.declaration ~= nil then
-            parameter = core.ElementOrNil(closestSignature.declaration:Parameters(), #args + core.IfElse(closestSignature.thisParameter ~= nil, 1, 0))
+            parameter = core.ElementOrNil(closestSignature.declaration:Parameters(), core.Len(args) + core.IfElse(closestSignature.thisParameter ~= nil, 1, 0))
         end
         if parameter ~= nil then
             local related
@@ -2804,8 +2804,8 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
         -- This can happen when we reach this fallback error path but the argument
         -- count actually matches the parameter count (e.g., due to trailing commas
         -- causing signature resolution to fail for other reasons).
-        if maxCount >= #args then
-            local diagnostic = checker.NewDiagnosticForNode(errorNode, message, parameterRange, #args)
+        if maxCount >= core.Len(args) then
+            local diagnostic = checker.NewDiagnosticForNode(errorNode, message, parameterRange, core.Len(args))
             if headMessage ~= nil then
                 diagnostic = ast.NewDiagnosticChain(diagnostic, headMessage)
             end
@@ -2813,7 +2813,7 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
         end
         local sourceFile = ast.GetSourceFileOfNode(node)
         local pos = args[maxCount + 1]:Pos()
-        local end_ = args[#args]:End()
+        local end_ = args[core.Len(args)]:End()
         if end_ == pos then
             end_ = end_ + 1
         end
@@ -2821,7 +2821,7 @@ function Checker:getArgumentArityError(node, signatures, args, headMessage)
         if end_ < pos then
             end_ = pos
         end
-        local diagnostic = ast.NewDiagnostic(sourceFile, core.NewTextRange(pos, end_), message, parameterRange, #args)
+        local diagnostic = ast.NewDiagnostic(sourceFile, core.NewTextRange(pos, end_), message, parameterRange, core.Len(args))
         if headMessage ~= nil then
             diagnostic = ast.NewDiagnosticChain(diagnostic, headMessage)
         end
@@ -2841,7 +2841,7 @@ function Checker:isPromiseResolveArityError(node)
     if decl == nil or not ast.IsParameterDeclaration(decl) or not ast.IsFunctionExpressionOrArrowFunction(decl.parent) or not ast.IsNewExpression(decl.parent.parent) or not ast.IsIdentifier(decl.parent.parent:Expression()) then
         return false
     end
-    local globalPromiseSymbol = self:getGlobalPromiseConstructorSymbolOrNil()
+    local globalPromiseSymbol = self.getGlobalPromiseConstructorSymbolOrNil()
     if globalPromiseSymbol == nil then
         return false
     end
@@ -2922,7 +2922,7 @@ function Checker:resolveUntypedCall(node)
     elseif k == Kind.BinaryExpression then
         self:checkExpression(node:AsBinaryExpression().left)
     elseif k == Kind.CallExpression or k == Kind.NewExpression then
-        for _, argument in ipairs(node:Arguments()) do
+        for _, argument in ipairs(node:Arguments() or {}) do
             self:checkExpression(argument)
         end
     end
@@ -2989,7 +2989,7 @@ function Checker:invocationErrorDetails(errorTarget, apparentType, kind)
     end
     local headMessage = core.IfElse(isCall, diagnostics.This_expression_is_not_callable, diagnostics.This_expression_is_not_constructable)
     -- Diagnose get accessors incorrectly called as functions
-    if ast.IsCallExpression(errorTarget.parent) and #errorTarget.parent:Arguments() == 0 then
+    if ast.IsCallExpression(errorTarget.parent) and core.Len(errorTarget.parent:Arguments()) == 0 then
         local resolvedSymbol = self:getResolvedSymbolOrNil(errorTarget)
         if resolvedSymbol ~= nil and resolvedSymbol.flags & SymbolFlags.GetAccessor ~= 0 then
             headMessage = diagnostics.This_expression_is_not_callable_because_it_is_a_get_accessor_Did_you_mean_to_use_it_without
@@ -3067,7 +3067,7 @@ function Checker:getFirstTransformableStaticClassElement(node)
     local willTransformPrivateElementsOrClassStaticBlocks = self.languageVersion < checker.LanguageFeatureMinimumTarget.PrivateNamesAndClassStaticBlocks or self.languageVersion < checker.LanguageFeatureMinimumTarget.ClassAndClassElementDecorators
     local willTransformInitializers = not self.emitStandardClassFields
     if willTransformStaticElementsOfDecoratedClass or willTransformPrivateElementsOrClassStaticBlocks then
-        for _, member in ipairs(node:Members()) do
+        for _, member in ipairs(node:Members() or {}) do
             if willTransformStaticElementsOfDecoratedClass and ast.ClassElementOrClassElementParameterIsDecorated(false, member, node) then
                 local firstDecorator = core.FirstOrNil(node:Decorators())
                 if firstDecorator ~= nil then
@@ -3132,7 +3132,7 @@ function Checker:checkFunctionExpressionOrObjectLiteralMethod(node, checkMode)
         if node:Type() == nil and not ast.HasContextSensitiveParameters(node) then
             -- Return plain anyFunctionType if there is no possibility we'll make inferences from the return type
             local contextualSignature = self:getContextualSignature(node)
-            if contextualSignature ~= nil and self:couldContainTypeVariables(self:getReturnTypeOfSignature(contextualSignature)) then
+            if contextualSignature ~= nil and self.couldContainTypeVariables(self:getReturnTypeOfSignature(contextualSignature)) then
                 local cached = self.contextFreeTypes[node]
                 if cached ~= nil then
                     return cached
@@ -3246,4 +3246,429 @@ function Checker:checkFunctionExpressionOrObjectLiteralMethodDeferred(node)
             end
         end
     end
+end
+
+function Checker:inferFromAnnotatedParametersAndReturn(sig, context, inferenceContext)
+    local length = core.Len(sig.parameters) - core.IfElse(checker.signatureHasRestParameter(sig), 1, 0)
+    for i = 0, length - 1 do
+        local declaration = sig.parameters[i + 1].valueDeclaration
+        local typeNode = declaration:Type()
+        if typeNode ~= nil then
+            local source = self:addOptionalityEx(self:getTypeFromTypeNode(typeNode), false --[[isProperty]], checker.isOptionalDeclaration(declaration))
+            local target = self:getTypeAtPosition(context, i)
+            self:inferTypes(inferenceContext.inferences, source, target, InferencePriority.None, false)
+        end
+    end
+    local declaration = sig:Declaration()
+    if declaration ~= nil then
+        local returnTypeNode = declaration:Type()
+        if returnTypeNode ~= nil then
+            local source = self:getTypeFromTypeNode(returnTypeNode)
+            local target = self:getReturnTypeOfSignature(context)
+            self:inferTypes(inferenceContext.inferences, source, target, InferencePriority.None, false)
+        end
+    end
+end
+
+-- Return the contextual signature for a given expression node. A contextual type provides a
+-- contextual signature if it has a single call signature and if that call signature is non-generic.
+-- If the contextual type is a union type, get the signature from each type possible and if they are
+-- all identical ignoring their return type, the result is same signature but with return type as
+-- union type of return types from these signatures
+function Checker:getContextualSignature(node)
+    local t = self:getApparentTypeOfContextualType(node, ContextFlags.Signature)
+    if t == nil then
+        return nil
+    end
+    if t.flags & TypeFlags.Union == 0 then
+        return self:getContextualCallSignature(t, node)
+    end
+    local signatureList = {}
+    local types = t:Types()
+    for _, current in ipairs(types) do
+        local signature = self:getContextualCallSignature(current, node)
+        if signature ~= nil then
+            if #signatureList ~= 0 and self:compareSignaturesIdentical(signatureList[1], signature, false --[[partialMatch]], true --[[ignoreThisTypes]], true --[[ignoreReturnTypes]], function(s, t1) return self:compareTypesIdentical(s, t1) end) == checker.Ternary.False then
+                -- Signatures aren't identical, do not use
+                return nil
+            end
+            -- Use this signature for contextual union signature
+            signatureList[#signatureList + 1] = signature
+        end
+    end
+    if #signatureList == 0 then
+        return nil
+    elseif #signatureList == 1 then
+        return signatureList[1]
+    end
+    -- Result is union of signatures collected (return type is union of return types of this signature set)
+    return self:createUnionSignature(signatureList[1], signatureList)
+end
+
+function Checker:createUnionSignature(sig, unionSignatures)
+    local result = self:cloneSignature(sig)
+    result.composite = checker.CompositeSignature_new({ isUnion = true, signatures = unionSignatures })
+    result.target = nil
+    result.mapper = nil
+    return result
+end
+
+-- If the given type is an object or union type with a single signature, and if that signature has at
+-- least as many parameters as the given function, return the signature. Otherwise return undefined.
+function Checker:getContextualCallSignature(t, node)
+    local signatures = self:getSignaturesOfType(t, SignatureKind.Call)
+    local applicableByArity = core.Filter(signatures, function(s) return not self:isAritySmaller(s, node) end)
+    if core.Len(applicableByArity) == 1 then
+        return applicableByArity[1]
+    end
+    return self:getIntersectedSignatures(applicableByArity)
+end
+
+function Checker:getIntersectedSignatures(signatures)
+    if not self.noImplicitAny then
+        return nil
+    end
+    local combined = nil
+    for _, sig in ipairs(signatures or {}) do
+        if combined == sig or combined == nil then
+            combined = sig
+        elseif self:compareTypeParametersIdentical(combined.typeParameters, sig.typeParameters) then
+            combined = self:combineUnionOrIntersectionMemberSignatures(combined, sig, false --[[isUnion]])
+        else
+            return nil
+        end
+    end
+    return combined
+end
+
+--[[ If the contextual signature has fewer parameters than the function expression, do not use it ]]
+function Checker:isAritySmaller(signature, target)
+    local parameters = target:Parameters()
+    local targetParameterCount = 0
+    while targetParameterCount < #parameters do
+        local param = parameters[targetParameterCount + 1]
+        if param:Initializer() ~= nil or param:QuestionToken() ~= nil or checker.hasDotDotDotToken(param) then
+            break
+        end
+        targetParameterCount = targetParameterCount + 1
+    end
+    if #parameters ~= 0 and ast.IsThisParameter(parameters[1]) then
+        targetParameterCount = targetParameterCount - 1
+    end
+    return not self:hasEffectiveRestParameter(signature) and self:getParameterCount(signature) < targetParameterCount
+end
+
+function Checker:assignContextualParameterTypes(sig, context)
+    if core.Len(context.typeParameters) ~= 0 then
+        if core.Len(sig.typeParameters) ~= 0 then
+            -- This signature has already has a contextual inference performed and cached on it
+            return
+        end
+        sig.typeParameters = context.typeParameters
+    end
+    if context.thisParameter ~= nil then
+        local parameter = sig.thisParameter
+        if parameter == nil or parameter.valueDeclaration ~= nil and parameter.valueDeclaration:Type() == nil then
+            if parameter == nil then
+                sig.thisParameter = self:createSymbolWithType(context.thisParameter, nil --[[type]])
+            end
+            self:assignParameterType(sig.thisParameter, self:getTypeOfSymbol(context.thisParameter))
+        end
+    end
+    local length = core.Len(sig.parameters) - core.IfElse(checker.signatureHasRestParameter(sig), 1, 0)
+    for i = 0, length - 1 do
+        local parameter = sig.parameters[i + 1]
+        local declaration = parameter.valueDeclaration
+        if declaration:Type() == nil then
+            local t = self:tryGetTypeAtPosition(context, i)
+            if t ~= nil and declaration:Initializer() ~= nil then
+                local initializerType = self:checkDeclarationInitializer(declaration, CheckMode.Normal, nil)
+                if not self:isTypeAssignableTo(initializerType, t) then
+                    initializerType = self:widenTypeInferredFromInitializer(declaration, initializerType)
+                    if self:isTypeAssignableTo(t, initializerType) then
+                        t = initializerType
+                    end
+                end
+            end
+            self:assignParameterType(parameter, t)
+        end
+    end
+    if checker.signatureHasRestParameter(sig) then
+        -- parameter might be a transient symbol generated by use of `arguments` in the function body.
+        local parameter = core.LastOrNil(sig.parameters)
+        if parameter.valueDeclaration ~= nil and parameter.valueDeclaration:Type() == nil or
+            parameter.valueDeclaration == nil and parameter.checkFlags & ast.CheckFlags.DeferredType ~= 0 then
+            local contextualParameterType = self:getRestTypeAtPosition(context, length, false)
+            self:assignParameterType(parameter, contextualParameterType)
+        end
+    end
+end
+
+function Checker:assignNonContextualParameterTypes(signature)
+    if signature.thisParameter ~= nil then
+        self:assignParameterType(signature.thisParameter, nil)
+    end
+    for _, parameter in ipairs(signature.parameters or {}) do
+        self:assignParameterType(parameter, nil)
+    end
+end
+
+function Checker:assignParameterType(parameter, contextualType)
+    local links = self.valueSymbolLinks:Get(parameter)
+    if links.resolvedType ~= nil then
+        return
+    end
+    local declaration = parameter.valueDeclaration
+    local t = contextualType
+    if t == nil then
+        if declaration ~= nil then
+            t = self:getWidenedTypeForVariableLikeDeclaration(declaration, true --[[reportErrors]])
+        else
+            t = self:getTypeOfSymbol(parameter)
+        end
+    end
+    links.resolvedType = self:addOptionalityEx(t, false, declaration ~= nil and declaration:Initializer() == nil and checker.isOptionalDeclaration(declaration))
+    if declaration ~= nil and not ast.IsIdentifier(declaration:Name()) then
+        -- if inference didn't come up with anything but unknown, fall back to the binding pattern if present.
+        if links.resolvedType == self.unknownType then
+            links.resolvedType = self:getTypeFromBindingPattern(declaration:Name(), false, false)
+        end
+        self:assignBindingElementTypes(declaration:Name(), links.resolvedType)
+    end
+end
+
+-- When contextual typing assigns a type to a parameter that contains a binding pattern, we also need to push
+-- the destructured type into the contained binding elements.
+function Checker:assignBindingElementTypes(pattern, parentType)
+    for _, element in ipairs(pattern:Elements() or {}) do
+        local name = element:Name()
+        if name ~= nil then
+            local t = self:getBindingElementTypeFromParentType(element, parentType, false --[[noTupleBoundsCheck]])
+            if ast.IsIdentifier(name) then
+                self.valueSymbolLinks:Get(self:getSymbolOfDeclaration(element)).resolvedType = t
+            else
+                self:assignBindingElementTypes(name, t)
+            end
+        end
+    end
+end
+
+function Checker:checkCollisionsForDeclarationName(node, name)
+    if name == nil then
+        return
+    end
+    self:checkCollisionWithRequireExportsInGeneratedCode(node, name)
+    self:checkCollisionWithGlobalObjectInGeneratedCode(node, name)
+    self:checkCollisionWithGlobalPromiseInGeneratedCode(node, name)
+    self:recordPotentialCollisionWithWeakMapSetInGeneratedCode(node, name)
+    self:recordPotentialCollisionWithReflectInGeneratedCode(node, name)
+    if ast.IsClassLike(node) then
+        self:checkTypeNameIsReserved(name, diagnostics.Class_name_cannot_be_0)
+        if node.flags & NodeFlags.Ambient == 0 then
+            self:checkClassNameCollisionWithObject(name)
+        end
+    elseif ast.IsEnumDeclaration(node) then
+        self:checkTypeNameIsReserved(name, diagnostics.Enum_name_cannot_be_0)
+    end
+end
+
+function Checker:checkCollisionWithRequireExportsInGeneratedCode(node, name)
+    -- No need to check for require or exports for ES6 modules and later
+    if self.program:GetEmitModuleFormatOfFile(ast.GetSourceFileOfNode(node)) >= core.ModuleKind.ES2015 then
+        return
+    end
+    if name == nil or not self:needCollisionCheckForIdentifier(node, name, "require") and not self:needCollisionCheckForIdentifier(node, name, "exports") then
+        return
+    end
+    -- Uninstantiated modules shouldnt do this check
+    if ast.IsModuleDeclaration(node) and ast.GetModuleInstanceState(node) ~= ast.ModuleInstanceState.Instantiated then
+        return
+    end
+    -- In case of variable declaration, node.parent is variable statement so look at the variable statement's parent
+    local parent = ast.GetDeclarationContainer(node)
+    if ast.IsSourceFile(parent) and ast.IsExternalOrCommonJSModule(parent:AsSourceFile()) then
+        -- If the declaration happens to be in external module, report error that require and exports are reserved keywords
+        self:errorSkippedOnNoEmit(name, diagnostics.Duplicate_identifier_0_Compiler_reserves_name_1_in_top_level_scope_of_a_module, scanner.DeclarationNameToString(name), scanner.DeclarationNameToString(name))
+    end
+end
+
+function Checker:checkCollisionWithGlobalObjectInGeneratedCode(node, name)
+    if name == nil or ast.IsClassLike(node) or not self:needCollisionCheckForIdentifier(node, name, "Object") then
+        return
+    end
+    -- Uninstantiated modules shouldn't do this check
+    if ast.IsModuleDeclaration(node) and ast.GetModuleInstanceState(node) ~= ast.ModuleInstanceState.Instantiated then
+        return
+    end
+    -- In case of variable declaration, node.parent is variable statement so look at the variable statement's parent
+    local parent = ast.GetDeclarationContainer(node)
+    if ast.IsSourceFile(parent) and ast.IsExternalOrCommonJSModule(parent:AsSourceFile()) and self.program:GetEmitModuleFormatOfFile(parent:AsSourceFile()) == core.ModuleKind.CommonJS then
+        -- If the declaration happens to be in external module, report error that Object is a reserved identifier.
+        self:errorSkippedOnNoEmit(name, diagnostics.Duplicate_identifier_0_Compiler_reserves_name_1_in_top_level_scope_of_a_module, scanner.DeclarationNameToString(name), scanner.DeclarationNameToString(name))
+    end
+end
+
+function Checker:needCollisionCheckForIdentifier(node, identifier, name)
+    if identifier ~= nil and identifier:Text() ~= name then
+        return false
+    end
+    local k = node.kind
+    if k == Kind.PropertyDeclaration or k == Kind.PropertySignature or k == Kind.MethodDeclaration or k == Kind.MethodSignature or
+        k == Kind.GetAccessor or k == Kind.SetAccessor or k == Kind.PropertyAssignment then
+        -- it is ok to have member named '_super', '_this', `Promise`, etc. - member access is always qualified
+        return false
+    end
+    if node.flags & NodeFlags.Ambient ~= 0 then
+        -- ambient context - no codegen impact
+        return false
+    end
+    if ast.IsImportClause(node) or ast.IsImportEqualsDeclaration(node) or ast.IsImportSpecifier(node) then
+        -- type-only imports do not require collision checks against runtime values.
+        if ast.IsTypeOnlyImportOrExportDeclaration(node) then
+            return false
+        end
+    end
+    local root = ast.GetRootDeclaration(node)
+    if ast.IsParameterDeclaration(root) and ast.NodeIsMissing(root.parent:Body()) then
+        -- just an overload - no codegen impact
+        return false
+    end
+    return true
+end
+
+function Checker:setNodeLinksForPrivateIdentifierScope(node)
+    local name = node:Name()
+    if ast.IsPrivateIdentifier(name) then
+        if self.languageVersion < checker.LanguageFeatureMinimumTarget.PrivateNamesAndClassStaticBlocks or
+            self.languageVersion < checker.LanguageFeatureMinimumTarget.ClassAndClassElementDecorators or
+            not self.compilerOptions:GetUseDefineForClassFields() then
+            local lexicalScope = ast.GetEnclosingBlockScopeContainer(node)
+            while lexicalScope ~= nil do
+                local links = self.nodeLinks:Get(lexicalScope)
+                links.flags = links.flags | NodeCheckFlags.ContainsClassWithPrivateIdentifiers
+                lexicalScope = ast.GetEnclosingBlockScopeContainer(lexicalScope)
+            end
+        end
+    end
+end
+
+function Checker:recordPotentialCollisionWithWeakMapSetInGeneratedCode(node, name)
+    if self.languageVersion <= core.ScriptTarget.ES2021 and
+        (self:needCollisionCheckForIdentifier(node, name, "WeakMap") or self:needCollisionCheckForIdentifier(node, name, "WeakSet")) then
+        self:addDeferredDiagnostic(function()
+            self:checkWeakMapSetCollision(node)
+        end)
+    end
+end
+
+function Checker:checkWeakMapSetCollision(node)
+    local enclosingBlockScope = ast.GetEnclosingBlockScopeContainer(node)
+    if self.nodeLinks:Get(enclosingBlockScope).flags & NodeCheckFlags.ContainsClassWithPrivateIdentifiers ~= 0 then
+        local name = node:Name()
+        if name ~= nil and ast.IsIdentifier(name) then
+            self:errorSkippedOnNoEmit(node, diagnostics.Compiler_reserves_name_0_when_emitting_private_identifier_downlevel, name:Text())
+        end
+    end
+end
+
+function Checker:checkCollisionWithGlobalPromiseInGeneratedCode(node, name)
+    if name == nil or self.languageVersion >= core.ScriptTarget.ES2017 or not self:needCollisionCheckForIdentifier(node, name, "Promise") then
+        return
+    end
+    -- Uninstantiated modules shouldn't do this check
+    if ast.IsModuleDeclaration(node) and ast.GetModuleInstanceState(node) ~= ast.ModuleInstanceState.Instantiated then
+        return
+    end
+    -- In case of variable declaration, node.parent is variable statement so look at the variable statement's parent
+    local parent = ast.GetDeclarationContainer(node)
+    if ast.IsSourceFile(parent) and ast.IsExternalOrCommonJSModule(parent:AsSourceFile()) and parent.flags & NodeFlags.HasAsyncFunctions ~= 0 then
+        -- If the declaration happens to be in external module, report error that Promise is a reserved identifier.
+        self:errorSkippedOnNoEmit(name, diagnostics.Duplicate_identifier_0_Compiler_reserves_name_1_in_top_level_scope_of_a_module_containing_async_functions, scanner.DeclarationNameToString(name), scanner.DeclarationNameToString(name))
+    end
+end
+
+function Checker:recordPotentialCollisionWithReflectInGeneratedCode(node, name)
+    if name ~= nil and self.languageVersion <= core.ScriptTarget.ES2021 and self:needCollisionCheckForIdentifier(node, name, "Reflect") then
+        self:addDeferredDiagnostic(function()
+            self:checkReflectCollision(node)
+        end)
+    end
+end
+
+function Checker:checkReflectCollision(node)
+    local hasCollision = false
+    if ast.IsClassExpression(node) then
+        -- ClassExpression names don't contribute to their containers, but do matter for any of their block-scoped members.
+        for _, member in ipairs(node:Members() or {}) do
+            if self.nodeLinks:Get(member).flags & NodeCheckFlags.ContainsSuperPropertyInStaticInitializer ~= 0 then
+                hasCollision = true
+                break
+            end
+        end
+    elseif ast.IsFunctionExpression(node) then
+        -- FunctionExpression names don't contribute to their containers, but do matter for their contents
+        if self.nodeLinks:Get(node).flags & NodeCheckFlags.ContainsSuperPropertyInStaticInitializer ~= 0 then
+            hasCollision = true
+        end
+    else
+        local container = ast.GetEnclosingBlockScopeContainer(node)
+        if container ~= nil and self.nodeLinks:Get(container).flags & NodeCheckFlags.ContainsSuperPropertyInStaticInitializer ~= 0 then
+            hasCollision = true
+        end
+    end
+    if hasCollision then
+        local name = node:Name()
+        if name ~= nil and ast.IsIdentifier(name) then
+            self:errorSkippedOnNoEmit(node, diagnostics.Duplicate_identifier_0_Compiler_reserves_name_1_when_emitting_super_references_in_static_initializers, scanner.DeclarationNameToString(name), "Reflect")
+        end
+    end
+end
+
+function Checker:checkClassNameCollisionWithObject(name)
+    if name:Text() == "Object" and self.program:GetEmitModuleFormatOfFile(ast.GetSourceFileOfNode(name)) < core.ModuleKind.ES2015 then
+        self:error(name, diagnostics.Class_name_cannot_be_Object_when_targeting_ES5_and_above_with_module_0, core.ModuleKind_String(self.moduleKind))
+    end
+end
+
+function Checker:checkTypeOfExpression(node)
+    self:checkExpression(node:Expression())
+    return self.typeofType
+end
+
+function Checker:checkNonNullAssertion(node)
+    if node.flags & NodeFlags.OptionalChain ~= 0 then
+        -- checkNonNullChain checks the same operand expression (node.Expression()),
+        -- so the child is still visited on this branch.
+        return self:checkNonNullChain(node)
+    end
+    return self:GetNonNullableType(self:checkExpression(node:Expression()))
+end
+
+function Checker:checkNonNullChain(node)
+    local leftType = self:checkExpression(node:Expression())
+    local nonOptionalType = self:getOptionalExpressionType(leftType, node:Expression())
+    return self:propagateOptionalTypeMarker(self:GetNonNullableType(nonOptionalType), node, nonOptionalType ~= leftType)
+end
+
+function Checker:checkExpressionWithTypeArguments(node)
+    self:checkGrammarExpressionWithTypeArguments(node)
+    self:checkSourceElements(node:TypeArguments())
+    if ast.IsExpressionWithTypeArguments(node) then
+        local parent = ast.WalkUpParenthesizedExpressions(node.parent)
+        if ast.IsBinaryExpression(parent) and parent:AsBinaryExpression().operatorToken.kind == Kind.InstanceOfKeyword and checker.isNodeDescendantOf(node, parent:AsBinaryExpression().right) then
+            self:error(node, diagnostics.The_right_hand_side_of_an_instanceof_expression_must_not_be_an_instantiation_expression)
+        end
+    end
+    local exprType
+    if ast.IsExpressionWithTypeArguments(node) then
+        exprType = self:checkExpression(node:Expression())
+    else
+        local exprName = node:AsTypeQueryNode().exprName
+        if ast.IsThisIdentifier(exprName) then
+            exprType = self:checkThisExpression(node:AsTypeQueryNode().exprName)
+        else
+            exprType = self:checkExpression(node:AsTypeQueryNode().exprName)
+        end
+    end
+    return self:getInstantiationExpressionType(exprType, node)
 end
