@@ -1,0 +1,5 @@
+-- Source is an interface (no Lua code): any table with the methods
+--   source:Text() -> string
+--   source:FileName() -> string
+--   source:ECMALineMap() -> array of 0-based line start positions (core.TextPos)
+-- ast.SourceFile implements it.
