@@ -1,11 +1,9 @@
 local checker = require("tslua.checker")
 local ast = require("tslua.ast")
-local collections = require("tslua.collections") -- luacheck: ignore
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local evaluator = require("tslua.evaluator")
-local jsnum = require("tslua.jsnum") -- luacheck: ignore
-local debug = require("tslua.debug") -- luacheck: ignore
+local debug = require("tslua.debug")
 local scanner = require("tslua.scanner")
 local tspath = require("tslua.tspath")
 
@@ -30,6 +28,8 @@ local ReferenceHint = checker.ReferenceHint
 local IterationUse = checker.IterationUse
 local IterationTypeKind = checker.IterationTypeKind
 local UnionReduction = checker.UnionReduction
+local DeclarationSpaces = checker.DeclarationSpaces
+local IntrinsicTypeKind = checker.IntrinsicTypeKind
 
 function Checker:checkFunctionOrConstructorSymbolWorker(symbol)
     local flagsToCheck = ModifierFlags.Export | ModifierFlags.Ambient | ModifierFlags.Private | ModifierFlags.Protected | ModifierFlags.Abstract
@@ -612,7 +612,7 @@ function Checker:checkForOfStatement(node)
             local functionFlags = ast.GetFunctionFlags(container)
             if functionFlags & (FunctionFlags.Invalid | FunctionFlags.Async) == FunctionFlags.Async and self.languageVersion < checker.LanguageFeatureMinimumTarget.ForAwaitOf then
                 -- for..await..of in an async function or async generator function prior to ESNext requires the __asyncValues helper
-                self:checkExternalEmitHelpers(node, checker.ExternalEmitHelpers.ForAwaitOfIncludes)
+                self:checkExternalEmitHelpers(node, ExternalEmitHelpers.ForAwaitOfIncludes)
             end
         end
     end -- Check the LHS and RHS
@@ -3361,4 +3361,459 @@ function Checker:getIterationTypesOfMethod(t, resolver, methodName, errorNode, d
         returnTypes = core.Append(returnTypes, iterationTypes.returnType)
     end
     return newIterationTypes(yieldType, self:getUnionType(returnTypes), nextType)
+end
+
+-- Gets the *yield* and *return* types of an `IteratorResult`-like type.
+--
+-- If we are unable to determine a *yield* or a *return* type, `noIterationTypes` is
+-- returned to indicate to the caller that it should handle the error. Otherwise, an
+-- `IterationTypes` record is returned.
+function Checker:getIterationTypesOfIteratorResult(t)
+    if checker.IsTypeAny(t) then
+        return newIterationTypes(self.anyType, self.anyType, self.anyType)
+    end
+    -- As an optimization, if the type is an instantiation of one of the global `IteratorYieldResult<T>`
+    -- or `IteratorReturnResult<TReturn>` types, then just grab its type argument.
+    if self:isReferenceToType(t, self.getGlobalIteratorYieldResultType()) then
+        return newIterationTypes(self:getTypeArguments(t)[1], nil, nil)
+    end
+    if self:isReferenceToType(t, self.getGlobalIteratorReturnResultType()) then
+        return newIterationTypes(nil, self:getTypeArguments(t)[1], nil)
+    end
+    -- Choose any constituents that can produce the requested iteration type.
+    local yieldIteratorResult = self:filterType(t, function(x) return self:isYieldIteratorResult(x) end)
+    local yieldType
+    if yieldIteratorResult ~= self.neverType then
+        yieldType = self:getTypeOfPropertyOfType(yieldIteratorResult, "value" --[[as __String]])
+    end
+    local returnIteratorResult = self:filterType(t, function(x) return self:isReturnIteratorResult(x) end)
+    local returnType
+    if returnIteratorResult ~= self.neverType then
+        returnType = self:getTypeOfPropertyOfType(returnIteratorResult, "value" --[[as __String]])
+    end
+    if yieldType == nil and returnType == nil then
+        return checker.IterationTypes_new()
+    end
+    -- From https://tc39.github.io/ecma262/#sec-iteratorresult-interface
+    -- > ... If the iterator does not have a return value, `value` is `undefined`. In that case, the
+    -- > `value` property may be absent from the conforming object if it does not inherit an explicit
+    -- > `value` property.
+    return newIterationTypes(yieldType, returnType or self.voidType, nil)
+end
+
+function Checker:isYieldIteratorResult(t)
+    return self:isIteratorResult(t, IterationTypeKind.Yield)
+end
+
+function Checker:isReturnIteratorResult(t)
+    return self:isIteratorResult(t, IterationTypeKind.Return)
+end
+
+function Checker:isIteratorResult(t, kind)
+    -- From https://tc39.github.io/ecma262/#sec-iteratorresult-interface:
+    -- > [done] is the result status of an iterator `next` method call. If the end of the iterator was reached `done` is `true`.
+    -- > If the end was not reached `done` is `false` and a value is available.
+    -- > If a `done` property (either own or inherited) does not exist, it is consider to have the value `false`.
+    local doneType = self:getTypeOfPropertyOfType(t, "done") or self.falseType
+    return self:isTypeAssignableTo(core.IfElse(kind == IterationTypeKind.Yield, self.falseType, self.trueType), doneType)
+end
+
+function Checker:reportTypeNotIterableError(errorNode, t, allowAsyncIterables)
+    local message
+    if allowAsyncIterables then
+        message = diagnostics.Type_0_must_have_a_Symbol_asyncIterator_method_that_returns_an_async_iterator
+    else
+        message = diagnostics.Type_0_must_have_a_Symbol_iterator_method_that_returns_an_iterator
+    end
+    local suggestAwait = self:getAwaitedTypeOfPromise(t) ~= nil or (not allowAsyncIterables and
+        ast.IsForOfStatement(errorNode.parent) and
+        errorNode.parent:Expression() == errorNode and
+        self.getGlobalAsyncIterableType() ~= self.emptyGenericType and
+        self:isTypeAssignableTo(t, self:createTypeFromGenericGlobalType(self.getGlobalAsyncIterableType(), { self.anyType, self.anyType, self.anyType })))
+    return self:errorAndMaybeSuggestAwait(errorNode, suggestAwait, message, self:TypeToString(t))
+end
+
+function Checker:getIterationDiagnosticDetails(use, inputType, allowsStrings)
+    local yieldType = self:getIterationTypeOfIterable(use, IterationTypeKind.Yield, inputType, nil --[[errorNode]])
+    if yieldType ~= nil then
+        return diagnostics.Type_0_can_only_be_iterated_through_when_using_the_downlevelIteration_flag_or_with_a_target_of_es2015_or_higher, false
+    end
+    if inputType.symbol ~= nil and checker.isES2015OrLaterIterable(inputType.symbol.name) then
+        return diagnostics.Type_0_can_only_be_iterated_through_when_using_the_downlevelIteration_flag_or_with_a_target_of_es2015_or_higher, true
+    end
+    if allowsStrings then
+        return diagnostics.Type_0_is_not_an_array_type_or_a_string_type, true
+    end
+    return diagnostics.Type_0_is_not_an_array_type, true
+end
+
+local es2015OrLaterIterables = {
+    Float32Array = true, Float64Array = true, Int16Array = true, Int32Array = true, Int8Array = true,
+    NodeList = true, Uint16Array = true, Uint32Array = true, Uint8Array = true, Uint8ClampedArray = true,
+}
+
+function checker.isES2015OrLaterIterable(n)
+    return es2015OrLaterIterables[n] == true
+end
+
+function Checker:checkAliasSymbol(node)
+    local symbol = self:getSymbolOfDeclaration(node)
+    local target = self:resolveAlias(symbol)
+    if target == self.unknownSymbol then
+        return
+    end
+    -- For external modules, `symbol` represents the local symbol for an alias.
+    -- This local symbol will merge any other local declarations (excluding other aliases)
+    -- and symbol.flags will contains combined representation for all merged declaration.
+    -- Based on symbol.flags we can compute a set of excluded meanings (meaning that resolved alias should not have,
+    -- otherwise it will conflict with some local declaration). Note that in addition to normal flags we include matching SymbolFlags.Export*
+    -- in order to prevent collisions with declarations that were exported from the current module (they still contribute to local names).
+    symbol = self:getMergedSymbol(symbol.exportSymbol or symbol)
+    local targetFlags = self:getSymbolFlags(target)
+    -- A type-only import/export will already have a grammar error in a JS file, so no need to issue more errors within
+    if ast.IsInJSFile(node) and targetFlags & SymbolFlags.Value == 0 and not ast.IsTypeOnlyImportOrExportDeclaration(node) then
+        local errorNode = node:PropertyNameOrName() or node
+        debug.Assert(node.kind ~= Kind.NamespaceExport)
+        if ast.IsExportSpecifier(node) then
+            local diag = self:error(errorNode, diagnostics.Types_cannot_appear_in_export_declarations_in_JavaScript_files)
+            local sourceSymbol = ast.GetSourceFileOfNode(node):AsNode():Symbol()
+            if sourceSymbol ~= nil then
+                local alreadyExportedSymbol = sourceSymbol.exports ~= nil and sourceSymbol.exports[node:PropertyNameOrName():Text()] or nil
+                if alreadyExportedSymbol == target then
+                    local exportingDeclaration = core.Find(alreadyExportedSymbol.declarations, ast.IsJSTypeAliasDeclaration)
+                    if exportingDeclaration ~= nil then
+                        diag:AddRelatedInfo(checker.NewDiagnosticForNode(exportingDeclaration, diagnostics.X_0_is_automatically_exported_here, alreadyExportedSymbol.name))
+                    end
+                end
+            end
+        else
+            local identifierText = symbol.name
+            if ast.IsIdentifier(errorNode) then
+                identifierText = errorNode:Text()
+            end
+            local specifierText = "..."
+            local importDeclaration = ast.FindAncestor(node, function(n)
+                return ast.IsImportOrImportEqualsDeclaration(n) or ast.IsVariableDeclaration(n)
+            end)
+            if importDeclaration ~= nil then
+                local moduleSpecifier = checker.TryGetModuleSpecifierFromDeclaration(importDeclaration)
+                if moduleSpecifier ~= nil then
+                    specifierText = moduleSpecifier:Text()
+                end
+            end
+            local importText = "import(\"" .. specifierText .. "\")"
+            if ast.IsImportSpecifier(node) then
+                importText = importText .. "." .. identifierText
+            end
+            self:error(errorNode, diagnostics.X_0_is_a_type_and_cannot_be_imported_in_JavaScript_files_Use_1_in_a_JSDoc_type_annotation, identifierText, importText)
+        end
+        return
+    end
+    local excludedMeanings = core.IfElse(symbol.flags & (SymbolFlags.Value | SymbolFlags.ExportValue) ~= 0, SymbolFlags.Value, 0) |
+        core.IfElse(symbol.flags & SymbolFlags.Type ~= 0, SymbolFlags.Type, 0) |
+        core.IfElse(symbol.flags & SymbolFlags.Namespace ~= 0, SymbolFlags.Namespace, 0)
+    if targetFlags & excludedMeanings ~= 0 then
+        local message = core.IfElse(ast.IsExportSpecifier(node),
+            diagnostics.Export_declaration_conflicts_with_exported_declaration_of_0,
+            diagnostics.Import_declaration_conflicts_with_local_declaration_of_0)
+        self:error(node, message, self:symbolToString(symbol))
+    elseif not ast.IsExportSpecifier(node) then
+        -- Look at 'compilerOptions.isolatedModules' and not 'getIsolatedModules(...)' (which considers 'verbatimModuleSyntax')
+        -- here because 'verbatimModuleSyntax' will already have an error for importing a type without 'import type'.
+        local appearsValueyToTranspiler = core.Tristate_IsTrue(self.compilerOptions.isolatedModules) and ast.FindAncestor(node, ast.IsTypeOnlyImportOrExportDeclaration) == nil
+        if appearsValueyToTranspiler and symbol.flags & (SymbolFlags.Value | SymbolFlags.ExportValue) ~= 0 then
+            self:error(node, diagnostics.Import_0_conflicts_with_local_value_so_must_be_declared_with_a_type_only_import_when_isolatedModules_is_enabled, self:symbolToString(symbol), self:getIsolatedModulesLikeFlagName())
+        end
+    end
+    if self.compilerOptions:GetIsolatedModules() and not ast.IsTypeOnlyImportOrExportDeclaration(node) and node.flags & NodeFlags.Ambient == 0 then
+        local typeOnlyAlias = self:getTypeOnlyAliasDeclaration(symbol)
+        local isType = targetFlags & SymbolFlags.Value == 0
+        if isType or typeOnlyAlias ~= nil then
+            local k = node.kind
+            if k == Kind.ImportClause or k == Kind.ImportSpecifier or k == Kind.ImportEqualsDeclaration then
+                if core.Tristate_IsTrue(self.compilerOptions.verbatimModuleSyntax) then
+                    debug.Assert(node:Name() ~= nil, "An ImportClause with a symbol should have a name")
+                    local message
+                    if core.Tristate_IsTrue(self.compilerOptions.verbatimModuleSyntax) and ast.IsInternalModuleImportEqualsDeclaration(node) then
+                        message = diagnostics.An_import_alias_cannot_resolve_to_a_type_or_type_only_declaration_when_verbatimModuleSyntax_is_enabled
+                    elseif isType then
+                        message = diagnostics.X_0_is_a_type_and_must_be_imported_using_a_type_only_import_when_verbatimModuleSyntax_is_enabled
+                    else
+                        message = diagnostics.X_0_resolves_to_a_type_only_declaration_and_must_be_imported_using_a_type_only_import_when_verbatimModuleSyntax_is_enabled
+                    end
+                    local name = node:PropertyNameOrName():Text()
+                    self:addTypeOnlyDeclarationRelatedInfo(self:error(node, message, name), core.IfElse(isType, nil, typeOnlyAlias), name)
+                end
+                if isType and node.kind == Kind.ImportEqualsDeclaration and ast.HasModifier(node, ModifierFlags.Export) then
+                    self:error(node, diagnostics.Cannot_use_export_import_on_a_type_or_type_only_namespace_when_0_is_enabled, self:getIsolatedModulesLikeFlagName())
+                end
+            elseif k == Kind.ExportSpecifier then
+                -- Don't allow re-exporting an export that will be elided when `--isolatedModules` is set.
+                -- The exception is that `import type { A } from './a'; export { A }` is allowed
+                -- because single-file analysis can determine that the export should be dropped.
+                if core.Tristate_IsTrue(self.compilerOptions.verbatimModuleSyntax) or ast.GetSourceFileOfNode(typeOnlyAlias) ~= ast.GetSourceFileOfNode(node) then
+                    local name = node:PropertyNameOrName():Text()
+                    local diagnostic
+                    if isType then
+                        diagnostic = self:error(node, diagnostics.Re_exporting_a_type_when_0_is_enabled_requires_using_export_type, self:getIsolatedModulesLikeFlagName())
+                    else
+                        diagnostic = self:error(node, diagnostics.X_0_resolves_to_a_type_only_declaration_and_must_be_re_exported_using_a_type_only_re_export_when_1_is_enabled, name, self:getIsolatedModulesLikeFlagName())
+                    end
+                    self:addTypeOnlyDeclarationRelatedInfo(diagnostic, core.IfElse(isType, nil, typeOnlyAlias), name)
+                end
+            end
+        end
+        if core.Tristate_IsTrue(self.compilerOptions.verbatimModuleSyntax) and not ast.IsImportEqualsDeclaration(node) and not ast.IsInJSFile(node) and self.program:GetEmitModuleFormatOfFile(ast.GetSourceFileOfNode(node)) == ModuleKind.CommonJS then
+            self:error(node, checker.getVerbatimModuleSyntaxErrorMessage(node))
+        elseif self.moduleKind == ModuleKind.Preserve and not ast.IsImportEqualsDeclaration(node) and not ast.IsVariableDeclaration(node) and not ast.IsBindingElement(node) and self.program:GetEmitModuleFormatOfFile(ast.GetSourceFileOfNode(node)) == ModuleKind.CommonJS then
+            -- In `--module preserve`, ESM input syntax emits ESM output syntax, but there will be times
+            -- when we look at the `impliedNodeFormat` of this file and decide it's CommonJS (i.e., currently,
+            -- only if the file extension is .cjs/.cts). To avoid that inconsistency, we disallow ESM syntax
+            -- in files that are unambiguously CommonJS in this mode.
+            self:error(node, diagnostics.ECMAScript_module_syntax_is_not_allowed_in_a_CommonJS_module_when_module_is_set_to_preserve)
+        end
+        if core.Tristate_IsTrue(self.compilerOptions.verbatimModuleSyntax) and not ast.IsTypeOnlyImportOrExportDeclaration(node) and node.flags & NodeFlags.Ambient == 0 and targetFlags & SymbolFlags.ConstEnum ~= 0 then
+            local constEnumDeclaration = target.valueDeclaration
+            local redirect = self.program:GetProjectReferenceFromOutputDts(ast.GetSourceFileOfNode(constEnumDeclaration):Path())
+            if constEnumDeclaration.flags & NodeFlags.Ambient ~= 0 and (redirect == nil or not redirect.resolved:CompilerOptions():ShouldPreserveConstEnums()) then
+                self:error(node, diagnostics.Cannot_access_ambient_const_enums_when_0_is_enabled, self:getIsolatedModulesLikeFlagName())
+            end
+        end
+    end
+    if ast.IsImportSpecifier(node) then
+        local targetSymbol = self:resolveAliasWithDeprecationCheck(symbol, node)
+        if self:isDeprecatedSymbol(targetSymbol) and targetSymbol.declarations ~= nil then
+            self:addDeprecatedSuggestion(node, targetSymbol.declarations, targetSymbol.name)
+        end
+    end
+end
+
+function Checker:areDeclarationFlagsIdentical(left, right)
+    if ast.IsParameterDeclaration(left) and ast.IsVariableDeclaration(right) or ast.IsVariableDeclaration(left) and ast.IsParameterDeclaration(right) then
+        -- Differences in optionality between parameters and variables are allowed.
+        return true
+    end
+    if checker.isOptionalDeclaration(left) ~= checker.isOptionalDeclaration(right) then
+        return false
+    end
+    local interestingFlags = ModifierFlags.Private | ModifierFlags.Protected | ModifierFlags.Async | ModifierFlags.Abstract | ModifierFlags.Readonly | ModifierFlags.Static
+    return checker.getSelectedModifierFlags(left, interestingFlags) == checker.getSelectedModifierFlags(right, interestingFlags)
+end
+
+function Checker:checkTypeAliasDeclaration(node)
+    -- Grammar checking
+    self:checkGrammarModifiers(node)
+    self:checkTypeNameIsReserved(node:Name(), diagnostics.Type_alias_name_cannot_be_0)
+    if not self:containerAllowsBlockScopedVariable(node.parent) then
+        self:grammarErrorOnNode(node, diagnostics.X_0_declarations_can_only_be_declared_inside_a_block, "type")
+    end
+    self:checkExportsOnMergedDeclarations(node)
+
+    local typeNode = node:Type()
+    local typeParameters = node:TypeParameters()
+    self:checkTypeParameters(typeParameters)
+    if typeNode ~= nil and typeNode.kind == Kind.IntrinsicKeyword then
+        if not (core.Len(typeParameters) == 0 and node:Name():Text() == "BuiltinIteratorReturn" or
+            core.Len(typeParameters) == 1 and (checker.intrinsicTypeKinds[node:Name():Text()] or IntrinsicTypeKind.Unknown) ~= IntrinsicTypeKind.Unknown) then
+            self:error(typeNode, diagnostics.The_intrinsic_keyword_can_only_be_used_to_declare_compiler_provided_intrinsic_types)
+        end
+        -- The `intrinsic` keyword is a leaf type node with no child nodes to check,
+        -- so skipping the checkSourceElement below visits nothing.
+        return
+    end
+    self:checkSourceElement(typeNode)
+    self:registerForUnusedIdentifiersCheck(node)
+end
+
+local reservedTypeNames = {
+    any = true, unknown = true, never = true, number = true, bigint = true, boolean = true,
+    string = true, symbol = true, void = true, object = true, undefined = true,
+}
+
+function Checker:checkTypeNameIsReserved(name, message)
+    -- TS 1.0 spec (April 2014): 3.6.1
+    -- The predefined type keywords are reserved and cannot be used as names of user defined types.
+    if reservedTypeNames[name:Text()] then
+        self:error(name, message, name:Text())
+    end
+end
+
+function Checker:checkExportsOnMergedDeclarations(node)
+    -- If localSymbol is defined on node then node itself is exported - check is required.
+    local symbol = node:LocalSymbol()
+    if symbol == nil then
+        -- Local symbol is undefined => this declaration is non-exported.
+        -- However, symbol might contain other declarations that are exported.
+        symbol = self:getSymbolOfDeclaration(node)
+        if symbol.exportSymbol == nil then
+            -- This is a pure local symbol (all declarations are non-exported) - no need to check anything.
+            return
+        end
+    end
+    -- Run the check only for the first declaration in the list.
+    if ast.GetDeclarationOfKind(symbol, node.kind) ~= node then
+        return
+    end
+    local exportedDeclarationSpaces = DeclarationSpaces.None
+    local nonExportedDeclarationSpaces = DeclarationSpaces.None
+    local defaultExportedDeclarationSpaces = DeclarationSpaces.None
+    for _, d in ipairs(symbol.declarations or {}) do
+        local declarationSpaces = self:getDeclarationSpaces(d)
+        local effectiveDeclarationFlags = self:getEffectiveDeclarationFlags(d, ModifierFlags.Export | ModifierFlags.Default)
+        if effectiveDeclarationFlags & ModifierFlags.Export ~= 0 then
+            if effectiveDeclarationFlags & ModifierFlags.Default ~= 0 then
+                defaultExportedDeclarationSpaces = defaultExportedDeclarationSpaces | declarationSpaces
+            else
+                exportedDeclarationSpaces = exportedDeclarationSpaces | declarationSpaces
+            end
+        else
+            nonExportedDeclarationSpaces = nonExportedDeclarationSpaces | declarationSpaces
+        end
+    end
+    -- Spaces for anything not declared a 'default export'.
+    local nonDefaultExportedDeclarationSpaces = exportedDeclarationSpaces | nonExportedDeclarationSpaces
+    local commonDeclarationSpacesForExportsAndLocals = exportedDeclarationSpaces & nonExportedDeclarationSpaces
+    local commonDeclarationSpacesForDefaultAndNonDefault = defaultExportedDeclarationSpaces & nonDefaultExportedDeclarationSpaces
+    if commonDeclarationSpacesForExportsAndLocals ~= 0 or commonDeclarationSpacesForDefaultAndNonDefault ~= 0 then
+        -- declaration spaces for exported and non-exported declarations intersect
+        for _, d in ipairs(symbol.declarations) do
+            local declarationSpaces = self:getDeclarationSpaces(d)
+            local name = ast.GetNameOfDeclaration(d)
+            -- Only error on the declarations that contributed to the intersecting spaces.
+            if declarationSpaces & commonDeclarationSpacesForDefaultAndNonDefault ~= 0 then
+                self:error(name, diagnostics.Merged_declaration_0_cannot_include_a_default_export_declaration_Consider_adding_a_separate_export_default_0_declaration_instead, scanner.DeclarationNameToString(name))
+            elseif declarationSpaces & commonDeclarationSpacesForExportsAndLocals ~= 0 then
+                self:error(name, diagnostics.Individual_declarations_in_merged_declaration_0_must_be_all_exported_or_all_local, scanner.DeclarationNameToString(name))
+            end
+        end
+    end
+end
+
+function Checker:getDeclarationSpaces(node)
+    local k = node.kind
+    if k == Kind.InterfaceDeclaration or k == Kind.TypeAliasDeclaration or k == Kind.JSTypeAliasDeclaration or k == Kind.JSDocTypedefTag or k == Kind.JSDocCallbackTag then
+        return DeclarationSpaces.ExportType
+    elseif k == Kind.ModuleDeclaration then
+        if ast.IsAmbientModule(node) or ast.GetModuleInstanceState(node) ~= ast.ModuleInstanceState.NonInstantiated then
+            return DeclarationSpaces.ExportNamespace | DeclarationSpaces.ExportValue
+        end
+        return DeclarationSpaces.ExportNamespace
+    elseif k == Kind.ClassDeclaration or k == Kind.EnumDeclaration or k == Kind.EnumMember then
+        return DeclarationSpaces.ExportType | DeclarationSpaces.ExportValue
+    elseif k == Kind.SourceFile then
+        return DeclarationSpaces.ExportType | DeclarationSpaces.ExportValue | DeclarationSpaces.ExportNamespace
+    end
+    local isAlias = k == Kind.ImportEqualsDeclaration or k == Kind.NamespaceImport or k == Kind.ImportClause
+    if k == Kind.ExportAssignment or k == Kind.BinaryExpression then
+        local expression
+        if ast.IsExportAssignment(node) then
+            expression = node:Expression()
+        else
+            expression = node:AsBinaryExpression().right
+        end
+        -- Export assigned entity name expressions act as aliases and should fall through, otherwise they export values.
+        if not ast.IsEntityNameExpression(expression) or self:getSymbolOfDeclaration(node).flags & SymbolFlags.Alias == 0 then
+            return DeclarationSpaces.ExportValue
+        end
+        -- The below options all declare an Alias, which is allowed to merge with other values within the importing module.
+        isAlias = true
+    end
+    if isAlias then
+        local result = DeclarationSpaces.None
+        local target = self:resolveAlias(self:getSymbolOfDeclaration(node))
+        for _, d in ipairs(target.declarations or {}) do
+            result = result | self:getDeclarationSpaces(d)
+        end
+        return result
+    elseif k == Kind.VariableDeclaration or k == Kind.BindingElement or k == Kind.FunctionDeclaration or k == Kind.ImportSpecifier then
+        return DeclarationSpaces.ExportValue
+    elseif k == Kind.MethodSignature or k == Kind.PropertySignature then
+        return DeclarationSpaces.ExportType
+    end
+    error("Unhandled case in getDeclarationSpaces: " .. ast.Kind_String(node.kind), 0)
+end
+
+function Checker:checkTypeParameters(typeParameterDeclarations)
+    local seenDefault = false
+    for i1, node in ipairs(typeParameterDeclarations or {}) do
+        local i = i1 - 1
+        self:checkTypeParameter(node)
+        local defaultTypeNode = node:AsTypeParameterDeclaration().defaultType
+        if defaultTypeNode ~= nil then
+            seenDefault = true
+            self:checkTypeParametersNotReferenced(defaultTypeNode, typeParameterDeclarations, i)
+        elseif seenDefault then
+            self:error(node, diagnostics.Required_type_parameters_may_not_follow_optional_type_parameters)
+        end
+        for j = 0, i - 1 do
+            if typeParameterDeclarations[j + 1]:Symbol() == node:Symbol() then
+                self:error(node:Name(), diagnostics.Duplicate_identifier_0, scanner.DeclarationNameToString(node:Name()))
+            end
+        end
+    end
+end
+
+-- Check that type parameter defaults only reference previously declared type parameters */
+function Checker:checkTypeParametersNotReferenced(root, typeParameters, index)
+    local visit
+    visit = function(node)
+        if ast.IsTypeReferenceNode(node) then
+            local t = self:getTypeFromTypeReference(node)
+            if t.flags & TypeFlags.TypeParameter ~= 0 then
+                for i = index, #typeParameters - 1 do
+                    if t.symbol == self:getSymbolOfDeclaration(typeParameters[i + 1]) then
+                        self:error(node, diagnostics.Type_parameter_defaults_can_only_reference_previously_declared_type_parameters)
+                    end
+                end
+            end
+        end
+        return node:ForEachChild(visit)
+    end
+    visit(root)
+end
+
+function Checker:registerForUnusedIdentifiersCheck(node)
+    local sourceFile = ast.GetSourceFileOfNode(node)
+    local links = self.sourceFileLinks:Get(sourceFile)
+    links.identifierCheckNodes = core.Append(links.identifierCheckNodes, node)
+end
+
+function Checker:checkUnusedIdentifiers(potentiallyUnusedIdentifiers)
+    for _, node in ipairs(potentiallyUnusedIdentifiers or {}) do
+        local k = node.kind
+        if k == Kind.ClassDeclaration or k == Kind.ClassExpression then
+            self:checkUnusedClassMembers(node)
+            self:checkUnusedTypeParameters(node)
+        elseif k == Kind.SourceFile or k == Kind.ModuleDeclaration or k == Kind.Block or k == Kind.CaseBlock or k == Kind.ForStatement or k == Kind.ForInStatement or
+            k == Kind.ForOfStatement then
+            self:checkUnusedLocalsAndParameters(node)
+        elseif k == Kind.Constructor or k == Kind.FunctionExpression or k == Kind.FunctionDeclaration or k == Kind.ArrowFunction or k == Kind.MethodDeclaration or
+            k == Kind.GetAccessor or k == Kind.SetAccessor then
+            -- Only report unused parameters on the implementation, not overloads.
+            if node:Body() ~= nil then
+                self:checkUnusedLocalsAndParameters(node)
+            end
+            self:checkUnusedTypeParameters(node)
+        elseif k == Kind.MethodSignature or k == Kind.CallSignature or k == Kind.ConstructSignature or k == Kind.FunctionType or k == Kind.ConstructorType or
+            k == Kind.TypeAliasDeclaration or k == Kind.JSTypeAliasDeclaration or k == Kind.InterfaceDeclaration then
+            self:checkUnusedTypeParameters(node)
+        elseif k == Kind.InferType then
+            self:checkUnusedInferTypeParameter(node)
+        else
+            error("Unhandled case in checkUnusedIdentifiers", 0)
+        end
+    end
+end
+
+function Checker:isReferenced(symbol)
+    return self.symbolReferenceLinks:Get(symbol).referenceKinds ~= 0
+end
+
+-- UnusedKind is a generated constant (checker.UnusedKind).
+
+function Checker:reportUnusedVariable(location, diagnostic)
+    while ast.IsBindingElement(location) or ast.IsBindingPattern(location) do
+        location = location.parent
+    end
+    self:reportUnused(location, core.IfElse(ast.IsParameterDeclaration(location), checker.UnusedKind.Parameter, checker.UnusedKind.Local), diagnostic)
 end
