@@ -1,0 +1,926 @@
+#!/usr/bin/env lua
+-- tslua-test: runs the upstream compiler/conformance baseline suites through the Lua port
+-- (tslua.testrunner, a port of typescript-go's internal/testrunner) and reports, per test case
+-- configuration and per baseline kind, whether the output matches the reference baselines in
+-- vendor/typescript-go/testdata/baselines/reference. Local outputs go to tests/out/ (only for
+-- baselines that differ); references are never written.
+
+local USAGE = [[
+usage: bin/tslua-test [options] <case-path-or-name>...
+
+Cases are files under vendor/typescript-go/testdata/tests/cases/{compiler,conformance} ("local")
+and vendor/typescript-go/_submodules/TypeScript/tests/cases/{compiler,conformance} ("submodule",
+baselines under reference/submodule/). A case can be given as a path, a file name (foo.ts or foo),
+a configured name (foo(strict=true).ts) or a case id ([submodule/]<suite>/<configured name>).
+
+options:
+  --all                 run every case of the four suites
+  --passing             run the cases listed in tests/passing/<kind>.txt and fail on any regression
+  --update-passing      add the newly passing cases to tests/passing/<kind>.txt
+  --suite <s>           restrict to local, submodule, compiler or conformance (repeatable)
+  --filter <pattern>    only cases whose id contains <pattern> (plain text, or a Lua pattern)
+  --baselines <kinds>   comma-separated: errors,js,types,symbols,sourcemap,all
+                        (default errors,js,types,symbols)
+  --jobs N              run cases in N parallel `lua` subprocesses (default 1: in-process)
+  --batch K             cases per subprocess with --jobs (default 4)
+  --timeout S           per-case timeout in seconds (default 120; 0 disables)
+  --list                only list the selected case files
+  -v, --verbose         print failure messages
+  -q, --quiet           only print failures and the summary
+]]
+
+-- Locate the repository from this script's path and set up package.path.
+local scriptPath = arg and arg[0] or "bin/tslua-test"
+local scriptDir = string.match(scriptPath, "^(.*)/[^/]*$") or "."
+local root = scriptDir .. "/.."
+package.path = root .. "/src/?.lua;" .. root .. "/src/?/init.lua;" .. package.path
+
+local interpreter = "lua"
+do
+    local i = -1
+    while arg and arg[i] ~= nil do
+        interpreter = arg[i]
+        i = i - 1
+    end
+end
+
+local KIND_ORDER = { "errors", "js", "types", "symbols", "sourcemap" }
+-- subtest name (Go t.Run name) -> baseline kind
+local SUBTEST_KIND = {
+    ["error"] = "errors",
+    ["output"] = "js",
+    ["type"] = "types",
+    ["symbol"] = "symbols",
+    ["sourcemap"] = "sourcemap",
+    ["sourcemap record"] = "sourcemap",
+}
+-- baseline kind -> CompilerBaselineRunner verification steps
+local KIND_STEPS = {
+    errors = { "errors" },
+    js = { "js" },
+    types = { "types" },
+    symbols = { "symbols" },
+    sourcemap = { "sourcemap", "sourcemaprecord" },
+}
+
+local function shellQuote(s)
+    return "'" .. string.gsub(s, "'", "'\\''") .. "'"
+end
+
+local function readFile(path)
+    local f = io.open(path, "rb")
+    if f == nil then
+        return nil
+    end
+    local s = f:read("a")
+    f:close()
+    return s
+end
+
+local function writeFile(path, data)
+    local dir = string.match(path, "^(.*)/[^/]*$")
+    if dir ~= nil then
+        os.execute("mkdir -p " .. shellQuote(dir))
+    end
+    local f = assert(io.open(path, "wb"))
+    f:write(data)
+    f:close()
+end
+
+local function split(s, sep)
+    local out = {}
+    for part in string.gmatch(s .. sep, "(.-)" .. sep) do
+        out[#out + 1] = part
+    end
+    return out
+end
+
+local function sortedKeys(t)
+    local keys = {}
+    for k in pairs(t) do
+        keys[#keys + 1] = k
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- Argument parsing
+
+local opts = {
+    all = false,
+    passing = false,
+    updatePassing = false,
+    suites = nil,
+    filter = nil,
+    kinds = { errors = true, js = true, types = true, symbols = true },
+    jobs = 1,
+    batch = 4,
+    timeout = 120,
+    list = false,
+    verbose = false,
+    quiet = false,
+    worker = false,
+    cases = {},
+}
+
+do
+    local i = 1
+    local function value(name)
+        i = i + 1
+        if arg[i] == nil then
+            io.stderr:write("missing value for " .. name .. "\n")
+            os.exit(2)
+        end
+        return arg[i]
+    end
+    while i <= #arg do
+        local a = arg[i]
+        if a == "--all" then
+            opts.all = true
+        elseif a == "--passing" then
+            opts.passing = true
+        elseif a == "--update-passing" then
+            opts.updatePassing = true
+        elseif a == "--suite" then
+            opts.suites = opts.suites or {}
+            opts.suites[value(a)] = true
+        elseif a == "--filter" then
+            opts.filter = value(a)
+        elseif a == "--baselines" then
+            opts.kinds = {}
+            for _, k in ipairs(split(value(a), ",")) do
+                k = string.match(k, "^%s*(.-)%s*$")
+                if k == "all" then
+                    for _, kk in ipairs(KIND_ORDER) do
+                        opts.kinds[kk] = true
+                    end
+                elseif KIND_STEPS[k] ~= nil then
+                    opts.kinds[k] = true
+                elseif k ~= "" then
+                    io.stderr:write("--baselines: unknown baseline kind " .. k .. " (errors, js, types, symbols, sourcemap, all)\n")
+                    os.exit(2)
+                end
+            end
+        elseif a == "--jobs" or a == "-j" then
+            opts.jobs = math.tointeger(tonumber(value(a))) or 1
+        elseif a == "--batch" then
+            opts.batch = math.tointeger(tonumber(value(a))) or 4
+        elseif a == "--timeout" then
+            opts.timeout = tonumber(value(a)) or 120
+        elseif a == "--list" then
+            opts.list = true
+        elseif a == "-v" or a == "--verbose" then
+            opts.verbose = true
+        elseif a == "-q" or a == "--quiet" then
+            opts.quiet = true
+        elseif a == "--worker" then
+            opts.worker = true
+        elseif a == "-h" or a == "--help" then
+            io.write(USAGE)
+            os.exit(0)
+        elseif string.sub(a, 1, 2) == "--" then
+            io.stderr:write("unknown option " .. a .. "\n" .. USAGE)
+            os.exit(2)
+        else
+            opts.cases[#opts.cases + 1] = a
+        end
+        i = i + 1
+    end
+end
+
+local repo = require("tslua.repo")
+
+local SUITES = {
+    { variant = "local", suite = "compiler", dir = "testdata/tests/cases/compiler" },
+    { variant = "local", suite = "conformance", dir = "testdata/tests/cases/conformance" },
+    { variant = "submodule", suite = "compiler", dir = "_submodules/TypeScript/tests/cases/compiler" },
+    { variant = "submodule", suite = "conformance", dir = "_submodules/TypeScript/tests/cases/conformance" },
+}
+
+local function suiteSelected(s)
+    if opts.suites == nil then
+        return true
+    end
+    return opts.suites[s.variant] or opts.suites[s.suite] or opts.suites[s.variant .. "/" .. s.suite]
+end
+
+local function idPrefix(variant, suite)
+    if variant == "submodule" then
+        return "submodule/" .. suite .. "/"
+    end
+    return suite .. "/"
+end
+
+-- configuredName from the base name and the configuration description (Go newCompilerTest).
+local function configuredNameOf(basename, configName)
+    if configName == nil or configName == "" then
+        return basename
+    end
+    local ext = string.match(basename, "%.[^.]*$") or ""
+    return string.sub(basename, 1, #basename - #ext) .. "(" .. configName .. ")" .. ext
+end
+
+-- Splits a configured name "foo(a=b,c=d).ts" into "foo.ts", "a=b,c=d".
+local function splitConfiguredName(name)
+    local stem, config, ext = string.match(name, "^(.-)%((.*)%)(%.[^.()]*)$")
+    if stem == nil then
+        return name, nil
+    end
+    return stem .. ext, config
+end
+
+-- Enumerating case files (one `find` per suite directory).
+local suiteFilesCache = {}
+
+local function suiteFiles(s)
+    if suiteFilesCache[s] == nil then
+        local dir = repo.RootPath() .. "/" .. s.dir
+        local files = {}
+        local p = io.popen("find " .. shellQuote(dir) .. " -type f \\( -name '*.ts' -o -name '*.tsx' \\) 2>/dev/null | LC_ALL=C sort")
+        if p ~= nil then
+            for line in p:lines() do
+                files[#files + 1] = line
+            end
+            p:close()
+        end
+        suiteFilesCache[s] = files
+    end
+    return suiteFilesCache[s]
+end
+
+local basenameIndex = nil
+
+local function getBasenameIndex()
+    if basenameIndex == nil then
+        basenameIndex = {}
+        for _, s in ipairs(SUITES) do
+            for _, path in ipairs(suiteFiles(s)) do
+                local base = string.match(path, "[^/]*$")
+                local list = basenameIndex[base]
+                if list == nil then
+                    list = {}
+                    basenameIndex[base] = list
+                end
+                list[#list + 1] = { suite = s, path = path }
+            end
+        end
+    end
+    return basenameIndex
+end
+
+local harnessLoadError = nil
+
+-- Go skippedTests (compiler_runner.go). If the harness cannot be loaded yet (--list on a partial
+-- port), nothing is skipped and the load error is reported when cases run.
+local function isSkipped(path)
+    local base = string.match(path, "[^/]*$")
+    local ok, testrunner = pcall(require, "tslua.testrunner")
+    if not ok or type(testrunner.IsSkippedTest) ~= "function" then
+        harnessLoadError = harnessLoadError or testrunner
+        return false
+    end
+    return testrunner.IsSkippedTest(base)
+end
+
+-- Selection: an ordered list of { suite, path, configs (set of config names or nil = all) }.
+local selection = {}
+local selectionIndex = {}
+
+local function addCase(s, path, configName)
+    local key = s.variant .. "|" .. path
+    local entry = selectionIndex[key]
+    if entry == nil then
+        entry = { suite = s, path = path, configs = {} }
+        selectionIndex[key] = entry
+        selection[#selection + 1] = entry
+    end
+    if configName == nil then
+        entry.configs = nil
+    elseif entry.configs ~= nil then
+        entry.configs[configName] = true
+    end
+end
+
+local function suiteOfPath(path)
+    for _, s in ipairs(SUITES) do
+        local dir = s.dir .. "/"
+        if string.find(path, dir, 1, true) then
+            return s
+        end
+    end
+    return nil
+end
+
+local function absPath(path)
+    if string.sub(path, 1, 1) == "/" then
+        return path
+    end
+    local cwd = os.getenv("PWD") or "."
+    return cwd .. "/" .. path
+end
+
+local function resolveCaseArg(a)
+    -- an existing file
+    local f = io.open(a, "rb")
+    if f ~= nil then
+        f:close()
+        local s = suiteOfPath(absPath(a))
+        if s == nil then
+            io.stderr:write("not a case file of a known suite: " .. a .. "\n")
+            os.exit(2)
+        end
+        local path = absPath(a)
+        -- normalize to the path as enumerated (for stable ids)
+        local base = string.match(path, "[^/]*$")
+        for _, cand in ipairs(getBasenameIndex()[base] or {}) do
+            if cand.suite == s then
+                path = cand.path
+            end
+        end
+        addCase(s, path, nil)
+        return
+    end
+    -- a case id or name
+    local variant, suiteName, rest = nil, nil, a
+    local v, r = string.match(rest, "^(submodule)/(.*)$")
+    if v ~= nil then
+        variant, rest = v, r
+    end
+    local sn, r2 = string.match(rest, "^(compiler)/(.*)$")
+    if sn == nil then
+        sn, r2 = string.match(rest, "^(conformance)/(.*)$")
+    end
+    if sn ~= nil then
+        suiteName, rest = sn, r2
+        if variant == nil then
+            variant = "local"
+        end
+    end
+    local base, configName = splitConfiguredName(rest)
+    local candidates = getBasenameIndex()[base]
+    if candidates == nil then
+        candidates = getBasenameIndex()[base .. ".ts"] or getBasenameIndex()[base .. ".tsx"]
+    end
+    local found = false
+    for _, cand in ipairs(candidates or {}) do
+        if (variant == nil or cand.suite.variant == variant) and (suiteName == nil or cand.suite.suite == suiteName) then
+            addCase(cand.suite, cand.path, configName)
+            found = true
+        end
+    end
+    if not found then
+        io.stderr:write("no test case named " .. a .. "\n")
+        os.exit(2)
+    end
+end
+
+-- Passing lists: tests/passing/<kind>.txt, one case id per line ('#' comments allowed).
+local passingDir = root .. "/tests/passing"
+
+local function readPassingList(kind)
+    local set = {}
+    local content = readFile(passingDir .. "/" .. kind .. ".txt")
+    if content ~= nil then
+        for line in string.gmatch(content, "[^\n]+") do
+            line = string.match(line, "^%s*(.-)%s*$")
+            if line ~= "" and string.sub(line, 1, 1) ~= "#" then
+                set[line] = true
+            end
+        end
+    end
+    return set
+end
+
+local PASSING_HEADER = "# Cases (configured baseline names) whose %s baselines match the reference.\n"
+    .. "# Maintained by `bin/tslua-test --update-passing`; checked by `bin/tslua-test --passing`.\n"
+
+local function writePassingList(kind, set)
+    local lines = { string.format(PASSING_HEADER, kind) }
+    for _, id in ipairs(sortedKeys(set)) do
+        lines[#lines + 1] = id .. "\n"
+    end
+    writeFile(passingDir .. "/" .. kind .. ".txt", table.concat(lines))
+end
+
+local passingLists = {}
+for _, kind in ipairs(KIND_ORDER) do
+    passingLists[kind] = readPassingList(kind)
+end
+
+local function idMatchesFilter(id)
+    if opts.filter == nil then
+        return true
+    end
+    if string.find(id, opts.filter, 1, true) then
+        return true
+    end
+    local ok, m = pcall(string.find, id, opts.filter)
+    return ok and m ~= nil
+end
+
+-- Running cases
+
+local testutil, testrunner, baseline
+
+local function loadHarness()
+    if testrunner == nil then
+        testutil = require("tslua.testutil")
+        baseline = require("tslua.testutil.baseline")
+        testrunner = require("tslua.testrunner")
+    end
+end
+
+local function enabledSteps()
+    local steps = {}
+    for kind in pairs(opts.kinds) do
+        for _, step in ipairs(KIND_STEPS[kind]) do
+            steps[step] = true
+        end
+    end
+    return steps
+end
+
+local function collectMessages(t, out)
+    for _, m in ipairs(t.messages) do
+        out[#out + 1] = m
+    end
+    for _, c in ipairs(t.children) do
+        collectMessages(c, out)
+    end
+    return out
+end
+
+local TIMEOUT_MARKER = "tslua-test: case timed out"
+
+local function hasTimeout(t)
+    for _, m in ipairs(collectMessages(t, {})) do
+        if string.find(m, TIMEOUT_MARKER, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function hasPanic(t)
+    if t.panicked ~= nil then
+        return true
+    end
+    for _, c in ipairs(t.children) do
+        if hasPanic(c) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Runs one case file in-process. Returns a list of results:
+-- { id, kind, status (pass|fail|crash|timeout|skip), detail, messages }
+local function runCaseInProcess(entry)
+    loadHarness()
+    local s = entry.suite
+    local testType = s.suite == "compiler" and testrunner.CompilerTestType.TestTypeRegression or testrunner.CompilerTestType.TestTypeConformance
+    local runner = testrunner.NewCompilerBaselineRunner(testType, s.variant == "submodule")
+    runner.enabledBaselines = enabledSteps()
+
+    local rootT = testutil.NewT("", nil)
+    local base = string.match(entry.path, "[^/]*$")
+    local prefix = idPrefix(s.variant, s.suite)
+
+    -- Only run the requested configurations: wrap Run on the root T.
+    if entry.configs ~= nil then
+        local origRun = rootT.Run
+        rootT.Run = function(self, name, fn)
+            local _, configName = string.match(name, "^(%S+) (.*)$")
+            if entry.configs[configName or ""] then
+                return origRun(self, name, fn)
+            end
+            return true
+        end
+    end
+
+    local deadline = nil
+    if opts.timeout ~= nil and opts.timeout > 0 then
+        deadline = os.clock() + opts.timeout
+        debug.sethook(function()
+            if os.clock() > deadline then
+                deadline = math.huge
+                error(TIMEOUT_MARKER, 0)
+            end
+        end, "", 1000000)
+    end
+    local ok, err = xpcall(function()
+        runner:runTest(rootT, entry.path)
+    end, debug.traceback)
+    debug.sethook()
+
+    local results = {}
+    if not ok then
+        -- A failure outside any configuration (e.g. reading or parsing the test file).
+        local id = prefix .. base
+        local status = string.find(tostring(err), TIMEOUT_MARKER, 1, true) and "timeout" or "crash"
+        for kind in pairs(opts.kinds) do
+            results[#results + 1] = { id = id, kind = kind, status = status, detail = tostring(err), messages = { tostring(err) } }
+        end
+        return results
+    end
+
+    for _, configT in ipairs(rootT.children) do
+        local _, configName = string.match(configT.name, "^(%S+) (.*)$")
+        local id = prefix .. configuredNameOf(base, configName)
+        local messages = collectMessages(configT, {})
+        local caseStatus = nil
+        if configT.skipped then
+            caseStatus = "skip"
+        elseif hasTimeout(configT) then
+            caseStatus = "timeout"
+        elseif configT.panicked ~= nil then
+            caseStatus = "crash"
+        end
+        local byKind = {}
+        for _, child in ipairs(configT.children) do
+            local kind = SUBTEST_KIND[child.name]
+            if kind ~= nil then
+                local st
+                if child.skipped then
+                    st = "skip"
+                elseif hasTimeout(child) then
+                    st = "timeout"
+                elseif hasPanic(child) then
+                    st = "crash"
+                elseif child.failed then
+                    st = "fail"
+                else
+                    st = "pass"
+                end
+                local prev = byKind[kind]
+                -- several subtests can map to one kind: keep the worst
+                local rank = { pass = 1, skip = 2, fail = 3, crash = 4, timeout = 5 }
+                if prev == nil or rank[st] > rank[prev] then
+                    byKind[kind] = st
+                end
+            end
+        end
+        for kind in pairs(opts.kinds) do
+            local st = caseStatus or byKind[kind]
+            if st == nil then
+                if configT.failed then
+                    -- failed before reaching this baseline (e.g. an option parsing error)
+                    st = "fail"
+                else
+                    -- no baseline of this kind for this case (e.g. no .js for .d.ts-only tests)
+                    st = "pass"
+                end
+            end
+            results[#results + 1] = { id = id, kind = kind, status = st, detail = messages[1] or "", messages = messages }
+        end
+        if caseStatus == "crash" or caseStatus == "timeout" or hasPanic(configT) then
+            local crashPath = baseline.localRoot() .. "/" .. id .. ".crash.txt"
+            writeFile(crashPath, table.concat(messages, "\n") .. "\n")
+        end
+    end
+    return results
+end
+
+-- Worker protocol (one line per record, tab separated; messages are escaped).
+local function escape(s)
+    return (string.gsub(s, "[\\\t\n\r]", { ["\\"] = "\\\\", ["\t"] = "\\t", ["\n"] = "\\n", ["\r"] = "\\r" }))
+end
+
+local function unescape(s)
+    return (string.gsub(s, "\\(.)", { ["\\"] = "\\", t = "\t", n = "\n", r = "\r" }))
+end
+
+local function encodeEntry(entry)
+    local configs = ""
+    if entry.configs ~= nil then
+        configs = table.concat(sortedKeys(entry.configs), ";")
+        if configs == "" then
+            configs = ";"
+        end
+    end
+    return entry.suite.variant .. "|" .. entry.suite.suite .. "|" .. entry.path .. "|" .. configs
+end
+
+local function decodeEntry(s)
+    local variant, suiteName, path, configs = string.match(s, "^([^|]*)|([^|]*)|(.*)|([^|]*)$")
+    if variant == nil then
+        return nil
+    end
+    local suite
+    for _, cand in ipairs(SUITES) do
+        if cand.variant == variant and cand.suite == suiteName then
+            suite = cand
+        end
+    end
+    local entry = { suite = suite, path = path, configs = nil }
+    if configs ~= "" then
+        entry.configs = {}
+        for c in string.gmatch(configs, "[^;]+") do
+            entry.configs[c] = true
+        end
+        if configs == ";" then
+            entry.configs[""] = true
+        end
+    end
+    return entry
+end
+
+-- A worker runs the given cases and, for each, writes its results to a temporary file and prints
+-- one short "@@DONE\t<entry>\t<file>" line (short lines from parallel workers do not interleave).
+if opts.worker then
+    for _, a in ipairs(opts.cases) do
+        local entry = decodeEntry(a)
+        local ok, results = pcall(runCaseInProcess, entry)
+        if not ok then
+            local err = tostring(results)
+            results = {}
+            for kind in pairs(opts.kinds) do
+                results[#results + 1] = { id = idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$"), kind = kind, status = "crash", detail = err, messages = { err } }
+            end
+        end
+        local lines = {}
+        for _, r in ipairs(results) do
+            lines[#lines + 1] = table.concat({ "@@RESULT", r.id, r.kind, r.status, escape(table.concat(r.messages, "\n")) }, "\t")
+        end
+        local resultFile = os.tmpname()
+        writeFile(resultFile, table.concat(lines, "\n") .. "\n")
+        io.stdout:write("@@DONE\t" .. a .. "\t" .. resultFile .. "\n")
+        io.stdout:flush()
+    end
+    os.exit(0)
+end
+
+-- Build the selection.
+
+if opts.all then
+    for _, s in ipairs(SUITES) do
+        if suiteSelected(s) then
+            for _, path in ipairs(suiteFiles(s)) do
+                addCase(s, path, nil)
+            end
+        end
+    end
+end
+
+if opts.passing then
+    local ids = {}
+    for _, kind in ipairs(KIND_ORDER) do
+        if opts.kinds[kind] then
+            for id in pairs(passingLists[kind]) do
+                ids[id] = true
+            end
+        end
+    end
+    for _, id in ipairs(sortedKeys(ids)) do
+        local variant, rest = "local", id
+        local r = string.match(id, "^submodule/(.*)$")
+        if r ~= nil then
+            variant, rest = "submodule", r
+        end
+        local suiteName, name = string.match(rest, "^([^/]+)/(.*)$")
+        local base, configName = splitConfiguredName(name or "")
+        local found = false
+        for _, cand in ipairs(getBasenameIndex()[base] or {}) do
+            if cand.suite.variant == variant and cand.suite.suite == suiteName then
+                if suiteSelected(cand.suite) then
+                    addCase(cand.suite, cand.path, configName or "")
+                end
+                found = true
+            end
+        end
+        if not found then
+            io.stderr:write("warning: passing list entry " .. id .. " does not name a test case\n")
+        end
+    end
+end
+
+for _, a in ipairs(opts.cases) do
+    resolveCaseArg(a)
+end
+
+if #selection == 0 and not opts.passing then
+    io.stderr:write(USAGE)
+    os.exit(2)
+end
+
+do
+    local filtered = {}
+    for _, entry in ipairs(selection) do
+        local id = idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$")
+        if not isSkipped(entry.path) and idMatchesFilter(id) then
+            filtered[#filtered + 1] = entry
+        end
+    end
+    selection = filtered
+end
+
+if opts.list then
+    for _, entry in ipairs(selection) do
+        print(idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$"))
+    end
+    os.exit(0)
+end
+
+-- Run.
+
+local results = {}
+local startTime = os.time()
+local done = 0
+
+local function report(entryResults, label)
+    done = done + 1
+    local byId = {}
+    local order = {}
+    for _, r in ipairs(entryResults) do
+        results[#results + 1] = r
+        if byId[r.id] == nil then
+            byId[r.id] = {}
+            order[#order + 1] = r.id
+        end
+        byId[r.id][r.kind] = r
+    end
+    for _, id in ipairs(order) do
+        local parts = {}
+        local worst = "pass"
+        local firstFailure = nil
+        for _, kind in ipairs(KIND_ORDER) do
+            local r = byId[id][kind]
+            if r ~= nil then
+                parts[#parts + 1] = kind .. ":" .. r.status
+                if r.status ~= "pass" and r.status ~= "skip" then
+                    worst = "FAIL"
+                    firstFailure = firstFailure or r
+                elseif r.status == "skip" and worst == "pass" then
+                    worst = "skip"
+                end
+            end
+        end
+        if not opts.quiet or worst == "FAIL" then
+            io.write(string.format("[%d/%d] %-4s %s  %s\n", done, #selection, string.upper(worst == "pass" and "ok" or worst), id, table.concat(parts, " ")))
+            if opts.verbose and firstFailure ~= nil then
+                for _, kind in ipairs(KIND_ORDER) do
+                    local r = byId[id][kind]
+                    if r ~= nil and r.status ~= "pass" and r.status ~= "skip" then
+                        for _, m in ipairs(r.messages) do
+                            io.write("      " .. string.gsub(m, "\n", "\n      ") .. "\n")
+                        end
+                        break
+                    end
+                end
+            end
+            io.stdout:flush()
+        end
+    end
+    if #order == 0 and not opts.quiet then
+        io.write(string.format("[%d/%d] --   %s  (no configurations run)\n", done, #selection, label))
+    end
+end
+
+if opts.jobs <= 1 then
+    for _, entry in ipairs(selection) do
+        local ok, r = pcall(runCaseInProcess, entry)
+        if not ok then
+            local id = idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$")
+            local err = tostring(r)
+            r = {}
+            for kind in pairs(opts.kinds) do
+                r[#r + 1] = { id = id, kind = kind, status = "crash", detail = err, messages = { err } }
+            end
+        end
+        report(r, entry.path)
+    end
+else
+    local listFile = os.tmpname()
+    local lines = {}
+    local pending = {}
+    for _, entry in ipairs(selection) do
+        local enc = encodeEntry(entry)
+        lines[#lines + 1] = enc
+        pending[enc] = entry
+    end
+    writeFile(listFile, table.concat(lines, "\n") .. "\n")
+    local kindsArg = table.concat(sortedKeys(opts.kinds), ",")
+    local hardTimeout = ""
+    if opts.timeout > 0 then
+        hardTimeout = "timeout -k 5 " .. tostring(math.floor(opts.timeout * opts.batch + 30)) .. " "
+    end
+    local cmd = "xargs -d '\\n' -P " .. opts.jobs .. " -n " .. opts.batch .. " " .. hardTimeout
+        .. shellQuote(interpreter) .. " " .. shellQuote(scriptPath) .. " --worker --timeout " .. tostring(opts.timeout)
+        .. " --baselines " .. kindsArg .. " < " .. shellQuote(listFile) .. " 2>&1"
+    local p = assert(io.popen(cmd))
+    for line in p:lines() do
+        local enc, resultFile = string.match(line, "^@@DONE\t(.*)\t([^\t]*)$")
+        if enc ~= nil then
+            local entry = pending[enc]
+            pending[enc] = nil
+            local caseResults = {}
+            for rline in string.gmatch(readFile(resultFile) or "", "[^\n]+") do
+                local id, kind, status, msg = string.match(rline, "^@@RESULT\t([^\t]*)\t([^\t]*)\t([^\t]*)\t(.*)$")
+                if id ~= nil then
+                    local m = unescape(msg)
+                    caseResults[#caseResults + 1] = { id = id, kind = kind, status = status, detail = m, messages = { m } }
+                end
+            end
+            os.remove(resultFile)
+            report(caseResults, entry and entry.path or enc)
+        elseif opts.verbose then
+            io.stderr:write(line .. "\n")
+        end
+    end
+    p:close()
+    os.remove(listFile)
+    -- Cases whose worker died (hard timeout or crash of the interpreter).
+    for _, enc in ipairs(sortedKeys(pending)) do
+        local entry = pending[enc]
+        local id = idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$")
+        local r = {}
+        for kind in pairs(opts.kinds) do
+            r[#r + 1] = { id = id, kind = kind, status = "timeout", detail = "worker died", messages = { "worker process died or was killed" } }
+        end
+        report(r, enc)
+    end
+end
+
+-- Summary.
+
+local counts = {}
+for _, kind in ipairs(KIND_ORDER) do
+    counts[kind] = { pass = 0, fail = 0, crash = 0, timeout = 0, skip = 0 }
+end
+local passingNow = {}
+for _, kind in ipairs(KIND_ORDER) do
+    passingNow[kind] = {}
+end
+for _, r in ipairs(results) do
+    counts[r.kind][r.status] = (counts[r.kind][r.status] or 0) + 1
+    if r.status == "pass" then
+        passingNow[r.kind][r.id] = true
+    end
+end
+
+io.write(string.format("\n%d case files in %ds\n", #selection, os.time() - startTime))
+io.write(string.format("%-10s %7s %7s %7s %7s %7s\n", "baseline", "pass", "fail", "crash", "timeout", "skip"))
+for _, kind in ipairs(KIND_ORDER) do
+    if opts.kinds[kind] then
+        local c = counts[kind]
+        io.write(string.format("%-10s %7d %7d %7d %7d %7d\n", kind, c.pass, c.fail, c.crash, c.timeout, c.skip))
+    end
+end
+
+local exitCode = 0
+
+if opts.passing then
+    local regressions = {}
+    for _, r in ipairs(results) do
+        if passingLists[r.kind][r.id] and r.status ~= "pass" then
+            regressions[#regressions + 1] = r
+        end
+    end
+    -- listed cases that were not run at all (e.g. a configuration that no longer exists)
+    local seen = {}
+    for _, r in ipairs(results) do
+        seen[r.kind .. "\0" .. r.id] = true
+    end
+    for _, kind in ipairs(KIND_ORDER) do
+        if opts.kinds[kind] then
+            for id in pairs(passingLists[kind]) do
+                if not seen[kind .. "\0" .. id] and idMatchesFilter(id) then
+                    regressions[#regressions + 1] = { id = id, kind = kind, status = "missing", messages = {} }
+                end
+            end
+        end
+    end
+    if #regressions > 0 then
+        io.write(string.format("\n%d regression(s):\n", #regressions))
+        table.sort(regressions, function(a, b)
+            return a.id < b.id or a.id == b.id and a.kind < b.kind
+        end)
+        for _, r in ipairs(regressions) do
+            io.write(string.format("  %s [%s] %s\n", r.id, r.kind, r.status))
+        end
+        exitCode = 1
+    else
+        io.write("\nno regressions\n")
+    end
+end
+
+if opts.updatePassing then
+    for _, kind in ipairs(KIND_ORDER) do
+        if opts.kinds[kind] then
+            local added = 0
+            local set = passingLists[kind]
+            for id in pairs(passingNow[kind]) do
+                if not set[id] then
+                    set[id] = true
+                    added = added + 1
+                end
+            end
+            if added > 0 or readFile(passingDir .. "/" .. kind .. ".txt") == nil then
+                writePassingList(kind, set)
+            end
+            io.write(string.format("%s: %d newly passing case(s) added\n", kind, added))
+        end
+    end
+end
+
+os.exit(exitCode)
