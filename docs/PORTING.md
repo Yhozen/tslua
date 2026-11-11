@@ -136,6 +136,14 @@ function Scanner:Scan() ... end
 - Embedded structs are flattened: the fields of the embedded struct live directly on the table,
   and methods of the embedded type are made available via the metatable chain
   (`setmetatable(Derived, { __index = Base })`).
+- Methods on named **scalar** types (Go `type Number float64`, `type Kind int16`, `type Category int32`,
+  `type Tristate byte`, …) become package functions `<Type>_<Method>(value, ...)`:
+  `n.String()` (jsnum.Number) -> `jsnum.Number_String(n)`, `k.GetNewLineCharacter()` ->
+  `core.NewLineKind_GetNewLineCharacter(k)`, `c.Name()` -> `diagnostics.Category_Name(c)`,
+  `t.IsTrue()` -> `core.Tristate_IsTrue(t)`. Same for methods on named slice/map/string types.
+- Go `iter.Seq[T]` / `iter.Seq2[K,V]` results -> a Lua iterator usable in a generic `for`
+  (`for cr in scanner.GetLeadingCommentRanges(f, text, pos) do`). An `iter.Seq` **parameter**
+  takes a plain Lua array (e.g. `core.GetSpellingSuggestionForStrings(name, candidatesArray)`).
 - Interfaces: a Lua table with the required methods. Type switches on interfaces become checks of
   a discriminator (`node.kind`, `t.flags`, or a `kind` field the porting file documents).
 - Generics vanish; type parameters are just values.
