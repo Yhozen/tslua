@@ -486,21 +486,27 @@ local function runCaseInProcess(entry)
     local base = string.match(entry.path, "[^/]*$")
     local prefix = idPrefix(s.variant, s.suite)
 
-    -- Only run the requested configurations: wrap Run on the root T.
-    if entry.configs ~= nil then
-        local origRun = rootT.Run
-        rootT.Run = function(self, name, fn)
-            local _, configName = string.match(name, "^(%S+) (.*)$")
-            if entry.configs[configName or ""] then
-                return origRun(self, name, fn)
-            end
-            return true
+    local deadline = math.huge
+    local function resetDeadline()
+        if opts.timeout ~= nil and opts.timeout > 0 then
+            deadline = os.clock() + opts.timeout
         end
     end
 
-    local deadline = nil
+    -- Each configuration is a subtest of the root T: only run the requested configurations, and
+    -- give each one its own timeout.
+    local origRun = rootT.Run
+    rootT.Run = function(self, name, fn)
+        local _, configName = string.match(name, "^(%S+) (.*)$")
+        if entry.configs ~= nil and not entry.configs[configName or ""] then
+            return true
+        end
+        resetDeadline()
+        return origRun(self, name, fn)
+    end
+
     if opts.timeout ~= nil and opts.timeout > 0 then
-        deadline = os.clock() + opts.timeout
+        resetDeadline()
         debug.sethook(function()
             if os.clock() > deadline then
                 deadline = math.huge

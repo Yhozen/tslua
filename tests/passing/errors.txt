@@ -1,0 +1,2 @@
+# Cases (configured baseline names) whose errors baselines match the reference.
+# Maintained by `bin/tslua-test --update-passing`; checked by `bin/tslua-test --passing`.

@@ -87,6 +87,9 @@ function tsbaseline.DoTypeAndSymbolBaseline(t, baselinePath, header, program, al
 
     local fullWalker = tsbaseline.newTypeWriterWalker(program, hasErrorBaseline)
 
+    -- (Go ignores skipTypeBaselines/skipSymbolBaselines; every caller passes false. The Lua CLI
+    -- passes true to run only the requested baseline kinds.)
+    if not skipTypeBaselines then
     t:Run("type", function(t1)
         testutil.RecoverAndFail(t1, "Panic on creating type baseline for test " .. header, function()
             -- !!! Remove once the type baselines print node reuse lines
@@ -134,11 +137,14 @@ function tsbaseline.DoTypeAndSymbolBaseline(t, baselinePath, header, program, al
             tsbaseline.checkBaselines(t1, baselinePath, allFiles, fullWalker, header, typesOpts, false --[[isSymbolBaseline]])
         end)
     end)
+    end
+    if not skipSymbolBaselines then
     t:Run("symbol", function(t1)
         testutil.RecoverAndFail(t1, "Panic on creating symbol baseline for test " .. header, function()
             tsbaseline.checkBaselines(t1, baselinePath, allFiles, fullWalker, header, opts, true --[[isSymbolBaseline]])
         end)
     end)
+    end
 end
 
 function tsbaseline.isTypeBaselineNodeReuseLine(line)

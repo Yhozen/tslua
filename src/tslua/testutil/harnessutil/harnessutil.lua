@@ -82,24 +82,20 @@ harnessutil.sortedKeys = sortedKeys
 
 -- tsoptions.ParsedCommandLine literal { ParsedConfig, ConfigFile, Errors }.
 function harnessutil.newParsedCommandLine(parsedConfig, configFile, errors)
-    return setmetatable({
+    return tsoptions.newParsedCommandLineStruct({
         parsedConfig = parsedConfig,
         configFile = configFile,
         errors = errors,
-    }, tsoptions.ParsedCommandLine)
+    })
 end
 
 -- tsoptions.ParsedOptions literal { CompilerOptions, FileNames, ContentMappers }.
 function harnessutil.newParsedOptions(compilerOptions, fileNames, contentMappers)
-    local o = {
+    return tsoptions.NewParsedOptions({
         compilerOptions = compilerOptions,
         fileNames = fileNames,
         contentMappers = contentMappers,
-    }
-    if tsoptions.ParsedOptions ~= nil and type(tsoptions.ParsedOptions) == "table" and tsoptions.ParsedOptions.__index ~= nil then
-        setmetatable(o, tsoptions.ParsedOptions)
-    end
-    return o
+    })
 end
 
 function harnessutil.CompileFiles(t, inputFiles, otherFiles, testConfig, tsconfig, currentDirectory, symlinks)
