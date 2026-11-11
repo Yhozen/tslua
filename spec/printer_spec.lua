@@ -20,6 +20,1343 @@ local function emit(file, removeComments)
     return text
 end
 
+-- Factory-built trees from Go printer_test.go (TestParenthesize*, TestNameGeneration, ...),
+-- translated mechanically: { title, usesEmitContext, expected, build(f, ast) }.
+local factoryCasesTable = {
+    { "TestParenthesizeDecorator", false, "@(a + b)\nclass C {\n}", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewClassDeclaration(
+                        f:NewModifierList(
+                            {
+                                f:NewDecorator(
+                                    f:NewBinaryExpression(
+                                        nil, --[[modifiers]]
+                                        f:NewIdentifier("a"),
+                                        nil, --[[typeNode]]
+                                        f:NewToken(ast.Kind.PlusToken),
+                                        f:NewIdentifier("b")
+                                    )
+                                ),
+                            }
+                        ),
+                        f:NewIdentifier("C"),
+                        nil,
+                        nil,
+                        f:NewNodeList({})
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeComputedPropertyName", false, "class C {\n    [(a, b)];\n}", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewClassDeclaration(
+                        nil, --[[modifiers]]
+                        f:NewIdentifier("C"),
+                        nil, --[[typeParameters]]
+                        nil, --[[heritageClauses]]
+                        f:NewNodeList({
+                            f:NewPropertyDeclaration(
+                                nil, --[[modifiers]]
+                                f:NewComputedPropertyName(
+
+                                    f:NewBinaryExpression(
+                                        nil, --[[modifiers]]
+                                        f:NewIdentifier("a"),
+                                        nil, --[[typeNode]]
+                                        f:NewToken(ast.Kind.CommaToken),
+                                        f:NewIdentifier("b")
+                                    )
+                                ),
+                                nil, --[[postfixToken]]
+                                nil, --[[typeNode]]
+                                nil --[[initializer]]
+                            ),
+                        })
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeArrayLiteral", false, "[(a, b)];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewArrayLiteralExpression(
+                            f:NewNodeList(
+                                {
+
+                                    f:NewBinaryExpression(
+                                        nil, --[[modifiers]]
+                                        f:NewIdentifier("a"),
+                                        nil, --[[typeNode]]
+                                        f:NewToken(ast.Kind.CommaToken),
+                                        f:NewIdentifier("b")
+                                    ),
+                                }
+                            ),
+                            false --[[multiLine]]
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizePropertyAccess1", false, "(a, b).c;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewPropertyAccessExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("c"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizePropertyAccess2", false, "(a?.b).c;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewPropertyAccessExpression(
+
+                            f:NewPropertyAccessExpression(
+                                f:NewIdentifier("a"),
+                                f:NewToken(ast.Kind.QuestionDotToken),
+                                f:NewIdentifier("b"),
+                                ast.NodeFlags.OptionalChain
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("c"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizePropertyAccess3", false, "(new a).b;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewPropertyAccessExpression(
+
+                            f:NewNewExpression(
+                                f:NewIdentifier("a"),
+                                nil, --[[typeArguments]]
+                                nil --[[arguments]]
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("b"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeElementAccess1", false, "(a, b)[c];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewElementAccessExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("c"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeElementAccess2", false, "(a?.b)[c];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewElementAccessExpression(
+
+                            f:NewPropertyAccessExpression(
+                                f:NewIdentifier("a"),
+                                f:NewToken(ast.Kind.QuestionDotToken),
+                                f:NewIdentifier("b"),
+                                ast.NodeFlags.OptionalChain
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("c"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeElementAccess3", false, "(new a)[b];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewElementAccessExpression(
+
+                            f:NewNewExpression(
+                                f:NewIdentifier("a"),
+                                nil, --[[typeArguments]]
+                                nil --[[arguments]]
+                            ),
+                            nil, --[[questionDotToken]]
+                            f:NewIdentifier("b"),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeCall1", false, "(a, b)();", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewCallExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({}),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeCall2", false, "(a?.b)();", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewCallExpression(
+
+                            f:NewPropertyAccessExpression(
+                                f:NewIdentifier("a"),
+                                f:NewToken(ast.Kind.QuestionDotToken),
+                                f:NewIdentifier("b"),
+                                ast.NodeFlags.OptionalChain
+                            ),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({}),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeCall3", false, "(new C)();", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewCallExpression(
+
+                            f:NewNewExpression(
+                                f:NewIdentifier("C"),
+                                nil, --[[typeArguments]]
+                                nil --[[arguments]]
+                            ),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({}),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeCall4", false, "a((b, c));", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewCallExpression(
+                            f:NewIdentifier("a"),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({
+                                f:NewBinaryExpression(
+                                    nil, --[[modifiers]]
+                                    f:NewIdentifier("b"),
+                                    nil, --[[typeNode]]
+                                    f:NewToken(ast.Kind.CommaToken),
+                                    f:NewIdentifier("c")
+                                ),
+                            }),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeNew1", false, "new (a, b)();", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewNewExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({})
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeNew2", false, "new (C());", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewNewExpression(
+
+                            f:NewCallExpression(
+                                f:NewIdentifier("C"),
+                                nil, --[[questionDotToken]]
+                                nil, --[[typeArguments]]
+                                f:NewNodeList({}),
+                                ast.NodeFlags.None
+                            ),
+                            nil, --[[typeArguments]]
+                            nil --[[arguments]]
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeNew3", false, "new C((a, b));", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewNewExpression(
+                            f:NewIdentifier("C"),
+                            nil, --[[typeArguments]]
+                            f:NewNodeList({
+                                f:NewBinaryExpression(
+                                    nil, --[[modifiers]]
+                                    f:NewIdentifier("a"),
+                                    nil, --[[typeNode]]
+                                    f:NewToken(ast.Kind.CommaToken),
+                                    f:NewIdentifier("b")
+                                ),
+                            })
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeTaggedTemplate1", false, "(a, b) ``;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewTaggedTemplateExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNoSubstitutionTemplateLiteral("", ast.TokenFlags.None),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeTaggedTemplate2", false, "(a?.b) ``;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewTaggedTemplateExpression(
+
+                            f:NewPropertyAccessExpression(
+                                f:NewIdentifier("a"),
+                                f:NewToken(ast.Kind.QuestionDotToken),
+                                f:NewIdentifier("b"),
+                                ast.NodeFlags.OptionalChain
+                            ),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNoSubstitutionTemplateLiteral("", ast.TokenFlags.None),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeTypeAssertion1", false, "<T>(a + b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewTypeAssertion(
+                            f:NewTypeReferenceNode(
+                                f:NewIdentifier("T"),
+                                nil --[[typeArguments]]
+                            ),
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.PlusToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeArrowFunction1", false, "() => ({});", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewArrowFunction(
+                            nil, --[[modifiers]]
+                            nil, --[[typeParameters]]
+                            f:NewNodeList({}),
+                            nil, --[[returnType]]
+                            nil, --[[fullSignature]]
+                            f:NewToken(ast.Kind.EqualsGreaterThanToken),
+
+                            f:NewObjectLiteralExpression(
+                                f:NewNodeList({}),
+                                false --[[multiLine]]
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeArrowFunction2", false, "() => ({}.a);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewArrowFunction(
+                            nil, --[[modifiers]]
+                            nil, --[[typeParameters]]
+                            f:NewNodeList({}),
+                            nil, --[[returnType]]
+                            nil, --[[fullSignature]]
+                            f:NewToken(ast.Kind.EqualsGreaterThanToken),
+
+                            f:NewPropertyAccessExpression(
+                                f:NewObjectLiteralExpression(
+                                    f:NewNodeList({}),
+                                    false --[[multiLine]]
+                                ),
+                                nil, --[[questionDotToken]]
+                                f:NewIdentifier("a"),
+                                ast.NodeFlags.None
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeDelete", false, "delete (a + b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewDeleteExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.PlusToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeVoid", false, "void (a + b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewVoidExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.PlusToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeTypeOf", false, "typeof (a + b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewTypeOfExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.PlusToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeAwait", false, "await (a + b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewAwaitExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.PlusToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional1", false, "(a, b) ? c : d;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            f:NewToken(ast.Kind.QuestionToken),
+                            f:NewIdentifier("c"),
+                            f:NewToken(ast.Kind.ColonToken),
+                            f:NewIdentifier("d")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional2", false, "(a = b) ? c : d;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.EqualsToken),
+                                f:NewIdentifier("b")
+                            ),
+                            f:NewToken(ast.Kind.QuestionToken),
+                            f:NewIdentifier("c"),
+                            f:NewToken(ast.Kind.ColonToken),
+                            f:NewIdentifier("d")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional3", false, "(() => { }) ? a : b;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+
+                            f:NewArrowFunction(
+                                nil, --[[modifiers]]
+                                nil, --[[typeParameters]]
+                                f:NewNodeList({}),
+                                nil, --[[returnType]]
+                                nil, --[[fullSignature]]
+                                f:NewToken(ast.Kind.EqualsGreaterThanToken),
+                                f:NewBlock(
+                                    f:NewNodeList({}),
+                                    false --[[multiLine]]
+                                )
+                            ),
+                            f:NewToken(ast.Kind.QuestionToken),
+                            f:NewIdentifier("a"),
+                            f:NewToken(ast.Kind.ColonToken),
+                            f:NewIdentifier("b")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional4", false, "(yield) ? a : b;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+
+                            f:NewYieldExpression(nil, nil),
+                            f:NewToken(ast.Kind.QuestionToken),
+                            f:NewIdentifier("a"),
+                            f:NewToken(ast.Kind.ColonToken),
+                            f:NewIdentifier("b")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional5", false, "a ? (b, c) : d;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+                            f:NewIdentifier("a"),
+                            f:NewToken(ast.Kind.QuestionToken),
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("b"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("c")
+                            ),
+                            f:NewToken(ast.Kind.ColonToken),
+                            f:NewIdentifier("d")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditional6", false, "a ? b : (c, d);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewConditionalExpression(
+                            f:NewIdentifier("a"),
+                            f:NewToken(ast.Kind.QuestionToken),
+                            f:NewIdentifier("b"),
+                            f:NewToken(ast.Kind.ColonToken),
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("c"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("d")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeYield1", false, "yield (a, b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewYieldExpression(
+                            nil, --[[asteriskToken]]
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeSpreadElement1", false, "[...(a, b)];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewArrayLiteralExpression(
+                            f:NewNodeList(
+                                {
+                                    f:NewSpreadElement(
+
+                                        f:NewBinaryExpression(
+                                            nil, --[[modifiers]]
+                                            f:NewIdentifier("a"),
+                                            nil, --[[typeNode]]
+                                            f:NewToken(ast.Kind.CommaToken),
+                                            f:NewIdentifier("b")
+                                        )
+                                    ),
+                                }
+                            ),
+                            false --[[multiLine]]
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeSpreadElement2", false, "a(...(b, c));", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewCallExpression(
+                            f:NewIdentifier("a"),
+                            nil, --[[questionDotToken]]
+                            nil, --[[typeArguments]]
+                            f:NewNodeList(
+                                {
+                                    f:NewSpreadElement(
+
+                                        f:NewBinaryExpression(
+                                            nil, --[[modifiers]]
+                                            f:NewIdentifier("b"),
+                                            nil, --[[typeNode]]
+                                            f:NewToken(ast.Kind.CommaToken),
+                                            f:NewIdentifier("c")
+                                        )
+                                    ),
+                                }
+                            ),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeSpreadElement3", false, "new a(...(b, c));", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewNewExpression(
+                            f:NewIdentifier("a"),
+                            nil, --[[typeArguments]]
+                            f:NewNodeList(
+                                {
+                                    f:NewSpreadElement(
+
+                                        f:NewBinaryExpression(
+                                            nil, --[[modifiers]]
+                                            f:NewIdentifier("b"),
+                                            nil, --[[typeNode]]
+                                            f:NewToken(ast.Kind.CommaToken),
+                                            f:NewIdentifier("c")
+                                        )
+                                    ),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionWithTypeArguments", false, "(a, b)<c>;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewExpressionWithTypeArguments(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            f:NewNodeList(
+                                {
+                                    f:NewTypeReferenceNode(
+                                        f:NewIdentifier("c"),
+                                        nil
+                                    ),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeAsExpression", false, "(a, b) as c;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewAsExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            f:NewTypeReferenceNode(
+                                f:NewIdentifier("c"),
+                                nil
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeSatisfiesExpression", false, "(a, b) satisfies c;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewSatisfiesExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            f:NewTypeReferenceNode(
+                                f:NewIdentifier("c"),
+                                nil
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeNonNullExpression", false, "(a, b)!;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewNonNullExpression(
+
+                            f:NewBinaryExpression(
+                                nil, --[[modifiers]]
+                                f:NewIdentifier("a"),
+                                nil, --[[typeNode]]
+                                f:NewToken(ast.Kind.CommaToken),
+                                f:NewIdentifier("b")
+                            ),
+                            ast.NodeFlags.None
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionStatement1", false, "({});", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewObjectLiteralExpression(
+                            f:NewNodeList(
+                                {}
+                            ),
+                            false --[[multiLine]]
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionStatement2", false, "(function () { });", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewFunctionExpression(
+                            nil, --[[modifiers]]
+                            nil, --[[asteriskToken]]
+                            nil, --[[name]]
+                            nil, --[[typeParameters]]
+                            f:NewNodeList(
+                                {}
+                            ),
+                            nil, --[[returnType]]
+                            nil, --[[fullSignature]]
+                            f:NewBlock(
+                                f:NewNodeList({}),
+                                false --[[multiLine]]
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionStatement3", false, "class {\n};", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExpressionStatement(
+                        f:NewClassExpression(
+                            nil, --[[modifiers]]
+                            nil, --[[name]]
+                            nil, --[[typeParameters]]
+                            nil, --[[heritageClauses]]
+                            f:NewNodeList(
+                                {}
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionDefault1", false, "export default (class {\n});", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExportAssignment(
+                        nil,   --[[modifiers]]
+                        false, --[[isExportEquals]]
+                        nil,   --[[typeNode]]
+
+                        f:NewClassExpression(
+                            nil, --[[modifiers]]
+                            nil, --[[name]]
+                            nil, --[[typeParameters]]
+                            nil, --[[heritageClauses]]
+                            f:NewNodeList(
+                                {}
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionDefault2", false, "export default (function () { });", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExportAssignment(
+                        nil,   --[[modifiers]]
+                        false, --[[isExportEquals]]
+                        nil,   --[[typeNode]]
+
+                        f:NewFunctionExpression(
+                            nil, --[[modifiers]]
+                            nil, --[[asteriskToken]]
+                            nil, --[[name]]
+                            nil, --[[typeParameters]]
+                            f:NewNodeList(
+                                {}
+                            ),
+                            nil, --[[returnType]]
+                            nil, --[[fullSignature]]
+                            f:NewBlock(
+                                f:NewNodeList(
+                                    {}
+                                ),
+                                false --[[multiLine]]
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeExpressionDefault3", false, "export default (a, b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewExportAssignment(
+                        nil,   --[[modifiers]]
+                        false, --[[isExportEquals]]
+                        nil,   --[[typeNode]]
+
+                        f:NewBinaryExpression(
+                            nil, --[[modifiers]]
+                            f:NewIdentifier("a"),
+                            nil, --[[typeNode]]
+                            f:NewToken(ast.Kind.CommaToken),
+                            f:NewIdentifier("b")
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeArrayType", false, "type _ = (a | b)[];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewArrayTypeNode(
+
+                            f:NewUnionTypeNode(
+                                f:NewNodeList(
+                                    {
+                                        f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                    }
+                                )
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeOptionalType", false, "type _ = [\n    (a | b)?\n];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewTupleTypeNode(
+                            f:NewNodeList(
+                                {
+                                    f:NewOptionalTypeNode(
+
+                                        f:NewUnionTypeNode(
+                                            f:NewNodeList(
+                                                {
+                                                    f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                                                    f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                                }
+                                            )
+                                        )
+                                    ),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeUnionType1", false, "type _ = a | (() => b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewUnionTypeNode(
+                            f:NewNodeList(
+                                {
+                                    f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+
+                                    f:NewFunctionTypeNode(
+                                        nil, --[[typeParameters]]
+                                        f:NewNodeList(
+                                            {}
+                                        ),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]])
+                                    ),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeUnionType2", false, "type _ = (infer a extends b) | c;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewUnionTypeNode(
+                            f:NewNodeList(
+                                {
+
+                                    f:NewInferTypeNode(
+                                        f:NewTypeParameterDeclaration(
+                                            nil,
+                                            f:NewIdentifier("a"),
+                                            f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                            nil, --[[expression]]
+                                            nil --[[defaultType]]
+                                        )
+                                    ),
+                                    f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeIntersectionType", false, "type _ = a & (b | c);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewIntersectionTypeNode(
+                            f:NewNodeList(
+                                {
+                                    f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+
+                                    f:NewUnionTypeNode(
+                                        f:NewNodeList(
+                                            {
+                                                f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                                f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                                            }
+                                        )
+                                    ),
+                                }
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeReadonlyTypeOperator1", false, "type _ = readonly (a | b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewTypeOperatorNode(
+                            ast.Kind.ReadonlyKeyword,
+
+                            f:NewUnionTypeNode(
+                                f:NewNodeList(
+                                    {
+                                        f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                    }
+                                )
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeReadonlyTypeOperator2", false, "type _ = readonly (keyof a);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewTypeOperatorNode(
+                            ast.Kind.ReadonlyKeyword,
+
+                            f:NewTypeOperatorNode(
+                                ast.Kind.KeyOfKeyword,
+                                f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]])
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeKeyofTypeOperator", false, "type _ = keyof (a | b);", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewTypeOperatorNode(
+                            ast.Kind.KeyOfKeyword,
+
+                            f:NewUnionTypeNode(
+                                f:NewNodeList(
+                                    {
+                                        f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                    }
+                                )
+                            )
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeIndexedAccessType", false, "type _ = (a | b)[c];", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewIndexedAccessTypeNode(
+
+                            f:NewUnionTypeNode(
+                                f:NewNodeList(
+                                    {
+                                        f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                    }
+                                )
+                            ),
+                            f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]])
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditionalType1", false, "type _ = (() => a) extends b ? c : d;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewConditionalTypeNode(
+
+                            f:NewFunctionTypeNode(
+                                nil, --[[typeParameters]]
+                                f:NewNodeList(
+                                    {}
+                                ),
+                                f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]])
+                            ),
+                            f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                            f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                            f:NewTypeReferenceNode(f:NewIdentifier("d"), nil --[[typeArguments]])
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditionalType2", false, "type _ = a extends (b extends c ? d : e) ? f : g;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewConditionalTypeNode(
+                            f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+
+                            f:NewConditionalTypeNode(
+                                f:NewTypeReferenceNode(f:NewIdentifier("b"), nil --[[typeArguments]]),
+                                f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                                f:NewTypeReferenceNode(f:NewIdentifier("d"), nil --[[typeArguments]]),
+                                f:NewTypeReferenceNode(f:NewIdentifier("e"), nil --[[typeArguments]])
+                            ),
+                            f:NewTypeReferenceNode(f:NewIdentifier("f"), nil --[[typeArguments]]),
+                            f:NewTypeReferenceNode(f:NewIdentifier("g"), nil --[[typeArguments]])
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditionalType3", false, "type _ = a extends () => (infer b extends c) ? d : e;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList(
+                {
+                    f:NewTypeAliasDeclaration(
+                        nil,                        --[[modifiers]]
+                        f:NewIdentifier("_"), --[[name]]
+                        nil,                        --[[typeParameters]]
+                        f:NewConditionalTypeNode(
+                            f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                            f:NewFunctionTypeNode(
+                                nil, --[[typeParameters]]
+                                f:NewNodeList(
+                                    {}
+                                ),
+
+                                f:NewInferTypeNode(
+                                    f:NewTypeParameterDeclaration(
+                                        nil,
+                                        f:NewIdentifier("b"),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                                        nil, --[[expression]]
+                                        nil --[[defaultType]]
+                                    )
+                                )
+                            ),
+                            f:NewTypeReferenceNode(f:NewIdentifier("d"), nil --[[typeArguments]]),
+                            f:NewTypeReferenceNode(f:NewIdentifier("e"), nil --[[typeArguments]])
+                        )
+                    ),
+                }
+            ), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestParenthesizeConditionalType4", false, "type _ = a extends () => (infer b extends c) | d ? e : f;", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList({
+                f:NewTypeAliasDeclaration(
+                    nil,                        --[[modifiers]]
+                    f:NewIdentifier("_"), --[[name]]
+                    nil,                        --[[typeParameters]]
+                    f:NewConditionalTypeNode(
+                        f:NewTypeReferenceNode(f:NewIdentifier("a"), nil --[[typeArguments]]),
+                        f:NewFunctionTypeNode(
+                            nil, --[[typeParameters]]
+                            f:NewNodeList(
+                                {}
+                            ),
+
+                            f:NewUnionTypeNode(
+                                f:NewNodeList(
+                                    {
+                                        f:NewInferTypeNode(
+                                            f:NewTypeParameterDeclaration(
+                                                nil,
+                                                f:NewIdentifier("b"),
+                                                f:NewTypeReferenceNode(f:NewIdentifier("c"), nil --[[typeArguments]]),
+                                                nil, --[[expression]]
+                                                nil --[[defaultType]]
+                                            )
+                                        ),
+                                        f:NewTypeReferenceNode(f:NewIdentifier("d"), nil --[[typeArguments]]),
+                                    }
+                                )
+                            )
+                        ),
+                        f:NewTypeReferenceNode(f:NewIdentifier("e"), nil --[[typeArguments]]),
+                        f:NewTypeReferenceNode(f:NewIdentifier("f"), nil --[[typeArguments]])
+                    )
+                ),
+            }), f:NewToken(ast.Kind.EndOfFile))
+    end },
+    { "TestNameGeneration", true, "var _a;\nfunction f() {\n    var _a;\n}", function(f, ast)
+        return f:NewSourceFile({ fileName = "/file.ts", path = "/file.ts", externalModuleIndicatorOptions = { jsx = false, force = false } }, "", f:NewNodeList({
+                f:NewVariableStatement(nil, f:NewVariableDeclarationList(
+                    f:NewNodeList({
+                        f:NewVariableDeclaration(f:NewTempVariable(), nil, nil, nil),
+                    }),
+                    ast.NodeFlags.None
+                )),
+                f:NewFunctionDeclaration(
+                    nil,
+                    nil,
+                    f:NewIdentifier("f"),
+                    nil,
+                    f:NewNodeList({}),
+                    nil,
+                    nil,
+                    f:NewBlock(f:NewNodeList({
+                        f:NewVariableStatement(nil, f:NewVariableDeclarationList(
+                            f:NewNodeList({
+                                f:NewVariableDeclaration(f:NewTempVariable(), nil, nil, nil),
+                            }),
+                            ast.NodeFlags.None
+                        )),
+                    }), true)
+                ),
+            }), f:NewToken(ast.Kind.EndOfFile))
+    end },
+}
+
 local emitCases = {
     { "StringLiteral#1", ";\"test\"", ";\n\"test\";" },
     { "StringLiteral#2", ";'test'", ";\n'test';" },
@@ -623,6 +1960,78 @@ describe("printer", function()
                 assert.are.equal(expectedNoComments, emit(file, true))
             end)
         end
+    end)
+
+    describe("factory-built trees", function()
+        local ast = require("tslua.ast")
+        local factoryCases = factoryCasesTable
+
+        -- parsetestutil.MarkSyntheticRecursive
+        local function markSyntheticRecursive(node)
+            local v
+            local function undefine(n)
+                if n ~= nil then
+                    n.loc = core.UndefinedTextRange()
+                end
+            end
+            v = ast.NewNodeVisitor(function(n)
+                return v:VisitEachChild(n)
+            end, ast.NewNodeFactory({}), {
+                visitNode = function(n, vv) undefine(n) return vv:VisitNode(n) end,
+                visitToken = function(n, vv) undefine(n) return vv:VisitNode(n) end,
+                visitNodes = function(ns, vv) undefine(ns) return vv:VisitNodes(ns) end,
+                visitModifiers = function(ns, vv) undefine(ns) return vv:VisitModifiers(ns) end,
+            })
+            v:VisitNode(node)
+        end
+
+        for _, c in ipairs(factoryCases) do
+            local title, useEmitContext, expected, build = c[1], c[2], c[3], c[4]
+            it(title, function()
+                local ec = useEmitContext and printer.NewEmitContext() or nil
+                local f = ec and ec.factory or ast.NewNodeFactory({})
+                local file = build(f, ast)
+                markSyntheticRecursive(file)
+                local p = printer.NewPrinter({ newLine = core.NewLineKind.LF }, {}, ec)
+                local text = p:EmitSourceFile(file)
+                local actual = text
+                if actual:sub(-1) == "\n" then
+                    actual = actual:sub(1, -2)
+                end
+                assert.are.equal(expected, actual)
+                assert.are.equal(0, #parseTypeScript(text, false):Diagnostics())
+            end)
+        end
+    end)
+
+    local function stripNonNull(input, expected)
+        local ast = require("tslua.ast")
+        local file = parseTypeScript(input, false)
+        local emitContext = printer.NewEmitContext()
+        local visitor
+        visitor = emitContext:NewNodeVisitor(function(node)
+            if node.kind == ast.Kind.NonNullExpression then
+                node = node:Expression()
+            else
+                node = node:VisitEachChild(visitor)
+            end
+            return node
+        end)
+        file = visitor:VisitSourceFile(file)
+        local p = printer.NewPrinter({ newLine = core.NewLineKind.LF }, {}, emitContext)
+        local text = p:EmitSourceFile(file)
+        if text:sub(-1) == "\n" then
+            text = text:sub(1, -2)
+        end
+        assert.are.equal(expected, text)
+    end
+
+    it("NoTrailingCommaAfterTransform", function()
+        stripNonNull("[a!]", "[a];")
+    end)
+
+    it("TrailingCommaAfterTransform", function()
+        stripNonNull("[a!,]", "[a,];")
     end)
 
     it("OmitTrailingSemicolon", function()
