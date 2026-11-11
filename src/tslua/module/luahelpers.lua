@@ -1,5 +1,6 @@
 -- Lua-only helpers (Go `strings` package equivalents) used by ported code. No Go counterpart file.
 local module = require("tslua.module")
+local core = require("tslua.core")
 local stringutil = require("tslua.stringutil")
 local tspath = require("tslua.tspath")
 
@@ -213,4 +214,12 @@ end
 -- tspath.ComparePathsOptions value struct.
 function module.newComparePathsOptions(useCaseSensitiveFileNames, currentDirectory)
     return tspath.NewComparePathsOptions(useCaseSensitiveFileNames or false, currentDirectory or "")
+end
+
+-- Go append(xs, ys...): like core.AppendAll but keeps a nil xs nil when ys is empty.
+function module.appendAll(xs, ys)
+    if ys == nil or #ys == 0 then
+        return xs
+    end
+    return core.AppendAll(xs, ys)
 end

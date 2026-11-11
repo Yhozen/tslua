@@ -260,7 +260,7 @@ end
 -- Adapters over the generic values produced by tslua.json (Go's json.Unmarshal does the
 -- equivalent work through reflection).
 function packagejson.decodeJSON(data)
-    local ok, value, err = pcall(json.Unmarshal, data)
+    local ok, value, err = pcall(json.Unmarshal, data, { ordered = true, allowDuplicateNames = true })
     if not ok then
         return nil, tostring(value)
     end

@@ -7,6 +7,7 @@ local tspath = require("tslua.tspath")
 local vfsmatch = require("tslua.vfs.vfsmatch")
 
 local strings = require("tslua.module").strings
+local appendAll = require("tslua.module").appendAll
 
 tsoptions.fileGlobPattern = "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json}"
 tsoptions.recursiveFileGlobPattern = "**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json}"
@@ -406,7 +407,7 @@ end
 function ParsedCommandLine:GetConfigFileParsingDiagnostics()
     if self.configFile ~= nil then
         -- todo: !!! should be ConfigFile.ParseDiagnostics, check if they are the same
-        return core.AppendAll(core.Slice(self.configFile.sourceFile:Diagnostics(), 0), self.errors)
+        return appendAll(core.Slice(self.configFile.sourceFile:Diagnostics(), 0), self.errors)
     end
     return self.errors
 end

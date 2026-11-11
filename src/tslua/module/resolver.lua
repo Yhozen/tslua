@@ -9,6 +9,7 @@ local tspath = require("tslua.tspath")
 local vfsmatch = require("tslua.vfs.vfsmatch")
 
 local strings = module.strings
+local appendAll = module.appendAll
 local Tristate = core.Tristate
 local ModuleKind = core.ModuleKind
 local ModuleResolutionKind = core.ModuleResolutionKind
@@ -410,7 +411,7 @@ function Resolver:tryResolveFromTypingsLocation(moduleName, containingDirectory,
         return originalResult
     end
     local result = state:createResolvedModule(globalResolved, true)
-    local merged = core.AppendAll(core.Slice(originalResult.resolutionDiagnostics, 0), result.resolutionDiagnostics)
+    local merged = appendAll(core.Slice(originalResult.resolutionDiagnostics, 0), result.resolutionDiagnostics)
     if originalResult.resolutionDiagnostics == nil and result.resolutionDiagnostics == nil then
         merged = nil
     end
@@ -2283,7 +2284,7 @@ function module.GetAutomaticTypeDirectiveNames(options, host)
     local result = nil
     for _, t in ipairs(options.types or {}) do
         if t == "*" then
-            result = core.AppendAll(result, wildcardMatches)
+            result = appendAll(result, wildcardMatches)
         else
             result = core.Append(result, t)
         end

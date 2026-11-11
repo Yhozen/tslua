@@ -7,6 +7,7 @@ local stringutil = require("tslua.stringutil")
 local tspath = require("tslua.tspath")
 
 local strings = require("tslua.module").strings
+local appendAll = require("tslua.module").appendAll
 
 local commandLineParser = {}
 commandLineParser.__index = commandLineParser
@@ -324,13 +325,13 @@ function commandLineParser:parseOptionValue(
                 if err == nil then
                     self.options:Set(opt.name, val)
                 else
-                    self.errors = core.AppendAll(self.errors, err)
+                    self.errors = appendAll(self.errors, err)
                 end
                 i = i + 1
             elseif kind == "list" then
                 local result, err = self:parseListTypeOption(opt, args[i + 1])
                 self.options:Set(opt.name, result)
-                self.errors = core.AppendAll(self.errors, err)
+                self.errors = appendAll(self.errors, err)
                 if core.Len(result) > 0 or core.Len(err) > 0 then
                     i = i + 1
                 end
@@ -340,7 +341,7 @@ function commandLineParser:parseOptionValue(
             else
                 local val, err = tsoptions.convertJsonOptionOfEnumType(opt, strings.TrimFunc(args[i + 1], stringutil.IsWhiteSpaceLike), nil, nil)
                 self.options:Set(opt.name, val)
-                self.errors = core.AppendAll(self.errors, err)
+                self.errors = appendAll(self.errors, err)
                 i = i + 1
             end
         else
@@ -380,7 +381,7 @@ function tsoptions.ParseListTypeOption(opt, value)
             if type(val) == "string" and core.Len(err) == 0 and val ~= "" then
                 return val, true
             end
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             return "", false
         end)
         return elements, errors
@@ -394,7 +395,7 @@ function tsoptions.ParseListTypeOption(opt, value)
             if type(val) == "string" and core.Len(err) == 0 and val ~= "" then
                 return val, true
             end
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             return "", false
         end)
         return result, errors

@@ -12,6 +12,7 @@ local tspath = require("tslua.tspath")
 local vfsmatch = require("tslua.vfs.vfsmatch")
 
 local strings = module.strings
+local appendAll = module.appendAll
 local Kind = ast.Kind
 local CommandLineOptionKind = tsoptions.CommandLineOptionKind
 local isOrderedMap = tsoptions.isOrderedMap
@@ -130,7 +131,7 @@ function tsoptions.parseOwnConfigOfJsonSourceFile(
                 elseif parentOption.name == "typeAcquisition" then
                     parseDiagnostics = tsoptions.ParseTypeAcquisition(option.name, value, typeAcquisition)
                 end
-                propertySetErrors = core.AppendAll(propertySetErrors, parseDiagnostics)
+                propertySetErrors = appendAll(propertySetErrors, parseDiagnostics)
             elseif keyText ~= "" and tsoptions.extraKeyDiagnostics(parentOption.name) ~= nil then
                 local unknownNameDiag = tsoptions.extraKeyDiagnostics(parentOption.name)
                 if parentOption.elementOptions ~= nil then
@@ -166,7 +167,7 @@ function tsoptions.parseOwnConfigOfJsonSourceFile(
             if option == tsoptions.extendsOptionDeclaration then
                 local configPath, err = tsoptions.getExtendsConfigPathOrArray(value, host, basePath, configFileName, propertyAssignment, propertyAssignment.initializer, sourceFile)
                 extendedConfigPath = configPath
-                propertySetErrors = core.AppendAll(propertySetErrors, err)
+                propertySetErrors = appendAll(propertySetErrors, err)
             elseif option == nil then
                 if keyText == "excludes" then
                     propertySetErrors = core.Append(propertySetErrors, tsoptions.CreateDiagnosticForNodeInSourceFile(sourceFile, propertyAssignment:Name(), diagnostics.Unknown_option_excludes_Did_you_mean_exclude))
@@ -186,7 +187,7 @@ function tsoptions.parseOwnConfigOfJsonSourceFile(
             onPropertySet = onPropertySet,
         }
     )
-    errors = core.AppendAll(errors, err)
+    errors = appendAll(errors, err)
     if core.Len(rootCompilerOptions) ~= 0 and isOrderedMap(json) and not json:Has("compilerOptions") then
         errors = core.Append(errors, tsoptions.CreateDiagnosticForNodeInSourceFile(
             sourceFile,
@@ -340,7 +341,7 @@ function tsoptions.convertJsonOptionOfListType(
                 expression = valueExpression:Elements()[index1]
             end
             local result, err = tsoptions.convertJsonOption(option:Elements(), v, basePath, propertyAssignment, expression, sourceFile)
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             mappedValues[index1] = result
         end
         -- mappedValues may contain nil holes (Go nil); compact while filtering.
@@ -467,10 +468,10 @@ function tsoptions.getExtendsConfigPathOrArray(
                 if val ~= "" then
                     extendedConfigPathArray = core.Append(extendedConfigPathArray, val)
                 end
-                errors = core.AppendAll(errors, err)
+                errors = appendAll(errors, err)
             else
                 local _, err = tsoptions.convertJsonOption(tsoptions.extendsOptionDeclaration:Elements(), value, basePath, propertyAssignment, expression, sourceFile)
-                errors = core.AppendAll(errors, err)
+                errors = appendAll(errors, err)
             end
         end
     else
@@ -584,9 +585,9 @@ function tsoptions.convertOptionsFromJson(optionsNameMap, jsonOptions, basePath,
             errors = core.Append(errors, tsoptions.createUnknownOptionError(key, result:UnknownOptionDiagnostic(), "", nil, nil, nil, result:UnknownDidYouMeanDiagnostic(), optionsNameMap))
         else
             local convertJson, err = tsoptions.convertJsonOption(opt, value, basePath, nil, nil, nil)
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             local compilerOptionsErr = result:ParseOption(key, convertJson)
-            errors = core.AppendAll(errors, compilerOptionsErr)
+            errors = appendAll(errors, compilerOptionsErr)
         end
     end
     return result, errors
@@ -615,7 +616,7 @@ function tsoptions.convertArrayLiteralExpressionToJson(
     local value = nil
     for _, element in ipairs(elements) do
         local convertedValue, err = tsoptions.convertPropertyValueToJson(sourceFile, element, elementOption, returnValue, nil)
-        errors = core.AppendAll(errors, err)
+        errors = appendAll(errors, err)
         if convertedValue ~= nil then
             value = core.Append(value, convertedValue)
         end
@@ -711,7 +712,7 @@ function tsoptions.convertObjectLiteralExpressionToJson(
                 end
             end
             local value, err = tsoptions.convertPropertyValueToJson(sourceFile, element.initializer, option, returnValue, jsonConversionNotifier)
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             if keyText ~= "" then
                 if returnValue then
                     result:Set(keyText, value)
@@ -719,7 +720,7 @@ function tsoptions.convertObjectLiteralExpressionToJson(
                 -- Notify key value set, if user asked for it
                 if jsonConversionNotifier ~= nil then
                     local _, err2 = jsonConversionNotifier.onPropertySet(keyText, value, element, objectOption, option)
-                    errors = core.AppendAll(errors, err2)
+                    errors = appendAll(errors, err2)
                 end
             end
         end
@@ -918,18 +919,18 @@ function tsoptions.parseOwnConfigOfJson(
     end
     local options, err = tsoptions.convertCompilerOptionsFromJsonWorker(json:GetOrZero("compilerOptions"), basePath, configFileName)
     local typeAcquisition, err2 = tsoptions.convertTypeAcquisitionFromJsonWorker(json:GetOrZero("typeAcquisition"), basePath, configFileName)
-    errors = core.AppendAll(core.AppendAll(errors, err), err2)
+    errors = appendAll(appendAll(errors, err), err2)
     local compileOnSave, ok = json:Get("compileOnSave")
     if ok then
         local converted, compileOnSaveErrors = tsoptions.convertJsonOption(tsoptions.compileOnSaveCommandLineOption, compileOnSave, basePath, nil, nil, nil)
-        errors = core.AppendAll(errors, compileOnSaveErrors)
+        errors = appendAll(errors, compileOnSaveErrors)
         json:Set("compileOnSave", converted)
     end
     local extendedConfigPath = nil
     local extends = json:GetOrZero("extends")
     if extends ~= nil and extends ~= "" then
         extendedConfigPath, err = tsoptions.getExtendsConfigPathOrArray(extends, host, basePath, configFileName, nil, nil, nil)
-        errors = core.AppendAll(errors, err)
+        errors = appendAll(errors, err)
     end
     local parsedConfig = {
         raw = json,
@@ -980,7 +981,7 @@ function tsoptions.getExtendedConfig(
     end
 
     if core.Len(cacheEntry.errors) > 0 then
-        errors = core.AppendAll(errors, cacheEntry.errors)
+        errors = appendAll(errors, cacheEntry.errors)
     end
 
     if cacheEntry.extendedResult ~= nil then
@@ -1060,7 +1061,7 @@ function tsoptions.parseConfig(
             result = { raw = json }
         else
             local rawResult, err = tsoptions.convertToObject(sourceFile.sourceFile)
-            errors = core.AppendAll(errors, err)
+            errors = appendAll(errors, err)
             result = { raw = rawResult }
         end
         return result, errors
@@ -1072,7 +1073,7 @@ function tsoptions.parseConfig(
     else
         ownConfig, err = tsoptions.parseOwnConfigOfJsonSourceFile(tsoptions.tsconfigToSourceFile(sourceFile), host, basePath, configFileName)
     end
-    errors = core.AppendAll(errors, err)
+    errors = appendAll(errors, err)
     if ownConfig.options ~= nil and ownConfig.options.paths ~= nil then
         -- If we end up needing to resolve relative paths from 'paths' relative to
         -- the config file location, we'll need to know where that config file was.
@@ -1083,7 +1084,7 @@ function tsoptions.parseConfig(
 
     local function applyExtendedConfig(result, extendedConfigPath)
         local extendedConfig, extendedErrors = tsoptions.getExtendedConfig(sourceFile, extendedConfigPath, host, resolutionStack, extendedConfigCache, result)
-        errors = core.AppendAll(errors, extendedErrors)
+        errors = appendAll(errors, extendedErrors)
         if extendedConfig ~= nil and extendedConfig.options ~= nil then
             local extendsRaw = extendedConfig.raw
             local relativeDifference = ""
@@ -1308,7 +1309,7 @@ function tsoptions.parseJsonConfigFileContentWorker(
     if includeSpecs.sliceValue ~= nil then
         local err
         validatedIncludeSpecsBeforeSubstitution, err = tsoptions.validateSpecs(includeSpecs.sliceValue, true --[[disallowTrailingRecursion]], tsoptions.tsconfigToSourceFile(sourceFile), "include")
-        errors = core.AppendAll(errors, err)
+        errors = appendAll(errors, err)
         validatedIncludeSpecs = tsoptions.getSubstitutedStringArrayWithConfigDirTemplate(validatedIncludeSpecsBeforeSubstitution, basePathForFileNames)
         if validatedIncludeSpecs == nil then
             validatedIncludeSpecs = validatedIncludeSpecsBeforeSubstitution
@@ -1317,7 +1318,7 @@ function tsoptions.parseJsonConfigFileContentWorker(
     if excludeSpecs.sliceValue ~= nil then
         local err
         validatedExcludeSpecs, err = tsoptions.validateSpecs(excludeSpecs.sliceValue, false --[[disallowTrailingRecursion]], tsoptions.tsconfigToSourceFile(sourceFile), "exclude")
-        errors = core.AppendAll(errors, err)
+        errors = appendAll(errors, err)
         local validatedExcludeSpecsWithSubstitution = tsoptions.getSubstitutedStringArrayWithConfigDirTemplate(validatedExcludeSpecs, basePathForFileNames)
         if validatedExcludeSpecsWithSubstitution ~= nil then
             validatedExcludeSpecs = validatedExcludeSpecsWithSubstitution
@@ -1869,7 +1870,7 @@ function tsoptions.removeWildcardFilesWithLowerPriorityExtension(file, wildcardF
     local extensionGroup = nil
     for _, group in ipairs(extensions) do
         if tspath.FileExtensionIsOneOf(file, group) then
-            extensionGroup = core.AppendAll(extensionGroup, group)
+            extensionGroup = appendAll(extensionGroup, group)
         end
     end
     if extensionGroup == nil then
@@ -2011,7 +2012,7 @@ function tsoptions.GetSupportedExtensions(compilerOptions, extraExtensions)
     if core.Len(result) == 0 then
         return builtins
     end
-    return core.AppendAll(core.Slice(builtins, 0), result)
+    return appendAll(core.Slice(builtins, 0), result)
 end
 
 function tsoptions.GetSupportedExtensionsWithJsonIfResolveJsonModule(compilerOptions, supportedExtensions)
@@ -2024,7 +2025,7 @@ function tsoptions.GetSupportedExtensionsWithJsonIfResolveJsonModule(compilerOpt
     if core.Same(supportedExtensions, tspath.SupportedTSExtensions) then
         return tspath.SupportedTSExtensionsWithJson
     end
-    return core.AppendAll(core.Slice(supportedExtensions, 0), { { tspath.ExtensionJson } })
+    return appendAll(core.Slice(supportedExtensions, 0), { { tspath.ExtensionJson } })
 end
 
 -- Reads the config file and reports errors.
