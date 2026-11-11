@@ -187,7 +187,7 @@ function Parser:reparseJSDocSignature(jsSignature, fun, jsDoc, tag, modifiers)
         signature.typeParameters = p:gatherTypeParameters(jsDoc, false --[[typedefOrCallback]])
     end
     local parameters = {}
-    for pi1, param in ipairs(jsSignature:Parameters()) do
+    for pi1, param in ipairs(jsSignature:Parameters() or {}) do
         local pi = pi1 - 1
         local parameter
         if param.kind == Kind.JSDocThisTag then
@@ -326,7 +326,7 @@ function Parser:gatherTypeParameters(j, typedefOrCallback)
             endPos = tag:End()
             local constraint = tag:AsJSDocTemplateTag().constraint
             local firstTypeParameter = true
-            for _, tp in ipairs(tag:TypeParameters()) do
+            for _, tp in ipairs(tag:TypeParameters() or {}) do
                 local reparse
                 if constraint ~= nil and firstTypeParameter then
                     reparse = p.factory:NewTypeParameterDeclaration(
@@ -524,7 +524,7 @@ function Parser:reparseHosted(tag, parent, jsDoc)
     elseif k == Kind.JSDocThisTag then
         local fun = parser.getFunctionLikeHost(parent)
         if fun ~= nil then
-            local params = fun:Parameters()
+            local params = fun:Parameters() or {}
             if #params == 0 or (params[1]:Name().kind ~= Kind.ThisKeyword and not ast.IsThisIdentifier(params[1]:Name())) then
                 local thisParam = p.factory:NewParameterDeclaration(
                     nil, --[[ decorators ]]
@@ -592,7 +592,7 @@ function Parser:reparseHosted(tag, parent, jsDoc)
                 loc = tag.loc
             else
                 nodes = {}
-                for i, m in ipairs(parent:ModifierNodes()) do
+                for i, m in ipairs(parent:ModifierNodes() or {}) do
                     nodes[i] = m
                 end
                 nodes[#nodes + 1] = modifier
@@ -672,7 +672,7 @@ function parser.findMatchingParameter(fun, parameterTag, jsDoc)
             end
         end
     end
-    for parameterIndex1, parameter in ipairs(fun:Parameters()) do
+    for parameterIndex1, parameter in ipairs(fun:Parameters() or {}) do
         local parameterIndex = parameterIndex1 - 1
         if parameter:Name().kind == Kind.Identifier then
             if parameterTag:Name().kind == Kind.Identifier and

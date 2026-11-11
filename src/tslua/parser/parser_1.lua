@@ -227,7 +227,7 @@ function Parser:validateJsonValue(sourceFile, valueExpression)
         self:validateJsonObjectLiteral(sourceFile, valueExpression:AsObjectLiteralExpression())
         return
     elseif k == Kind.ArrayLiteralExpression then
-        for _, element in ipairs(valueExpression:Elements()) do
+        for _, element in ipairs(valueExpression:Elements() or {}) do
             self:validateJsonValue(sourceFile, element)
         end
         return

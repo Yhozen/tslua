@@ -1735,20 +1735,6 @@ function parser.attachFileToDiagnostics(diags, file)
     return diags
 end
 
--- Stable sort (Go slices.SortFunc with a total order is deterministic; keep ties in input order).
-function parser.sortFunc(xs, cmp)
-    local n = #xs
-    for i = 2, n do
-        local x = xs[i]
-        local j = i - 1
-        while j >= 1 and cmp(xs[j], x) > 0 do
-            xs[j + 1] = xs[j]
-            j = j - 1
-        end
-        xs[j + 1] = x
-    end
-end
-
 function parser.getCommentPragmas(f, sourceText)
     local pragmas = nil
     for commentRange in scanner.GetLeadingCommentRanges(f, sourceText, 0) do

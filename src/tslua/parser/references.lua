@@ -57,7 +57,7 @@ function parser.collectModuleReferences(file, node, inAmbientModule)
             -- Relative external module names are not permitted
             -- NOTE: body of ambient module is always a module block, if it exists
             if node:Body() ~= nil then
-                for _, statement in ipairs(node:Body():Statements()) do
+                for _, statement in ipairs(node:Body():Statements() or {}) do
                     parser.collectModuleReferences(file, statement, true --[[inAmbientModule]])
                 end
             end
