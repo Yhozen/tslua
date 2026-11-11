@@ -88,6 +88,7 @@ CompilerOptions.Fields = {
     { name = "noImplicitOverride", json = "noImplicitOverride", kind = "tristate" },
     { name = "noUncheckedSideEffectImports", json = "noUncheckedSideEffectImports", kind = "tristate" },
     { name = "outDir", json = "outDir", kind = "string" },
+    { name = "paths", json = "paths", kind = "map" },
     { name = "preserveConstEnums", json = "preserveConstEnums", kind = "tristate" },
     { name = "preserveSymlinks", json = "preserveSymlinks", kind = "tristate" },
     { name = "project", json = "project", kind = "string" },
