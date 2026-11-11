@@ -18,7 +18,6 @@ local UnionReduction = checker.UnionReduction
 local SignatureKind = checker.SignatureKind
 local SignatureFlags = checker.SignatureFlags
 local TypeSystemPropertyName = checker.TypeSystemPropertyName
-local MembersOrExportsResolutionKind = checker.MembersOrExportsResolutionKind
 local IterationTypeKind = checker.IterationTypeKind
 local TypePredicateKind = checker.TypePredicateKind
 local TypeFacts = checker.TypeFacts
@@ -609,11 +608,11 @@ function Checker:getWidenedTypeWithContext(t, context)
             if unionContext == nil then
                 unionContext = checker.WideningContext_new({ siblings = t:Types() })
             end
-            local widenedTypes = core.SameMap(t:Types(), function(t)
-                if t.flags & TypeFlags.Nullable ~= 0 then
-                    return t
+            local widenedTypes = core.SameMap(t:Types(), function(u)
+                if u.flags & TypeFlags.Nullable ~= 0 then
+                    return u
                 end
-                return self:getWidenedTypeWithContext(t, unionContext)
+                return self:getWidenedTypeWithContext(u, unionContext)
             end)
             -- Widening an empty object literal transitions from a highly restrictive type to
             -- a highly inclusive one. For that reason we perform subtype reduction here if the
@@ -1827,13 +1826,13 @@ end
 -- TODO: GH#18217 If `checkBase` is undefined, we should not call this because this will always return false.
 function Checker:hasBaseType(t, checkBase)
     local check
-    check = function(t)
-        if t.objectFlags & (ObjectFlags.ClassOrInterface | ObjectFlags.Reference) ~= 0 then
-            local target = checker.getTargetType(t)
+    check = function(u)
+        if u.objectFlags & (ObjectFlags.ClassOrInterface | ObjectFlags.Reference) ~= 0 then
+            local target = checker.getTargetType(u)
             return target == checkBase or core.Some(self:getBaseTypes(target), check)
         end
-        if t.flags & TypeFlags.Intersection ~= 0 then
-            return core.Some(t:Types(), check)
+        if u.flags & TypeFlags.Intersection ~= 0 then
+            return core.Some(u:Types(), check)
         end
         return false
     end
@@ -1860,7 +1859,7 @@ function Checker:getTypeWithThisArgument(t, thisArgument, needApparentType)
         return t
     elseif t.flags & TypeFlags.Intersection ~= 0 then
         local types = t:Types()
-        local newTypes = core.SameMap(types, function(t) return self:getTypeWithThisArgument(t, thisArgument, needApparentType) end)
+        local newTypes = core.SameMap(types, function(u) return self:getTypeWithThisArgument(u, thisArgument, needApparentType) end)
         if core.Same(newTypes, types) then
             return t
         end
@@ -2938,4 +2937,790 @@ function Checker:instantiateIndexInfo(info, m)
         return info
     end
     return self:newIndexInfo(info.keyType, newValueType, info.isReadonly, info.declaration, info.components)
+end
+
+function Checker:resolveAnonymousTypeMembers(t)
+    local d = t:AsObjectType()
+    if d.target ~= nil then
+        self:setStructuredTypeMembers(t, nil, nil, nil, nil)
+        local members = self:createInstantiatedSymbolTable(self:getPropertiesOfObjectType(d.target), d.mapper)
+        local callSignatures = self:instantiateSignatures(self:getSignaturesOfType(d.target, SignatureKind.Call), d.mapper)
+        local constructSignatures = self:instantiateSignatures(self:getSignaturesOfType(d.target, SignatureKind.Construct), d.mapper)
+        local indexInfos = self:instantiateIndexInfos(self:getIndexInfosOfType(d.target), d.mapper)
+        self:setStructuredTypeMembers(t, members, callSignatures, constructSignatures, indexInfos)
+        return
+    end
+    local symbol = self:getMergedSymbol(t.symbol)
+    if symbol.flags & SymbolFlags.TypeLiteral ~= 0 then
+        self:setStructuredTypeMembers(t, nil, nil, nil, nil)
+        local members = self:getMembersOfSymbol(symbol)
+        local callSignatures = self:getSignaturesOfSymbol(members and members[ast.InternalSymbolNameCall])
+        local constructSignatures = self:getSignaturesOfSymbol(members and members[ast.InternalSymbolNameNew])
+        local indexInfos = self:getIndexInfosOfSymbol(symbol)
+        self:setStructuredTypeMembers(t, members, callSignatures, constructSignatures, indexInfos)
+        return
+    end
+    -- Combinations of function, class, enum and module
+    local members = self:getExportsOfSymbol(symbol)
+    local indexInfos = nil
+    if symbol == self.globalThisSymbol then
+        local varsOnly = ast.NewSymbolTable()
+        for _, p in pairs(members or {}) do
+            if p.flags & SymbolFlags.BlockScoped == 0 and not (p.flags & SymbolFlags.ValueModule ~= 0 and core.Len(p.declarations) ~= 0 and core.Every(p.declarations, ast.IsAmbientModule)) then
+                varsOnly[p.name] = p
+            end
+        end
+        members = varsOnly
+    end
+    local baseConstructorIndexInfo
+    self:setStructuredTypeMembers(t, members, nil, nil, nil)
+    if symbol.flags & SymbolFlags.Class ~= 0 then
+        local classType = self:getDeclaredTypeOfClassOrInterface(symbol)
+        local baseConstructorType = self:getBaseConstructorTypeOfClass(classType)
+        if baseConstructorType.flags & (TypeFlags.Object | TypeFlags.Intersection | TypeFlags.TypeVariable) ~= 0 then
+            members = mapsClone(members)
+            self:addInheritedMembers(members, self:getPropertiesOfType(baseConstructorType))
+            self:setStructuredTypeMembers(t, members, nil, nil, nil)
+        elseif baseConstructorType == self.anyType then
+            baseConstructorIndexInfo = self.anyBaseTypeIndexInfo
+        end
+    end
+    local indexSymbol = members and members[ast.InternalSymbolNameIndex]
+    if indexSymbol ~= nil then
+        -- Go collects the values of a map (random order).
+        local siblingSymbols = {}
+        for _, s in pairs(members) do
+            siblingSymbols[#siblingSymbols + 1] = s
+        end
+        indexInfos = self:getIndexInfosOfIndexSymbol(indexSymbol, siblingSymbols)
+    else
+        if baseConstructorIndexInfo ~= nil then
+            indexInfos = core.Append(indexInfos, baseConstructorIndexInfo)
+        end
+        if symbol.flags & SymbolFlags.Enum ~= 0 and (self:getDeclaredTypeOfSymbol(symbol).flags & TypeFlags.Enum ~= 0 or core.Some(d.properties, function(prop)
+            return self:getTypeOfSymbol(prop).flags & TypeFlags.NumberLike ~= 0
+        end)) then
+            indexInfos = core.Append(indexInfos, self.enumNumberIndexInfo)
+        end
+    end
+    d.indexInfos = indexInfos
+    -- We resolve the members before computing the signatures because a signature may use
+    -- typeof with a qualified name expression that circularly references the type we are
+    -- in the process of resolving (see issue #6072). The temporarily empty signature list
+    -- will never be observed because a qualified name can't reference signatures.
+    if symbol.flags & (SymbolFlags.Function | SymbolFlags.Method) ~= 0 then
+        d.signatures = self:getSignaturesOfSymbol(symbol)
+        d.callSignatureCount = core.Len(d.signatures)
+    end
+    -- And likewise for construct signatures for classes
+    if symbol.flags & SymbolFlags.Class ~= 0 then
+        local classType = self:getDeclaredTypeOfClassOrInterface(symbol)
+        local constructSignatures = self:getSignaturesOfSymbol(symbol.members and symbol.members[ast.InternalSymbolNameConstructor])
+        if core.Len(constructSignatures) == 0 then
+            constructSignatures = self:getDefaultConstructSignatures(classType)
+        end
+        if d.signatures ~= nil or core.Len(constructSignatures) ~= 0 then
+            d.signatures = core.AppendAll(d.signatures, constructSignatures)
+        end
+    end
+end
+
+function Checker:createInstantiatedSymbolTable(symbols, m)
+    if core.Len(symbols) == 0 then
+        return nil
+    end
+    local result = ast.NewSymbolTable()
+    for _, symbol in ipairs(symbols) do
+        result[symbol.name] = self:instantiateSymbol(symbol, m)
+    end
+    return result
+end
+
+function Checker:instantiateSymbolTable(symbols, m)
+    if symbols == nil or next(symbols) == nil then
+        return nil
+    end
+    local result = ast.NewSymbolTable()
+    for id, symbol in pairs(symbols) do
+        if self:isNamedMember(symbol, id) then
+            result[id] = self:instantiateSymbol(symbol, m)
+        end
+    end
+    return result
+end
+
+function Checker:instantiateSymbol(symbol, m)
+    if symbol == nil then
+        return nil
+    end
+    local links = self.valueSymbolLinks:Get(symbol)
+    if m ~= nil and m:MapsThisOnly() and checker.isThisless(symbol) then
+        return symbol
+    end
+    -- If the type of the symbol is already resolved, and if that type could not possibly
+    -- be affected by instantiation, simply return the symbol itself.
+    if links.resolvedType ~= nil and not self.couldContainTypeVariables(links.resolvedType) then
+        if symbol.flags & SymbolFlags.SetAccessor == 0 then
+            return symbol
+        end
+        -- If we're a setter, check writeType.
+        if links.writeType ~= nil and not self.couldContainTypeVariables(links.writeType) then
+            return symbol
+        end
+    end
+    if symbol.checkFlags & CheckFlags.Instantiated ~= 0 then
+        -- If symbol being instantiated is itself a instantiation, fetch the original target and combine the
+        -- type mappers. This ensures that original type identities are properly preserved and that aliases
+        -- always reference a non-aliases.
+        symbol = links.target
+        m = self:combineTypeMappers(links.mapper, m)
+    end
+    -- Keep the flags from the symbol we're instantiating.  Mark that is instantiated, and
+    -- also transient so that we can just store data on it directly.
+    local result = self:newSymbol(symbol.flags, symbol.name)
+    result.checkFlags = CheckFlags.Instantiated | symbol.checkFlags & (CheckFlags.Readonly | CheckFlags.Late | CheckFlags.OptionalParameter | CheckFlags.RestParameter)
+    result.declarations = symbol.declarations
+    result.parent = symbol.parent
+    result.valueDeclaration = symbol.valueDeclaration
+    local resultLinks = self.valueSymbolLinks:Get(result)
+    resultLinks.target = symbol
+    resultLinks.mapper = m
+    resultLinks.nameType = links.nameType
+    return result
+end
+
+-- Returns true if the parameter or class/interface member given by the symbol is free of "this" references. The
+-- function may return false for symbols that are actually free of "this" references because it is not
+-- feasible to perform a complete analysis in all cases. In particular, property members with types
+-- inferred from their initializers and function members with inferred return types are conservatively
+-- assumed not to be free of "this" references.
+function checker.isThisless(symbol)
+    if core.Len(symbol.declarations) == 1 then
+        local declaration = symbol.declarations[1]
+        if declaration ~= nil then
+            local k = declaration.kind
+            if k == Kind.Parameter then
+                return checker.isThislessVariableLikeDeclaration(declaration)
+            elseif k == Kind.PropertyDeclaration or k == Kind.PropertySignature then
+                return checker.isThislessVariableLikeDeclaration(declaration)
+            elseif k == Kind.MethodDeclaration or k == Kind.MethodSignature or k == Kind.Constructor or k == Kind.GetAccessor or k == Kind.SetAccessor then
+                return checker.isThislessFunctionLikeDeclaration(declaration)
+            end
+        end
+    end
+    return false
+end
+
+-- A variable-like declaration is free of this references if it has a type annotation
+-- that is thisless, or if it has no type annotation and no initializer (and is thus of type any).
+function checker.isThislessVariableLikeDeclaration(node)
+    local typeNode = node:Type()
+    if typeNode ~= nil then
+        return checker.isThislessType(typeNode)
+    end
+    return node:Initializer() == nil
+end
+
+local thislessTypeKinds = ast.kindSet(Kind.AnyKeyword, Kind.UnknownKeyword, Kind.StringKeyword, Kind.NumberKeyword, Kind.BigIntKeyword, Kind.BooleanKeyword,
+    Kind.SymbolKeyword, Kind.ObjectKeyword, Kind.VoidKeyword, Kind.UndefinedKeyword, Kind.NeverKeyword, Kind.LiteralType)
+
+-- A type is free of this references if it's the any, string, number, boolean, symbol, or void keyword, a string
+-- literal type, an array with an element type that is free of this references, or a type reference that is
+-- free of this references.
+function checker.isThislessType(node)
+    local k = node.kind
+    if thislessTypeKinds[k] then
+        return true
+    elseif k == Kind.ArrayType then
+        return checker.isThislessType(node:AsArrayTypeNode().elementType)
+    elseif k == Kind.TypeReference then
+        return core.Every(node:TypeArguments(), checker.isThislessType)
+    end
+    return false
+end
+
+-- A function-like declaration is considered free of `this` references if it has a return type
+-- annotation that is free of this references and if each parameter is thisless and if
+-- each type parameter (if present) is thisless.
+function checker.isThislessFunctionLikeDeclaration(node)
+    local returnType = node:Type()
+    return (ast.IsConstructorDeclaration(node) or returnType ~= nil and checker.isThislessType(returnType)) and
+        core.Every(node:Parameters(), checker.isThislessVariableLikeDeclaration) and
+        core.Every(node:TypeParameters(), checker.isThislessTypeParameter)
+end
+
+-- A type parameter is thisless if its constraint is thisless, or if it has no constraint. */
+function checker.isThislessTypeParameter(node)
+    local constraint = node:AsTypeParameterDeclaration().constraint
+    return constraint == nil or checker.isThislessType(constraint)
+end
+
+function Checker:getDefaultConstructSignatures(classType)
+    local baseConstructorType = self:getBaseConstructorTypeOfClass(classType)
+    local baseSignatures = self:getSignaturesOfType(baseConstructorType, SignatureKind.Construct)
+    local declaration = ast.GetClassLikeDeclarationOfSymbol(classType.symbol)
+    local isAbstract = declaration ~= nil and ast.HasSyntacticModifier(declaration, ModifierFlags.Abstract)
+    if core.Len(baseSignatures) == 0 then
+        local flags = core.IfElse(isAbstract, SignatureFlags.Construct | SignatureFlags.Abstract, SignatureFlags.Construct)
+        return { self:newSignature(flags, nil, classType:AsInterfaceType():LocalTypeParameters(), nil, nil, classType, nil, 0) }
+    end
+    local baseTypeNode = checker.getBaseTypeNodeOfClass(classType)
+    local isJavaScript = declaration ~= nil and ast.IsInJSFile(declaration)
+    local typeArguments = self:getTypeArgumentsFromNode(baseTypeNode)
+    local typeArgCount = core.Len(typeArguments)
+    local result
+    for _, baseSig in ipairs(baseSignatures) do
+        local minTypeArgumentCount = self:getMinTypeArgumentCount(baseSig.typeParameters)
+        local typeParamCount = core.Len(baseSig.typeParameters)
+        if isJavaScript or typeArgCount >= minTypeArgumentCount and typeArgCount <= typeParamCount then
+            local sig
+            if typeParamCount ~= 0 then
+                sig = self:createSignatureInstantiation(baseSig, self:fillMissingTypeArguments(typeArguments, baseSig.typeParameters, minTypeArgumentCount, isJavaScript))
+            else
+                sig = self:cloneSignature(baseSig)
+            end
+            sig.typeParameters = classType:AsInterfaceType():LocalTypeParameters()
+            sig.resolvedReturnType = classType
+            if isAbstract then
+                sig.flags = sig.flags | SignatureFlags.Abstract
+            else
+                sig.flags = sig.flags & ~SignatureFlags.Abstract
+            end
+            result = core.Append(result, sig)
+        end
+    end
+    return result
+end
+
+function Checker:resolveMappedTypeMembers(t)
+    local members = ast.NewSymbolTable()
+    local indexInfos
+    -- Resolve upfront such that recursive references see an empty object type.
+    self:setStructuredTypeMembers(t, nil, nil, nil, nil)
+    -- In { [P in K]: T }, we refer to P as the type parameter type, K as the constraint type,
+    -- and T as the template type.
+    local typeParameter = self:getTypeParameterFromMappedType(t)
+    local constraintType = self:getConstraintTypeFromMappedType(t)
+    local mappedType = core.OrElse(t:AsMappedType().target, t)
+    local nameType = self:getNameTypeFromMappedType(mappedType)
+    local shouldLinkPropDeclarations = self:getMappedTypeNameTypeKind(mappedType) ~= checker.MappedTypeNameTypeKind.Remapping
+    local templateType = self:getTemplateTypeFromMappedType(mappedType)
+    local modifiersType = self:getApparentType(self:getModifiersTypeFromMappedType(t))
+    -- The 'T' in 'keyof T'
+    local templateModifiers = checker.getMappedTypeModifiers(t)
+    local include = TypeFlags.StringOrNumberLiteralOrUnique
+    local addMemberForKeyTypeWorker = function(keyType, propNameType)
+        -- If the current iteration type constituent is a string literal type, create a property.
+        -- Otherwise, for type string create a string index signature.
+        if checker.isTypeUsableAsPropertyName(propNameType) then
+            local propName = checker.getPropertyNameFromType(propNameType)
+            -- String enum members from separate enums with identical values
+            -- are distinct types with the same property name. Make the resulting
+            -- property symbol's name type be the union of those enum member types.
+            local existingProp = members[propName]
+            if existingProp ~= nil then
+                local valueLinks = self.valueSymbolLinks:Get(existingProp)
+                valueLinks.nameType = self:getUnionType({ valueLinks.nameType, propNameType })
+                local mappedLinks = self.mappedSymbolLinks:Get(existingProp)
+                mappedLinks.keyType = self:getUnionType({ mappedLinks.keyType, keyType })
+            else
+                local modifiersProp
+                if checker.isTypeUsableAsPropertyName(keyType) then
+                    modifiersProp = self:getPropertyOfType(modifiersType, checker.getPropertyNameFromType(keyType))
+                end
+                local isOptional = templateModifiers & MappedTypeModifiers.IncludeOptional ~= 0 or templateModifiers & MappedTypeModifiers.ExcludeOptional == 0 and modifiersProp ~= nil and modifiersProp.flags & SymbolFlags.Optional ~= 0
+                local isReadonly = templateModifiers & MappedTypeModifiers.IncludeReadonly ~= 0 or templateModifiers & MappedTypeModifiers.ExcludeReadonly == 0 and modifiersProp ~= nil and self:isReadonlySymbol(modifiersProp)
+                local stripOptional = self.strictNullChecks and not isOptional and modifiersProp ~= nil and modifiersProp.flags & SymbolFlags.Optional ~= 0
+                local lateFlag = 0
+                if modifiersProp ~= nil then
+                    lateFlag = modifiersProp.checkFlags & CheckFlags.Late
+                end
+                local prop = self:newSymbol(SymbolFlags.Property | core.IfElse(isOptional, SymbolFlags.Optional, 0), propName)
+                prop.checkFlags = lateFlag | CheckFlags.Mapped | core.IfElse(isReadonly, CheckFlags.Readonly, 0) | core.IfElse(stripOptional, CheckFlags.StripOptional, 0)
+                local valueLinks = self.valueSymbolLinks:Get(prop)
+                valueLinks.containingType = t
+                valueLinks.nameType = propNameType
+                local mappedLinks = self.mappedSymbolLinks:Get(prop)
+                mappedLinks.keyType = keyType
+                if modifiersProp ~= nil then
+                    mappedLinks.syntheticOrigin = modifiersProp
+                    if shouldLinkPropDeclarations then
+                        prop.declarations = modifiersProp.declarations
+                    end
+                end
+                members[propName] = prop
+            end
+        elseif self:isValidIndexKeyType(propNameType) or propNameType.flags & (TypeFlags.Any | TypeFlags.Enum) ~= 0 then
+            local indexKeyType = propNameType
+            if propNameType.flags & (TypeFlags.Any | TypeFlags.String) ~= 0 then
+                indexKeyType = self.stringType
+            elseif propNameType.flags & (TypeFlags.Number | TypeFlags.Enum) ~= 0 then
+                indexKeyType = self.numberType
+            end
+            local propType = self:instantiateType(templateType, checker.appendTypeMapping(t:AsMappedType().mapper, typeParameter, keyType))
+            local modifiersIndexInfo = self:getApplicableIndexInfo(modifiersType, propNameType)
+            local isReadonly = templateModifiers & MappedTypeModifiers.IncludeReadonly ~= 0 or templateModifiers & MappedTypeModifiers.ExcludeReadonly == 0 and modifiersIndexInfo ~= nil and modifiersIndexInfo.isReadonly
+            local indexInfo = self:newIndexInfo(indexKeyType, propType, isReadonly, nil, nil)
+            indexInfos = self:appendIndexInfo(indexInfos, indexInfo, true --[[union]])
+        end
+    end
+    local addMemberForKeyType = function(keyType)
+        local propNameType = keyType
+        if nameType ~= nil then
+            propNameType = self:instantiateType(nameType, checker.appendTypeMapping(t:AsMappedType().mapper, typeParameter, keyType))
+        end
+        checker.forEachType(propNameType, function(u)
+            addMemberForKeyTypeWorker(keyType, u)
+        end)
+    end
+    if self:isMappedTypeWithKeyofConstraintDeclaration(t) then
+        -- We have a { [P in keyof T]: X }
+        self:forEachMappedTypePropertyKeyTypeAndIndexSignatureKeyType(modifiersType, include, false --[[stringsOnly]], addMemberForKeyType)
+    else
+        checker.forEachType(self:getLowerBoundOfKeyType(constraintType), addMemberForKeyType)
+    end
+    self:setStructuredTypeMembers(t, members, nil, nil, indexInfos)
+end
+
+function Checker:getTypeOfMappedSymbol(symbol)
+    local links = self.valueSymbolLinks:Get(symbol)
+    if links.resolvedType == nil then
+        local mappedType = links.containingType
+        if not self:pushTypeResolution(symbol, TypeSystemPropertyName.Type) then
+            mappedType:AsMappedType().containsError = true
+            return self.errorType
+        end
+        local templateType = self:getTemplateTypeFromMappedType(core.OrElse(mappedType:AsMappedType().target, mappedType))
+        local mapper = checker.appendTypeMapping(mappedType:AsMappedType().mapper, self:getTypeParameterFromMappedType(mappedType), self.mappedSymbolLinks:Get(symbol).keyType)
+        local propType = self:instantiateType(templateType, mapper)
+        -- When creating an optional property in strictNullChecks mode, if 'undefined' isn't assignable to the
+        -- type, we include 'undefined' in the type. Similarly, when creating a non-optional property in strictNullChecks
+        -- mode, if the underlying property is optional we remove 'undefined' from the type.
+        if self.strictNullChecks and symbol.flags & SymbolFlags.Optional ~= 0 and not self:maybeTypeOfKind(propType, TypeFlags.Undefined | TypeFlags.Void) then
+            propType = self:getOptionalType(propType, true --[[isProperty]])
+        elseif symbol.checkFlags & CheckFlags.StripOptional ~= 0 then
+            propType = self:removeMissingOrUndefinedType(propType)
+        end
+        if self:popTypeResolution() then
+            if links.resolvedType == nil then
+                links.resolvedType = propType
+            end
+        else
+            if links.resolvedType == nil then
+                links.resolvedType = self.errorType
+            end
+            self:error(self.currentNode, diagnostics.Type_of_property_0_circularly_references_itself_in_mapped_type_1, self:symbolToString(symbol), self:TypeToString(mappedType))
+        end
+    end
+    return links.resolvedType
+end
+
+-- Return the lower bound of the key type in a mapped type. Intuitively, the lower
+-- bound includes those keys that are known to always be present, for example because
+-- because of constraints on type parameters (e.g. 'keyof T' for a constrained T).
+function Checker:getLowerBoundOfKeyType(t)
+    if t.flags & TypeFlags.Index ~= 0 then
+        local at = self:getApparentType(t:AsIndexType().target)
+        if self:isGenericTupleType(at) then
+            return self:getKnownKeysOfTupleType(at)
+        end
+        return self:getIndexType(at)
+    elseif t.flags & TypeFlags.Conditional ~= 0 then
+        if t:AsConditionalType().root.isDistributive then
+            local checkType = t:AsConditionalType().checkType
+            local constraint = self:getLowerBoundOfKeyType(checkType)
+            if constraint ~= checkType then
+                return self:getConditionalTypeInstantiation(t, checker.prependTypeMapping(t:AsConditionalType().root.checkType, constraint, t:AsConditionalType().mapper), false --[[forConstraint]], nil)
+            end
+        end
+        return t
+    elseif t.flags & TypeFlags.Union ~= 0 then
+        return self:mapTypeEx(t, function(x) return self:getLowerBoundOfKeyType(x) end, true --[[noReductions]])
+    elseif t.flags & TypeFlags.Intersection ~= 0 then
+        -- Similarly to getTypeFromIntersectionTypeNode, we preserve the special string & {}, number & {},
+        -- and bigint & {} intersections that are used to prevent subtype reduction in union types.
+        local types = t:Types()
+        if #types == 2 and types[1].flags & (TypeFlags.String | TypeFlags.Number | TypeFlags.BigInt) ~= 0 and types[2] == self.emptyTypeLiteralType then
+            return t
+        end
+        return self:getIntersectionType(core.SameMap(t:Types(), function(x) return self:getLowerBoundOfKeyType(x) end))
+    end
+    return t
+end
+
+function Checker:resolveUnionTypeMembers(t)
+    -- The members and properties collections are empty for union types. To get all properties of a union
+    -- type use getPropertiesOfType (only the language service uses this).
+    local callSignatures = self:getUnionSignatures(core.Map(t:Types(), function(u)
+        if u == self.globalFunctionType then
+            return { self.unknownSignature }
+        end
+        return self:getSignaturesOfType(u, SignatureKind.Call)
+    end))
+    if core.Len(callSignatures) == 0 then
+        callSignatures = self:getArrayMemberCallSignatures(t)
+    end
+    local constructSignatures = self:getUnionSignatures(core.Map(t:Types(), function(u)
+        return self:getSignaturesOfType(u, SignatureKind.Construct)
+    end))
+    local indexInfos = self:getUnionIndexInfos(t:Types())
+    self:setStructuredTypeMembers(t, nil, callSignatures, constructSignatures, indexInfos)
+end
+
+function Checker:getArrayMemberCallSignatures(t)
+    -- Check if union is exclusively instantiations of a member of the global Array or ReadonlyArray type.
+    local memberName = ""
+    for i1, ti in ipairs(t:Types()) do
+        if ti.objectFlags & ObjectFlags.Instantiated == 0 or ti.symbol == nil or ti.symbol.parent == nil or not self:isArrayOrTupleSymbol(ti.symbol.parent) then
+            return nil
+        end
+        if i1 == 1 then
+            memberName = ti.symbol.name
+        elseif memberName ~= ti.symbol.name then
+            return nil
+        end
+    end
+    -- Transform the type from `(A[] | B[])["member"]` to `(A | B)[]["member"]` (since we pretend array is covariant anyway).
+    local arrayArg = self:mapType(t, function(u)
+        return u:Mapper():Map(core.IfElse(self:isReadonlyArraySymbol(u.symbol.parent), self.globalReadonlyArrayType, self.globalArrayType):AsInterfaceType():TypeParameters()[1])
+    end)
+    local arrayType = self:createArrayTypeEx(arrayArg, checker.someType(t, function(u)
+        return self:isReadonlyArraySymbol(u.symbol.parent)
+    end))
+    return self:getSignaturesOfType(self:getTypeOfPropertyOfType(arrayType, memberName), SignatureKind.Call)
+end
+
+function Checker:isArrayOrTupleSymbol(symbol)
+    if symbol == nil or self.globalArrayType.symbol == nil or self.globalReadonlyArrayType.symbol == nil then
+        return false
+    end
+    return self:getSymbolIfSameReference(symbol, self.globalArrayType.symbol) ~= nil or self:getSymbolIfSameReference(symbol, self.globalReadonlyArrayType.symbol) ~= nil
+end
+
+function Checker:isReadonlyArraySymbol(symbol)
+    if symbol == nil or self.globalReadonlyArrayType.symbol == nil then
+        return false
+    end
+    return self:getSymbolIfSameReference(symbol, self.globalReadonlyArrayType.symbol) ~= nil
+end
+
+-- The signatures of a union type are those signatures that are present in each of the constituent types.
+-- Generic signatures must match exactly, but non-generic signatures are allowed to have extra optional
+-- parameters and may differ in return types. When signatures differ in return types, the resulting return
+-- type is the union of the constituent return types.
+function Checker:getUnionSignatures(signatureLists)
+    local result
+    local indexWithLengthOverOne = 0
+    local countLengthOverOne = 0
+    for i1, list in ipairs(signatureLists) do
+        local i = i1 - 1
+        if core.Len(list) == 0 then
+            return nil
+        end
+        if #list > 1 then
+            indexWithLengthOverOne = i
+            countLengthOverOne = countLengthOverOne + 1
+        end
+        for _, signature in ipairs(list) do
+            -- Only process signatures with parameter lists that aren't already in the result list
+            if result == nil or self:findMatchingSignature(result, signature, false --[[partialMatch]], false --[[ignoreThisTypes]], true --[[ignoreReturnTypes]]) == nil then
+                local unionSignatures = self:findMatchingSignatures(signatureLists, signature, i)
+                if unionSignatures ~= nil then
+                    local s = signature
+                    -- Union the result types when more than one signature matches
+                    if #unionSignatures > 1 then
+                        local thisParameter = signature.thisParameter
+                        local firstThisParameterOfUnionSignatures = core.FirstNonNil(unionSignatures, function(sig)
+                            return sig.thisParameter
+                        end)
+                        if firstThisParameterOfUnionSignatures ~= nil then
+                            local thisType = self:getIntersectionType(core.MapNonNil(unionSignatures, function(sig)
+                                if sig.thisParameter ~= nil then
+                                    return self:getTypeOfSymbol(sig.thisParameter)
+                                end
+                                return nil
+                            end))
+                            thisParameter = self:createSymbolWithType(firstThisParameterOfUnionSignatures, thisType)
+                        end
+                        s = self:createUnionSignature(signature, unionSignatures)
+                        s.thisParameter = thisParameter
+                    end
+                    result = core.Append(result, s)
+                end
+            end
+        end
+    end
+    if core.Len(result) == 0 and countLengthOverOne <= 1 then
+        -- No sufficiently similar signature existed to subsume all the other signatures in the union - time to see if we can make a single
+        -- signature that handles all of them. We only do this when there are overloads in only one constituent. (Overloads are conditional in
+        -- nature and having overloads in multiple constituents would necessitate making a power set of signatures from the type, whose
+        -- ordering would be non-obvious)
+        local masterList = signatureLists[indexWithLengthOverOne + 1]
+        local results = core.Slice(masterList, 0, #masterList)
+        for _, signatures in ipairs(signatureLists) do
+            if not core.Same(signatures, masterList) then
+                local signature = signatures[1]
+                debug.Assert(signature ~= nil, "getUnionSignatures bails early on empty signature lists and should not have empty lists on second pass")
+                if core.Len(signature.typeParameters) ~= 0 and core.Some(results, function(s)
+                    return core.Len(s.typeParameters) ~= 0 and not self:compareTypeParametersIdentical(signature.typeParameters, s.typeParameters)
+                end) then
+                    results = nil
+                else
+                    results = core.Map(results, function(sig)
+                        return self:combineUnionOrIntersectionMemberSignatures(sig, signature, true --[[isUnion]])
+                    end)
+                end
+                if results == nil then
+                    break
+                end
+            end
+        end
+        result = results
+    end
+    return result
+end
+
+function Checker:combineUnionOrIntersectionMemberSignatures(left, right, isUnion)
+    local typeParams = left.typeParameters
+    if core.Len(typeParams) == 0 then
+        typeParams = right.typeParameters
+    end
+    local paramMapper
+    if core.Len(left.typeParameters) ~= 0 and core.Len(right.typeParameters) ~= 0 then
+        -- We just use the type parameter defaults from the first signature
+        paramMapper = checker.newTypeMapper(right.typeParameters, left.typeParameters)
+    end
+    local flags = (left.flags | right.flags) & (SignatureFlags.PropagatingFlags & ~SignatureFlags.HasRestParameter)
+    local declaration = left.declaration
+    local params = self:combineUnionOrIntersectionParameters(left, right, paramMapper, isUnion)
+    local lastParam = core.LastOrNil(params)
+    if lastParam ~= nil and lastParam.checkFlags & CheckFlags.RestParameter ~= 0 then
+        flags = flags | SignatureFlags.HasRestParameter
+    end
+    local thisParam = self:combineUnionOrIntersectionThisParam(left.thisParameter, right.thisParameter, paramMapper, isUnion)
+    local minArgCount = math.max(left.minArgumentCount, right.minArgumentCount)
+    local result = self:newSignature(flags, declaration, typeParams, thisParam, params, nil, nil, minArgCount)
+    local leftSignatures
+    if left.composite ~= nil and left.composite.isUnion then
+        leftSignatures = left.composite.signatures
+    else
+        leftSignatures = { left }
+    end
+    local signatures = core.Slice(leftSignatures, 0, #leftSignatures)
+    signatures[#signatures + 1] = right
+    result.composite = checker.CompositeSignature_new({ isUnion = isUnion, signatures = signatures })
+    if paramMapper ~= nil then
+        if left.composite ~= nil and left.composite.isUnion == isUnion and left.mapper ~= nil then
+            result.mapper = self:combineTypeMappers(left.mapper, paramMapper)
+        else
+            result.mapper = paramMapper
+        end
+    elseif left.composite ~= nil and left.composite.isUnion == isUnion then
+        result.mapper = left.mapper
+    end
+    return result
+end
+
+function Checker:combineUnionOrIntersectionParameters(left, right, mapper, isUnion)
+    local leftCount = self:getParameterCount(left)
+    local rightCount = self:getParameterCount(right)
+    local longestCount
+    local longest, shorter
+    if leftCount >= rightCount then
+        longestCount, longest, shorter = leftCount, left, right
+    else
+        longestCount, longest, shorter = rightCount, right, left
+    end
+    local eitherHasEffectiveRest = self:hasEffectiveRestParameter(left) or self:hasEffectiveRestParameter(right)
+    local needsExtraRestElement = eitherHasEffectiveRest and not self:hasEffectiveRestParameter(longest)
+    local params = {}
+    for i = 0, longestCount - 1 do
+        local longestParamType = self:tryGetTypeAtPosition(longest, i)
+        if longest == right then
+            longestParamType = self:instantiateType(longestParamType, mapper)
+        end
+        local shorterParamType = core.OrElse(self:tryGetTypeAtPosition(shorter, i), self.unknownType)
+        if shorter == right then
+            shorterParamType = self:instantiateType(shorterParamType, mapper)
+        end
+        local combinedParamType = self:getUnionOrIntersectionType({ longestParamType, shorterParamType }, not isUnion, UnionReduction.Literal)
+        local isRestParam = eitherHasEffectiveRest and not needsExtraRestElement and i == (longestCount - 1)
+        local isOptional = i >= self:getMinArgumentCount(longest) and i >= self:getMinArgumentCount(shorter)
+        local leftName, rightName = "", ""
+        if i < leftCount then
+            leftName = self:getParameterNameAtPosition(left, i)
+        end
+        if i < rightCount then
+            rightName = self:getParameterNameAtPosition(right, i)
+        end
+        local paramName = ""
+        if leftName == rightName then
+            paramName = leftName
+        elseif leftName == "" then
+            paramName = rightName
+        elseif rightName == "" then
+            paramName = leftName
+        end
+        if paramName == "" then
+            paramName = "arg" .. i
+        end
+        local paramSymbol = self:newSymbolEx(SymbolFlags.FunctionScopedVariable | core.IfElse(isOptional and not isRestParam, SymbolFlags.Optional, 0), paramName,
+            core.IfElse(isRestParam, CheckFlags.RestParameter, core.IfElse(isOptional, CheckFlags.OptionalParameter, 0)))
+        local links = self.valueSymbolLinks:Get(paramSymbol)
+        if isRestParam then
+            links.resolvedType = self:createArrayType(combinedParamType)
+        else
+            links.resolvedType = combinedParamType
+        end
+        params[i + 1] = paramSymbol
+    end
+    if needsExtraRestElement then
+        local restParamSymbol = self:newSymbolEx(SymbolFlags.FunctionScopedVariable, "args", CheckFlags.RestParameter)
+        local links = self.valueSymbolLinks:Get(restParamSymbol)
+        links.resolvedType = self:createArrayType(self:getTypeAtPosition(shorter, longestCount))
+        if shorter == right then
+            links.resolvedType = self:instantiateType(links.resolvedType, mapper)
+        end
+        params[longestCount + 1] = restParamSymbol
+    end
+    return params
+end
+
+function Checker:combineUnionOrIntersectionThisParam(left, right, mapper, isUnion)
+    if left == nil then
+        return right
+    end
+    if right == nil then
+        return left
+    end
+    -- A signature `this` type might be a read or a write position... It's very possible that it should be invariant
+    -- and we should refuse to merge signatures if there are `this` types and they do not match. However, so as to be
+    -- permissive when calling, for now, we'll intersect the `this` types just like we do for param types in union signatures.
+    local thisType = self:getUnionOrIntersectionType({ self:getTypeOfSymbol(left), self:instantiateType(self:getTypeOfSymbol(right), mapper) }, not isUnion, UnionReduction.Literal)
+    return self:createSymbolWithType(left, thisType)
+end
+
+function Checker:resolveIntersectionTypeMembers(t)
+    -- The members and properties collections are empty for intersection types. To get all properties of an
+    -- intersection type use getPropertiesOfType (only the language service uses this).
+    local callSignatures
+    local constructSignatures
+    local indexInfos
+    local types = t:Types()
+    local mixinFlags, mixinCount = self:findMixins(types)
+    for i1, ti in ipairs(types) do
+        local i = i1 - 1
+        -- When an intersection type contains mixin constructor types, the construct signatures from
+        -- those types are discarded and their return types are mixed into the return types of all
+        -- other construct signatures in the intersection type. For example, the intersection type
+        -- '{ new(...args: any[]) => A } & { new(s: string) => B }' has a single construct signature
+        -- 'new(s: string) => A & B'.
+        if not mixinFlags[i1] then
+            local signatures = self:getSignaturesOfType(ti, SignatureKind.Construct)
+            if core.Len(signatures) ~= 0 and mixinCount > 0 then
+                signatures = core.Map(signatures, function(s)
+                    local clone = self:cloneSignature(s)
+                    clone.resolvedReturnType = self:includeMixinType(self:getReturnTypeOfSignature(s), types, mixinFlags, i)
+                    return clone
+                end)
+            end
+            constructSignatures = self:appendSignatures(constructSignatures, signatures)
+        end
+        callSignatures = self:appendSignatures(callSignatures, self:getSignaturesOfType(ti, SignatureKind.Call))
+        for _, info in ipairs(self:getIndexInfosOfType(ti) or {}) do
+            indexInfos = self:appendIndexInfo(indexInfos, info, false --[[union]])
+        end
+    end
+    self:setStructuredTypeMembers(t, nil, callSignatures, constructSignatures, indexInfos)
+end
+
+function Checker:appendSignatures(signatures, newSignatures)
+    for _, sig in ipairs(newSignatures or {}) do
+        if core.Len(signatures) == 0 or core.Every(signatures, function(s)
+            return self:compareSignaturesIdentical(s, sig, false --[[partialMatch]], false --[[ignoreThisTypes]], false --[[ignoreReturnTypes]], function(a, b) return self:compareTypesIdentical(a, b) end) == checker.Ternary.False
+        end) then
+            signatures = core.Append(signatures, sig)
+        end
+    end
+    return signatures
+end
+
+function Checker:appendIndexInfo(indexInfos, newInfo, union)
+    for i, info in ipairs(indexInfos or {}) do
+        if info.keyType == newInfo.keyType then
+            local valueType
+            local isReadonly
+            if union then
+                valueType = self:getUnionType({ info.valueType, newInfo.valueType })
+                isReadonly = info.isReadonly or newInfo.isReadonly
+            else
+                valueType = self:getIntersectionType({ info.valueType, newInfo.valueType })
+                isReadonly = info.isReadonly and newInfo.isReadonly
+            end
+            indexInfos[i] = self:newIndexInfo(info.keyType, valueType, isReadonly, nil, nil)
+            return indexInfos
+        end
+    end
+    return core.Append(indexInfos, newInfo)
+end
+
+-- mixinFlags is an array of booleans parallel to types.
+function Checker:findMixins(types)
+    local mixinFlags = core.Map(types, function(t) return self:isMixinConstructorType(t) end)
+    local constructorTypeCount, mixinCount = 0, 0
+    local firstMixinIndex = -1
+    for i1, t in ipairs(types) do
+        local i = i1 - 1
+        if core.Len(self:getSignaturesOfType(t, SignatureKind.Construct)) > 0 then
+            constructorTypeCount = constructorTypeCount + 1
+        end
+        if mixinFlags[i1] then
+            if firstMixinIndex < 0 then
+                firstMixinIndex = i
+            end
+            mixinCount = mixinCount + 1
+        end
+    end
+    if constructorTypeCount > 0 and constructorTypeCount == mixinCount then
+        mixinFlags[firstMixinIndex + 1] = false
+        mixinCount = mixinCount - 1
+    end
+    return mixinFlags, mixinCount
+end
+
+function Checker:includeMixinType(t, types, mixinFlags, index)
+    local mixedTypes
+    for i1 = 1, #types do
+        local i = i1 - 1
+        if i == index then
+            mixedTypes = core.Append(mixedTypes, t)
+        elseif mixinFlags[i1] then
+            mixedTypes = core.Append(mixedTypes, self:getReturnTypeOfSignature(self:getSignaturesOfType(types[i1], SignatureKind.Construct)[1]))
+        end
+    end
+    return self:getIntersectionType(mixedTypes)
+end
+
+--[[*
+ * If the given type is an object type and that type has a property by the given name,
+ * return the symbol for that property. Otherwise return undefined.
+ ]]
+function Checker:getPropertyOfObjectType(t, name)
+    if t.flags & TypeFlags.Object ~= 0 then
+        local resolved = self:resolveStructuredTypeMembers(t)
+        local symbol = resolved.members and resolved.members[name]
+        if symbol ~= nil and self:symbolIsValue(symbol) then
+            return symbol
+        end
+    end
+    return nil
+end
+
+function Checker:getPropertyOfUnionOrIntersectionType(t, name, skipObjectFunctionPropertyAugment)
+    local prop = self:getUnionOrIntersectionProperty(t, name, skipObjectFunctionPropertyAugment)
+    -- We need to filter out partial properties in union types
+    if prop ~= nil and prop.checkFlags & CheckFlags.ReadPartial ~= 0 then
+        return nil
+    end
+    return prop
 end
