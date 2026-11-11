@@ -2461,3 +2461,612 @@ end
 function Checker:getTypeFacts(t, mask)
     return self:getTypeFactsWorker(t, mask) & mask
 end
+
+function Checker:hasTypeFacts(t, mask)
+    return self:getTypeFacts(t, mask) ~= 0
+end
+
+function Checker:getTypeFactsWorker(t, callerOnlyNeeds)
+    if t.flags & (TypeFlags.Intersection | TypeFlags.Instantiable) ~= 0 then
+        t = self:getBaseConstraintOfType(t)
+        if t == nil then
+            t = self.unknownType
+        end
+    end
+    local flags = t.flags
+    if flags & (TypeFlags.String | TypeFlags.StringMapping) ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.StringStrictFacts
+        end
+        return TypeFacts.StringFacts
+    elseif flags & (TypeFlags.StringLiteral | TypeFlags.TemplateLiteral) ~= 0 then
+        local isEmpty = flags & TypeFlags.StringLiteral ~= 0 and checker.getStringLiteralValue(t) == ""
+        if self.strictNullChecks then
+            if isEmpty then
+                return TypeFacts.EmptyStringStrictFacts
+            end
+            return TypeFacts.NonEmptyStringStrictFacts
+        end
+        if isEmpty then
+            return TypeFacts.EmptyStringFacts
+        end
+        return TypeFacts.NonEmptyStringFacts
+    elseif flags & (TypeFlags.Number | TypeFlags.Enum) ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.NumberStrictFacts
+        end
+        return TypeFacts.NumberFacts
+    elseif flags & TypeFlags.NumberLiteral ~= 0 then
+        local isZero = checker.getNumberLiteralValue(t) == 0
+        if self.strictNullChecks then
+            if isZero then
+                return TypeFacts.ZeroNumberStrictFacts
+            end
+            return TypeFacts.NonZeroNumberStrictFacts
+        end
+        if isZero then
+            return TypeFacts.ZeroNumberFacts
+        end
+        return TypeFacts.NonZeroNumberFacts
+    elseif flags & TypeFlags.BigInt ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.BigIntStrictFacts
+        end
+        return TypeFacts.BigIntFacts
+    elseif flags & TypeFlags.BigIntLiteral ~= 0 then
+        local isZero = checker.isZeroBigInt(t)
+        if self.strictNullChecks then
+            if isZero then
+                return TypeFacts.ZeroBigIntStrictFacts
+            end
+            return TypeFacts.NonZeroBigIntStrictFacts
+        end
+        if isZero then
+            return TypeFacts.ZeroBigIntFacts
+        end
+        return TypeFacts.NonZeroBigIntFacts
+    elseif flags & TypeFlags.Boolean ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.BooleanStrictFacts
+        end
+        return TypeFacts.BooleanFacts
+    elseif flags & TypeFlags.BooleanLike ~= 0 then
+        local isFalse = t == self.falseType or t == self.regularFalseType
+        if self.strictNullChecks then
+            if isFalse then
+                return TypeFacts.FalseStrictFacts
+            end
+            return TypeFacts.TrueStrictFacts
+        end
+        if isFalse then
+            return TypeFacts.FalseFacts
+        end
+        return TypeFacts.TrueFacts
+    elseif flags & TypeFlags.Object ~= 0 then
+        local possibleFacts
+        if self.strictNullChecks then
+            possibleFacts = TypeFacts.EmptyObjectStrictFacts | TypeFacts.FunctionStrictFacts | TypeFacts.ObjectStrictFacts
+        else
+            possibleFacts = TypeFacts.EmptyObjectFacts | TypeFacts.FunctionFacts | TypeFacts.ObjectFacts
+        end
+        if (callerOnlyNeeds & possibleFacts) == 0 then
+            -- If the caller doesn't care about any of the facts that we could possibly produce,
+            -- return zero so we can skip resolving members.
+            return TypeFacts.None
+        end
+        if t.objectFlags & ObjectFlags.Anonymous ~= 0 and self:isEmptyObjectType(t) then
+            if self.strictNullChecks then
+                return TypeFacts.EmptyObjectStrictFacts
+            end
+            return TypeFacts.EmptyObjectFacts
+        elseif self:isFunctionObjectType(t) then
+            if self.strictNullChecks then
+                return TypeFacts.FunctionStrictFacts
+            end
+            return TypeFacts.FunctionFacts
+        elseif self.strictNullChecks then
+            return TypeFacts.ObjectStrictFacts
+        end
+        return TypeFacts.ObjectFacts
+    elseif flags & TypeFlags.Void ~= 0 then
+        return TypeFacts.VoidFacts
+    elseif flags & TypeFlags.Undefined ~= 0 then
+        return TypeFacts.UndefinedFacts
+    elseif flags & TypeFlags.Null ~= 0 then
+        return TypeFacts.NullFacts
+    elseif flags & TypeFlags.ESSymbolLike ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.SymbolStrictFacts
+        else
+            return TypeFacts.SymbolFacts
+        end
+    elseif flags & TypeFlags.NonPrimitive ~= 0 then
+        if self.strictNullChecks then
+            return TypeFacts.ObjectStrictFacts
+        else
+            return TypeFacts.ObjectFacts
+        end
+    elseif flags & TypeFlags.Never ~= 0 then
+        return TypeFacts.None
+    elseif flags & TypeFlags.Union ~= 0 then
+        local facts = 0
+        for _, t1 in ipairs(t:Types()) do
+            facts = facts | self:getTypeFactsWorker(t1, callerOnlyNeeds)
+        end
+        return facts
+    elseif flags & TypeFlags.Intersection ~= 0 then
+        return self:getIntersectionTypeFacts(t, callerOnlyNeeds)
+    end
+    return TypeFacts.UnknownFacts
+end
+
+function Checker:getIntersectionTypeFacts(t, callerOnlyNeeds)
+    -- When an intersection contains a primitive type we ignore object type constituents as they are
+    -- presumably type tags. For example, in string & { __kind__: "name" } we ignore the object type.
+    local ignoreObjects = self:maybeTypeOfKind(t, TypeFlags.Primitive)
+    -- When computing the type facts of an intersection type, certain type facts are computed as `and`
+    -- and others are computed as `or`.
+    local oredFacts = TypeFacts.None
+    local andedFacts = TypeFacts.All
+    for _, t1 in ipairs(t:Types()) do
+        if not (ignoreObjects and t1.flags & TypeFlags.Object ~= 0) then
+            local f = self:getTypeFactsWorker(t1, callerOnlyNeeds)
+            oredFacts = oredFacts | f
+            andedFacts = andedFacts & f
+        end
+    end
+    return oredFacts & TypeFacts.OrFactsMask | andedFacts & TypeFacts.AndFactsMask
+end
+
+function checker.isZeroBigInt(t)
+    local v = checker.getBigIntLiteralValue(t)
+    return not v.negative and v.base10Value == ""
+end
+
+function Checker:isFunctionObjectType(t)
+    if t.objectFlags & ObjectFlags.EvolvingArray ~= 0 then
+        return false
+    end
+    -- We do a quick check for a "bind" property before performing the more expensive subtype
+    -- check. This gives us a quicker out in the common case where an object type is not a function.
+    local resolved = self:resolveStructuredTypeMembers(t)
+    return core.Len(resolved.signatures) ~= 0 or (resolved.members or {})["bind"] ~= nil and self:isTypeSubtypeOf(t, self.globalFunctionType)
+end
+
+function Checker:getTypeWithFacts(t, include)
+    return self:filterType(t, function(t1)
+        return self:hasTypeFacts(t1, include)
+    end)
+end
+
+-- This function is similar to getTypeWithFacts, except that in strictNullChecks mode it replaces type
+-- unknown with the union {} | null | undefined (and reduces that accordingly), and it intersects remaining
+-- instantiable types with {}, {} | null, or {} | undefined in order to remove null and/or undefined.
+function Checker:getAdjustedTypeWithFacts(t, facts)
+    local reduced = self:recombineUnknownType(self:getTypeWithFacts(core.IfElse(self.strictNullChecks and t.flags & TypeFlags.Unknown ~= 0, self.unknownUnionType, t), facts))
+    if self.strictNullChecks then
+        if facts == TypeFacts.NEUndefined then
+            return self:removeNullableByIntersection(reduced, TypeFacts.EQUndefined, TypeFacts.EQNull, TypeFacts.IsNull, self.nullType)
+        elseif facts == TypeFacts.NENull then
+            return self:removeNullableByIntersection(reduced, TypeFacts.EQNull, TypeFacts.EQUndefined, TypeFacts.IsUndefined, self.undefinedType)
+        elseif facts == TypeFacts.NEUndefinedOrNull or facts == TypeFacts.Truthy then
+            return self:mapType(reduced, function(t1)
+                if self:hasTypeFacts(t1, TypeFacts.EQUndefinedOrNull) then
+                    return self:getGlobalNonNullableTypeInstantiation(t1)
+                end
+                return t1
+            end)
+        end
+    end
+    return reduced
+end
+
+function Checker:removeNullableByIntersection(t, targetFacts, otherFacts, otherIncludesFacts, otherType)
+    local facts = self:getTypeFacts(t, TypeFacts.EQUndefined | TypeFacts.EQNull | TypeFacts.IsUndefined | TypeFacts.IsNull)
+    -- Simply return the type if it never compares equal to the target nullable.
+    if facts & targetFacts == 0 then
+        return t
+    end
+    -- By default we intersect with a union of {} and the opposite nullable.
+    local emptyAndOtherUnion = self:getUnionType({ self.emptyObjectType, otherType })
+    -- For each constituent type that can compare equal to the target nullable, intersect with the above union
+    -- if the type doesn't already include the opposite nullable and the constituent can compare equal to the
+    -- opposite nullable; otherwise, just intersect with {}.
+    return self:mapType(t, function(t1)
+        if self:hasTypeFacts(t1, targetFacts) then
+            if facts & otherIncludesFacts == 0 and self:hasTypeFacts(t1, otherFacts) then
+                return self:getIntersectionType({ t1, emptyAndOtherUnion })
+            end
+            return self:getIntersectionType({ t1, self.emptyObjectType })
+        end
+        return t1
+    end)
+end
+
+function Checker:recombineUnknownType(t)
+    if t == self.unknownUnionType then
+        return self.unknownType
+    end
+    return t
+end
+
+function Checker:getGlobalNonNullableTypeInstantiation(t)
+    local alias = self.getGlobalNonNullableTypeAliasOrNil()
+    if alias ~= nil then
+        return self:getTypeAliasInstantiation(alias, { t }, nil)
+    end
+    return self:getIntersectionType({ t, self.emptyObjectType })
+end
+
+function Checker:convertAutoToAny(t)
+    if t == self.autoType then
+        return self.anyType
+    elseif t == self.autoArrayType then
+        return self.anyArrayType
+    end
+    return t
+end
+
+-- Gets the "awaited type" of a type.
+-- @param type The type to await.
+-- @param withAlias When `true`, wraps the "awaited type" in `Awaited<T>` if needed.
+-- @remarks The "awaited type" of an expression is its "promised type" if the expression is a
+-- Promise-like type; otherwise, it is the type of the expression. This is used to reflect
+-- The runtime behavior of the `await` keyword.
+function Checker:checkAwaitedType(t, withAlias, errorNode, diagnosticMessage)
+    local awaitedType
+    if withAlias then
+        awaitedType = self:getAwaitedTypeEx(t, errorNode, diagnosticMessage)
+    else
+        awaitedType = self:getAwaitedTypeNoAliasEx(t, errorNode, diagnosticMessage)
+    end
+    if awaitedType ~= nil then
+        return awaitedType
+    end
+    return self.errorType
+end
+
+-- Gets the "awaited type" of a type.
+--
+-- The "awaited type" of an expression is its "promised type" if the expression is a
+-- Promise-like type; otherwise, it is the type of the expression. If the "promised
+-- type" is itself a Promise-like, the "promised type" is recursively unwrapped until a
+-- non-promise type is found.
+--
+-- This is used to reflect the runtime behavior of the `await` keyword.
+function Checker:getAwaitedType(t)
+    return self:getAwaitedTypeEx(t, nil, nil)
+end
+
+function Checker:getAwaitedTypeEx(t, errorNode, diagnosticMessage, ...)
+    local awaitedType = self:getAwaitedTypeNoAliasEx(t, errorNode, diagnosticMessage, ...)
+    if awaitedType ~= nil then
+        return self:createAwaitedTypeIfNeeded(awaitedType)
+    end
+    return nil
+end
+
+-- Gets the "awaited type" of a type without introducing an `Awaited<T>` wrapper.
+function Checker:getAwaitedTypeNoAlias(t)
+    return self:getAwaitedTypeNoAliasEx(t, nil, nil)
+end
+
+function Checker:getAwaitedTypeNoAliasEx(t, errorNode, diagnosticMessage, ...)
+    local args = table.pack(...)
+    if checker.IsTypeAny(t) then
+        return t
+    end
+    -- If this is already an `Awaited<T>`, just return it. This avoids `Awaited<Awaited<T>>` in higher-order
+    if self:isAwaitedTypeInstantiation(t) then
+        return t
+    end
+    -- If we've already cached an awaited type, return a possible `Awaited<T>` for it.
+    local key = checker.CachedTypeKey(CachedTypeKind.AwaitedType, t.id)
+    local cachedAwaitedType = self.cachedTypes[key]
+    if cachedAwaitedType ~= nil then
+        return cachedAwaitedType
+    end
+    -- For a union, get a union of the awaited types of each constituent.
+    if t.flags & TypeFlags.Union ~= 0 then
+        if slicesContains(self.awaitedTypeStack, t) then
+            if errorNode ~= nil then
+                self:error(errorNode, diagnostics.Type_is_referenced_directly_or_indirectly_in_the_fulfillment_callback_of_its_own_then_method)
+            end
+            return nil
+        end
+        self.awaitedTypeStack[#self.awaitedTypeStack + 1] = t
+        local mapped = self:mapType(t, function(t1) return self:getAwaitedTypeNoAliasEx(t1, errorNode, diagnosticMessage, table.unpack(args, 1, args.n)) end)
+        self.awaitedTypeStack[#self.awaitedTypeStack] = nil
+        self.cachedTypes[key] = mapped
+        return mapped
+    end
+    -- If `type` is generic and should be wrapped in `Awaited<T>`, return it.
+    if self:isAwaitedTypeNeeded(t) then
+        self.cachedTypes[key] = t
+        return t
+    end
+    local thisTypeForError = { value = nil }
+    local promisedType = self:getPromisedTypeOfPromiseEx(t, nil --[[errorNode]], thisTypeForError)
+    if promisedType ~= nil then
+        if t == promisedType or slicesContains(self.awaitedTypeStack, promisedType) then
+            -- Verify that we don't have a bad actor in the form of a promise whose
+            -- promised type is the same as the promise type, or a mutually recursive
+            -- promise. If so, we return undefined as we cannot guess the shape. If this
+            -- were the actual case in the JavaScript, this Promise would never resolve.
+            --
+            -- An example of a bad actor with a singly-recursive promise type might
+            -- be:
+            --
+            --  interface BadPromise {
+            --      then(
+            --          onfulfilled: (value: BadPromise) => any,
+            --          onrejected: (error: any) => any): BadPromise;
+            --  }
+            --
+            -- The above interface will pass the PromiseLike check, and return a
+            -- promised type of `BadPromise`. Since this is a self reference, we
+            -- don't want to keep recursing ad infinitum.
+            --
+            -- An example of a bad actor in the form of a mutually-recursive
+            -- promise type might be:
+            --
+            --  interface BadPromiseA {
+            --      then(
+            --          onfulfilled: (value: BadPromiseB) => any,
+            --          onrejected: (error: any) => any): BadPromiseB;
+            --  }
+            --
+            --  interface BadPromiseB {
+            --      then(
+            --          onfulfilled: (value: BadPromiseA) => any,
+            --          onrejected: (error: any) => any): BadPromiseA;
+            --  }
+            --
+            if errorNode ~= nil then
+                self:error(errorNode, diagnostics.Type_is_referenced_directly_or_indirectly_in_the_fulfillment_callback_of_its_own_then_method)
+            end
+            return nil
+        end
+        -- Keep track of the type we're about to unwrap to avoid bad recursive promise types.
+        -- See the comments above for more information.
+        self.awaitedTypeStack[#self.awaitedTypeStack + 1] = t
+        local awaitedType = self:getAwaitedTypeNoAliasEx(promisedType, errorNode, diagnosticMessage, table.unpack(args, 1, args.n))
+        self.awaitedTypeStack[#self.awaitedTypeStack] = nil
+        if awaitedType == nil then
+            return nil
+        end
+        self.cachedTypes[key] = awaitedType
+        return awaitedType
+    end
+    -- The type was not a promise, so it could not be unwrapped any further.
+    -- As long as the type does not have a callable "then" property, it is
+    -- safe to return the type; otherwise, an error is reported and we return
+    -- undefined.
+    --
+    -- An example of a non-promise "thenable" might be:
+    --
+    --  await { then(): void {} }
+    --
+    -- The "thenable" does not match the minimal definition for a promise. When
+    -- a Promise/A+-compatible or ES6 promise tries to adopt this value, the promise
+    -- will never settle. We treat this as an error to help flag an early indicator
+    -- of a runtime problem. If the user wants to return this value from an async
+    -- function, they would need to wrap it in some other value. If they want it to
+    -- be treated as a promise, they can cast to <any>.
+    if self:isThenableType(t) then
+        if errorNode ~= nil then
+            local diagnostic
+            if thisTypeForError.value ~= nil then
+                diagnostic = checker.NewDiagnosticForNode(errorNode, diagnostics.The_this_context_of_type_0_is_not_assignable_to_method_s_this_of_type_1, self:TypeToString(t), self:TypeToString(thisTypeForError.value))
+            end
+            self:addDiagnostic(checker.NewDiagnosticChainForNode(diagnostic, errorNode, diagnosticMessage, table.unpack(args, 1, args.n)))
+        end
+        return nil
+    end
+    self.cachedTypes[key] = t
+    return t
+end
+
+function Checker:isAwaitedTypeInstantiation(t)
+    if t.flags & TypeFlags.Conditional ~= 0 then
+        local awaitedSymbol = self.getGlobalAwaitedSymbolOrNil()
+        return awaitedSymbol ~= nil and t.alias ~= nil and t.alias.symbol == awaitedSymbol and core.Len(t.alias.typeArguments) == 1
+    end
+    return false
+end
+
+function Checker:isAwaitedTypeNeeded(t)
+    -- If this is already an `Awaited<T>`, we shouldn't wrap it. This helps to avoid `Awaited<Awaited<T>>` in higher-order.
+    if checker.IsTypeAny(t) or self:isAwaitedTypeInstantiation(t) then
+        return false
+    end
+    -- We only need `Awaited<T>` if `T` contains possibly non-primitive types.
+    if self:isGenericObjectType(t) then
+        local baseConstraint = self:getBaseConstraintOfType(t)
+        -- We only need `Awaited<T>` if `T` is a type variable that has no base constraint, or the base constraint of `T` is `any`, `unknown`, `{}`, `object`,
+        -- or is promise-like.
+        if baseConstraint ~= nil then
+            return baseConstraint.flags & TypeFlags.AnyOrUnknown ~= 0 or self:isEmptyObjectType(baseConstraint) or checker.someType(baseConstraint, function(t1) return self:isThenableType(t1) end)
+        end
+        return self:maybeTypeOfKind(t, TypeFlags.TypeVariable)
+    end
+    return false
+end
+
+function Checker:createAwaitedTypeIfNeeded(t)
+    -- We wrap type `T` in `Awaited<T>` based on the following conditions:
+    -- - `T` is not already an `Awaited<U>`, and
+    -- - `T` is generic, and
+    -- - One of the following applies:
+    --   - `T` has no base constraint, or
+    --   - The base constraint of `T` is `any`, `unknown`, `object`, or `{}`, or
+    --   - The base constraint of `T` is an object type with a callable `then` method.
+    if self:isAwaitedTypeNeeded(t) then
+        local awaitedType = self:tryCreateAwaitedType(t)
+        if awaitedType ~= nil then
+            return awaitedType
+        end
+    end
+    return t
+end
+
+function Checker:tryCreateAwaitedType(t)
+    -- Nothing to do if `Awaited<T>` doesn't exist
+    local awaitedSymbol = self.getGlobalAwaitedSymbol()
+    if awaitedSymbol ~= nil then
+        -- Unwrap unions that may contain `Awaited<T>`, otherwise its possible to manufacture an `Awaited<Awaited<T> | U>` where
+        -- an `Awaited<T | U>` would suffice.
+        return self:getTypeAliasInstantiation(awaitedSymbol, { self:unwrapAwaitedType(t) }, nil)
+    end
+    return nil
+end
+
+-- For a generic `Awaited<T>`, gets `T`.
+function Checker:unwrapAwaitedType(t)
+    if t.flags & TypeFlags.Union ~= 0 then
+        return self:mapType(t, function(t1) return self:unwrapAwaitedType(t1) end)
+    elseif self:isAwaitedTypeInstantiation(t) then
+        return t.alias.typeArguments[1]
+    end
+    return t
+end
+
+function Checker:isThenableType(t)
+    if self:allTypesAssignableToKind(self:getBaseConstraintOrType(t), TypeFlags.Primitive | TypeFlags.Never) then
+        -- primitive types cannot be considered "thenable" since they are not objects.
+        return false
+    end
+    local thenFunction = self:getTypeOfPropertyOfType(t, "then")
+    return thenFunction ~= nil and core.Len(self:getSignaturesOfType(self:getTypeWithFacts(thenFunction, TypeFacts.NEUndefinedOrNull), SignatureKind.Call)) ~= 0
+end
+
+function Checker:getAwaitedTypeOfPromise(t)
+    return self:getAwaitedTypeOfPromiseEx(t, nil, nil)
+end
+
+function Checker:getAwaitedTypeOfPromiseEx(t, errorNode, diagnosticMessage, ...)
+    local promisedType = self:getPromisedTypeOfPromiseEx(t, errorNode, nil)
+    if promisedType ~= nil then
+        return self:getAwaitedTypeEx(promisedType, errorNode, diagnosticMessage, ...)
+    end
+    return nil
+end
+
+-- Check if a parameter or catch variable (or their bindings elements) is assigned anywhere
+function Checker:isSomeSymbolAssigned(rootDeclaration)
+    return self:isSomeSymbolAssignedWorker(rootDeclaration:Name())
+end
+
+function Checker:isSomeSymbolAssignedWorker(node)
+    if node.kind == Kind.Identifier then
+        return self:isSymbolAssigned(self:getSymbolOfDeclaration(node.parent))
+    end
+    return core.Some(node:Elements(), function(e)
+        return e:Name() ~= nil and self:isSomeSymbolAssignedWorker(e:Name())
+    end)
+end
+
+function Checker:getTargetType(t)
+    if t.objectFlags & ObjectFlags.Reference ~= 0 then
+        return t:AsTypeReference().target
+    end
+    return t
+end
+
+function Checker:getNarrowableTypeForReference(t, reference, checkMode)
+    if self:isNoInferType(t) then
+        t = t:AsSubstitutionType().baseType
+    end
+    -- When the type of a reference is or contains an instantiable type with a union type constraint, and
+    -- when the reference is in a constraint position (where it is known we'll obtain the apparent type) or
+    -- has a contextual type containing no top-level instantiables (meaning constraints will determine
+    -- assignability), we substitute constraints for all instantiables in the type of the reference to give
+    -- control flow analysis an opportunity to narrow it further. For example, for a reference of a type
+    -- parameter type 'T extends string | undefined' with a contextual type 'string', we substitute
+    -- 'string | undefined' to give control flow analysis the opportunity to narrow to type 'string'.
+    local substituteConstraints = checkMode & CheckMode.Inferential == 0 and checker.someType(t, function(t1) return self:isGenericTypeWithUnionConstraint(t1) end) and (self:isConstraintPosition(t, reference) or self:hasContextualTypeWithNoGenericTypes(reference, checkMode))
+    if substituteConstraints then
+        return self:mapType(t, function(t1) return self:getBaseConstraintOrType(t1) end)
+    end
+    return t
+end
+
+function Checker:isConstraintPosition(t, node)
+    local parent = node.parent
+    -- In an element access obj[x], we consider obj to be in a constraint position, except when obj is of
+    -- a generic type without a nullable constraint and x is a generic type. This is because when both obj
+    -- and x are of generic types T and K, we want the resulting type to be T[K].
+    return ast.IsPropertyAccessExpression(parent) or ast.IsQualifiedName(parent) or
+        (ast.IsCallExpression(parent) or ast.IsNewExpression(parent)) and parent:Expression() == node or
+        ast.IsElementAccessExpression(parent) and parent:Expression() == node and not (checker.someType(t, function(t1) return self:isGenericTypeWithoutNullableConstraint(t1) end) and self:isGenericIndexType(self:getTypeOfExpression(parent:AsElementAccessExpression().argumentExpression)))
+end
+
+function Checker:isGenericTypeWithUnionConstraint(t)
+    if t.flags & TypeFlags.Intersection ~= 0 then
+        return core.Some(t:AsIntersectionType().types, function(t1) return self:isGenericTypeWithUnionConstraint(t1) end)
+    end
+    return t.flags & TypeFlags.Instantiable ~= 0 and self:getBaseConstraintOrType(t).flags & (TypeFlags.Nullable | TypeFlags.Union) ~= 0
+end
+
+function Checker:isGenericTypeWithoutNullableConstraint(t)
+    if t.flags & TypeFlags.Intersection ~= 0 then
+        return core.Some(t:AsIntersectionType().types, function(t1) return self:isGenericTypeWithoutNullableConstraint(t1) end)
+    end
+    return t.flags & TypeFlags.Instantiable ~= 0 and not self:maybeTypeOfKind(self:getBaseConstraintOrType(t), TypeFlags.Nullable)
+end
+
+function Checker:hasContextualTypeWithNoGenericTypes(node, checkMode)
+    -- Computing the contextual type for a child of a JSX element involves resolving the type of the
+    -- element's tag name, so we exclude that here to avoid circularities.
+    -- If check mode has `CheckMode.RestBindingElement`, we skip binding pattern contextual types,
+    -- as we want the type of a rest element to be generic when possible.
+    if (ast.IsIdentifier(node) or ast.IsPropertyAccessExpression(node) or ast.IsElementAccessExpression(node)) and
+        not ((ast.IsJsxOpeningElement(node.parent) or ast.IsJsxSelfClosingElement(node.parent)) and node.parent:TagName() == node) then
+        local contextualType = self:getContextualType(node, core.IfElse(checkMode & CheckMode.RestBindingElement ~= 0, ContextFlags.SkipBindingPatterns, ContextFlags.None))
+        if contextualType ~= nil then
+            return not self:isGenericType(contextualType)
+        end
+    end
+    return false
+end
+
+function Checker:getNonUndefinedType(t)
+    local typeOrConstraint = t
+    if checker.someType(t, function(t1) return self:isGenericTypeWithUndefinedConstraint(t1) end) then
+        typeOrConstraint = self:mapType(t, function(t1)
+            if t1.flags & TypeFlags.Instantiable ~= 0 then
+                return self:getBaseConstraintOrType(t1)
+            end
+            return t1
+        end)
+    end
+    return self:getTypeWithFacts(typeOrConstraint, TypeFacts.NEUndefined)
+end
+
+function Checker:isGenericTypeWithUndefinedConstraint(t)
+    if t.flags & TypeFlags.Instantiable ~= 0 then
+        local constraint = self:getBaseConstraintOfType(t)
+        if constraint ~= nil then
+            return self:maybeTypeOfKind(constraint, TypeFlags.Undefined)
+        end
+    end
+    return false
+end
+
+function Checker:getActualTypeVariable(t)
+    if t.flags & TypeFlags.Substitution ~= 0 then
+        return self:getActualTypeVariable(t:AsSubstitutionType().baseType)
+    end
+    if t.flags & TypeFlags.IndexedAccess ~= 0 and (t:AsIndexedAccessType().objectType.flags & TypeFlags.Substitution ~= 0 or t:AsIndexedAccessType().indexType.flags & TypeFlags.Substitution ~= 0) then
+        return self:getIndexedAccessType(self:getActualTypeVariable(t:AsIndexedAccessType().objectType), self:getActualTypeVariable(t:AsIndexedAccessType().indexType))
+    end
+    return t
+end
+
+function Checker:GetSymbolAtLocation(node)
+    -- !!!
+    -- const node = getParseTreeNode(nodeIn);
+
+    -- set ignoreErrors: true because any lookups invoked by the API shouldn't cause any new errors
+    return self:getSymbolAtLocation(ast.GetReparsedNodeForNode(node), true --[[ignoreErrors]])
+end
