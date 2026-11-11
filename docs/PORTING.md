@@ -185,7 +185,7 @@ function Scanner:Scan() ... end
   `fmt.Sprintf` -> `string.format` only for `%d`/`%s`; otherwise build the string by hand to match
   Go's formatting exactly.
 - Booleans: Lua `0` and `""` are truthy. Port `if x != 0` as `if x ~= 0`, never `if x`.
-- Tristate: `core.Tristate.Unknown/False/True` (generated).
+- Tristate: `core.Tristate.TSUnknown/TSFalse/TSTrue` (generated).
 
 ## Control flow
 
