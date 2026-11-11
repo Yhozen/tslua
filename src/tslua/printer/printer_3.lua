@@ -28,7 +28,7 @@ function Printer:emitShebangIfNeeded(node)
 end
 
 function Printer:emitPrologueDirectives(statements)
-    for i1, statement in ipairs(statements.nodes) do
+    for i1, statement in ipairs((statements.nodes or {})) do
         if ast.IsPrologueDirective(statement) then
             self:writeLine()
             self:emitStatement(statement)
@@ -36,7 +36,7 @@ function Printer:emitPrologueDirectives(statements)
             return i1 - 1
         end
     end
-    return #statements.nodes
+    return #(statements.nodes or {})
 end
 
 function Printer:emitHelpers(node)
@@ -147,7 +147,7 @@ function Printer:emitListRange(emit, parentNode, children, format, start, count)
 
     local length = 0
     if not isNil then
-        length = #children.nodes
+        length = #(children.nodes or {})
     end
 
     if start < 0 then
@@ -194,7 +194,7 @@ function Printer:emitListRange(emit, parentNode, children, format, start, count)
     else
         local end_ = math.min(start + count, length)
 
-        self:emitListItems(emit, parentNode, core.Slice(children.nodes, start, end_), format, self:hasTrailingComma(parentNode, children), children.loc)
+        self:emitListItems(emit, parentNode, core.Slice((children.nodes or {}), start, end_), format, self:hasTrailingComma(parentNode, children), children.loc)
     end
 
     if self.onAfterEmitNodeList ~= nil then
@@ -1338,7 +1338,7 @@ function Printer:generateAllNames(nodes)
     if nodes == nil then
         return
     end
-    for _, node in ipairs(nodes.nodes) do
+    for _, node in ipairs((nodes.nodes or {})) do
         self:generateNames(node)
     end
 end
@@ -1406,7 +1406,7 @@ function Printer:generateAllMemberNames(nodes)
     if nodes == nil then
         return
     end
-    for _, node in ipairs(nodes.nodes) do
+    for _, node in ipairs((nodes.nodes or {})) do
         self:generateMemberNames(node)
     end
 end

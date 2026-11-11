@@ -729,7 +729,7 @@ function Printer:shouldEmitBlockFunctionBodyOnSingleLine(body)
         return false
     end
 
-    local statements = body.statements.nodes
+    local statements = (body.statements.nodes or {})
     if self:getLeadingLineTerminatorCount(body, statements[1], LF.LFPreserveLines) > 0 or
         self:getClosingLineTerminatorCount(body, statements[#statements], LF.LFPreserveLines, body.statements.loc) > 0 then
         return false
@@ -792,7 +792,7 @@ function Printer:shouldEmitDetachedComments(node)
 
     -- Emit detached comment if there are no prologue directives or if the first node is synthesized.
     -- The synthesized node will have no leading comment so some comments may be missed.
-    local statements = file.statements.nodes
+    local statements = (file.statements.nodes or {})
     return #statements == 0 or
         not ast.IsPrologueDirective(statements[1]) or
         ast.NodeIsSynthesized(statements[1])
@@ -1307,14 +1307,14 @@ end
 --
 
 function Printer:emitModifierList(parentNode, modifiers, allowDecorators)
-    if modifiers == nil or #modifiers.nodes == 0 then
+    if modifiers == nil or #(modifiers.nodes or {}) == 0 then
         return parentNode:Pos()
     end
 
-    if core.Every(modifiers.nodes, ast.IsModifier) then
+    if core.Every((modifiers.nodes or {}), ast.IsModifier) then
         -- if all modifier-likes are `Modifier`, simply emit the list as modifiers.
         self:emitList(Printer.emitKeywordNode, parentNode, modifiers, LF.LFModifiers)
-    elseif core.Every(modifiers.nodes, ast.IsDecorator) then
+    elseif core.Every((modifiers.nodes or {}), ast.IsDecorator) then
         if not allowDecorators then
             return parentNode:Pos()
         end
@@ -1337,7 +1337,7 @@ function Printer:emitModifierList(parentNode, modifiers, allowDecorators)
         local start = 0
         local pos = 0
 
-        local nodes = modifiers.nodes
+        local nodes = (modifiers.nodes or {})
         local lastModifier
         while start < #nodes do
             while pos < #nodes do
@@ -1382,7 +1382,7 @@ function Printer:emitModifierList(parentNode, modifiers, allowDecorators)
         end
     end
 
-    return printer.greatestEnd(parentNode:Pos(), modifiers.nodes[#modifiers.nodes])
+    return printer.greatestEnd(parentNode:Pos(), (modifiers.nodes or {})[#(modifiers.nodes or {})])
 end
 
 function Printer:emitTypeParameter(node)
@@ -1492,18 +1492,18 @@ end
 
 function printer.canEmitSimpleArrowHead(parentNode, parameters)
     -- only arrow functions with a single parameter may have simple arrow head
-    if not ast.IsArrowFunction(parentNode) or #parameters.nodes ~= 1 then
+    if not ast.IsArrowFunction(parentNode) or #(parameters.nodes or {}) ~= 1 then
         return false
     end
 
     local parent = parentNode
-    local parameter = parameters.nodes[1]
+    local parameter = (parameters.nodes or {})[1]
     local parentModifiers = parent:Modifiers()
 
     return parameter:Pos() == parent:Pos() and -- may not have parsed tokens between start of parent and parameter
         parent.typeParameters == nil and -- parent may not have type parameters
         parent.type == nil and -- parent may not have return type annotation
-        (parentModifiers == nil or #parentModifiers.nodes == 0) and -- parent may not have modifiers
+        (parentModifiers == nil or #(parentModifiers.nodes or {}) == 0) and -- parent may not have modifiers
         not parameters:HasTrailingComma() and -- parameters may not have a trailing comma
         parameter:Modifiers() == nil and -- parameter may not have decorators or modifiers
         parameter.dotDotDotToken == nil and -- parameter may not be rest
@@ -2131,7 +2131,7 @@ function Printer:emitMappedType(node)
     self:emitTypeNodeOutsideExtends(node.type)
     self:writeTrailingSemicolon()
     if node.members ~= nil then
-        if #node.members.nodes > 0 then
+        if #(node.members.nodes or {}) > 0 then
             if singleLine then
                 self:writeSpace()
             else

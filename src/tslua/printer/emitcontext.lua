@@ -249,7 +249,7 @@ end
 
 -- Merges declarations produced by c.EndVariableEnvironment() or c.EndLexicalEnvironment() into a statement list
 function EmitContext:MergeEnvironmentList(statements, declarations)
-    local result, changed = self:mergeEnvironment(statements.nodes, declarations)
+    local result, changed = self:mergeEnvironment((statements.nodes or {}), declarations)
     if changed then
         local list = self.factory:NewNodeList(result)
         list.loc = statements.loc
@@ -375,7 +375,7 @@ end
 function EmitContext:isHoistedVariableStatement(node)
     return self:isCustomPrologue(node) and
         ast.IsVariableStatement(node) and
-        core.Every(node:AsVariableStatement().declarationList:AsVariableDeclarationList().declarations.nodes, printer.isHoistedVariable)
+        core.Every((node:AsVariableStatement().declarationList:AsVariableDeclarationList().declarations.nodes or {}), printer.isHoistedVariable)
 end
 
 --
@@ -847,7 +847,7 @@ function EmitContext:addDefaultValueAssignmentsIfNeeded(nodeList)
         return nodeList
     end
     local result
-    local nodes = nodeList.nodes
+    local nodes = (nodeList.nodes or {})
     for i1, parameter in ipairs(nodes) do
         local updated = self:addDefaultValueAssignmentIfNeeded(parameter:AsParameterDeclaration())
         if updated ~= parameter then
@@ -1013,7 +1013,7 @@ function EmitContext:VisitIterationBody(body, visitor)
     local statements = self:EndLexicalEnvironment()
     if #statements > 0 then
         if ast.IsBlock(updated) then
-            for _, s in ipairs(updated:Statements()) do
+            for _, s in ipairs(updated:Statements() or {}) do
                 statements[#statements + 1] = s
             end
             local statementsList = self.factory:NewNodeList(statements)

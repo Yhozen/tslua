@@ -344,7 +344,7 @@ end
 -- CreateForOfBindingStatement creates a statement to bind the iteration value.
 function NodeFactory:CreateForOfBindingStatement(node, boundValue)
     if ast.IsVariableDeclarationList(node) then
-        local firstDeclaration = node:AsVariableDeclarationList().declarations.nodes[1]
+        local firstDeclaration = (node:AsVariableDeclarationList().declarations.nodes or {})[1]
         local updatedDeclaration = self:UpdateVariableDeclaration(
             firstDeclaration:AsVariableDeclaration(),
             firstDeclaration:Name(),

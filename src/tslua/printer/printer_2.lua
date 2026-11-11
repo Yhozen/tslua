@@ -907,7 +907,7 @@ end
 --
 
 function Printer:isEmptyBlock(block, statements)
-    return #statements.nodes == 0 and
+    return #(statements.nodes or {}) == 0 and
         (self.currentSourceFile == nil or printer.rangeEndIsOnSameLineAsRangeStart(block.loc, block.loc, self.currentSourceFile))
 end
 
@@ -1820,7 +1820,7 @@ function Printer:emitJsxOpeningElement(node)
     local indented = self:writeLineSeparatorsAndIndentBefore(node.tagName, node)
     self:emitJsxTagName(node.tagName)
     self:emitTypeArguments(node, node.typeArguments)
-    if #node.attributes:Properties() > 0 then
+    if core.Len(node.attributes:Properties()) > 0 then
         self:writeSpace()
     end
     self:emitJsxAttributes(node.attributes)
@@ -1981,7 +1981,7 @@ end
 --
 
 function Printer:emitCaseOrDefaultClauseStatements(node, colonPos)
-    local statements = node.statements.nodes
+    local statements = (node.statements.nodes or {})
     local emitAsSingleStatement = #statements == 1 and
         -- treat synthesized nodes as located on the same line for emit purposes
         (self.currentSourceFile == nil or

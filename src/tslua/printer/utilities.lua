@@ -421,7 +421,7 @@ function printer.siblingNodePositionsAreComparable(emitContext, previousNode, ne
     if parentNodeArray ~= nil then
         local prevNodeIndex = -1
         local nextNodeIndex = -1
-        for i, n in ipairs(parentNodeArray.nodes) do
+        for i, n in ipairs((parentNodeArray.nodes or {})) do
             if prevNodeIndex < 0 and n == previousNode then
                 prevNodeIndex = i - 1
             end
