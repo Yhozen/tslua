@@ -130,6 +130,9 @@ function Scanner:Scan() ... end
   literal translation) must initialize every numeric, boolean, and string field that the Go code
   reads without first writing. `nil & 1` is a runtime error. Pointer, slice and map fields may be
   left `nil` (Go nil).
+- **Return zero values too**: a function whose Go result is a `string`/number/`bool` returns
+  `""`/`0`/`false`, never `nil` (callers port `x != ""` literally). Only Go pointers, slices,
+  maps, funcs and interfaces may come back as `nil`.
 - Go value structs (`core.TextRange`, small option structs) are **immutable** tables in Lua:
   never mutate one in place, always build a new one (`core.NewTextRange(pos, end_)`). That gives
   Go's copy semantics for free. If a Go value struct is mutated after copying, copy explicitly.
