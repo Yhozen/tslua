@@ -96,7 +96,21 @@ function Checker:getTypeOfSymbol(symbol) ... end
   become closures: `function(s) return c:getTypeOfSymbol(s) end`.
 - `c.mu` is a no-op mutex (`Lock`, `Unlock`, `TryLock`) returned as NewChecker's second result.
 - `c.diagnostics` / `c.suggestionDiagnostics` are `ast.DiagnosticsCollection` values;
-  `c.factory` is an `ast.NodeFactory`.
+  `c.factory` is an `ast.NodeFactory`. `sync.Once` fields (`emitResolverOnce`,
+  `ambientModulesOnce`) are `checker.newSyncOnce()` objects: `c.ambientModulesOnce:Do(function() ... end)`.
+  `collections.Set` fields are `collections.NewSetWithSizeHint(0)`; Go map fields are `{}`;
+  slice fields are `nil` or `{}`. `c.symbolArena:New()` returns a fresh `ast.Symbol`.
+- Things NewChecker expects from second-wave files (called at construction time):
+  `checker.Relation_new` (relater.go `&Relation{}`), `checker.JsxElementLinks_new` (jsx.go),
+  `checker.typeofNEFacts` (a Lua table keyed by the typeof string), `newIntrinsicType`,
+  `newLiteralType`, `getUnionType`, `getTemplateLiteralType`, `newAnonymousType`,
+  `newTypeParameter`, `newSignature`, `getStringLiteralType`, `getNumberLiteralType` (takes a
+  float), `getBigIntLiteralType` (takes a `jsnum.PseudoBigInt`; key `c.bigintLiteralTypes` by
+  `value:String()`), `createWideningType`, `createUnknownUnionType`, `compareSymbolsWorker`, ...
+- The diagnostic API (`GetDiagnostics` … `newProperty`, Go lines 14052–14191) is already in
+  `checker_4.lua`; the rest of the checker_4 range goes around it in Go order.
+- Go out-parameters such as `&diags` (a `*[]*ast.Diagnostic`) are passed as a Lua array that the
+  callee appends to.
 
 ## Structs: classes and `X_new`
 
