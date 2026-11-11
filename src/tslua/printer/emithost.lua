@@ -1,0 +1,13 @@
+-- EmitHost is an interface (a table with these methods):
+--   Options() -> core.CompilerOptions
+--   SourceFiles() -> []ast.SourceFile
+--   UseCaseSensitiveFileNames() -> bool
+--   GetCurrentDirectory() -> string
+--   CommonSourceDirectory() -> string
+--   IsEmitBlocked(file) -> bool
+--   WriteFile(fileName, text) -> error string or nil
+--   GetEmitModuleFormatOfFile(file) -> core.ModuleKind
+--   GetEmitResolver() -> EmitResolver
+--   GetProjectReferenceFromSource(path) -> tsoptions.SourceOutputAndProjectReference or nil
+--   IsSourceFileFromExternalLibrary(file) -> bool
+local _ = require("tslua.printer")

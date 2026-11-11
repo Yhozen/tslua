@@ -1,0 +1,11 @@
+-- EmitTextWriter is an externally opaque interface for printing text (a table with these methods):
+--   Write(s), WriteTrailingSemicolon(text), WriteComment(text), WriteKeyword(text),
+--   WriteOperator(text), WritePunctuation(text), WriteSpace(text), WriteStringLiteral(text),
+--   WriteParameter(text), WriteProperty(text), WriteSymbol(text, symbol), WriteLine(),
+--   WriteLineForce(force), IncreaseIndent(), DecreaseIndent(), Clear(), String() -> string,
+--   RawWrite(s), WriteLiteral(s), GetTextPos() -> int, GetLine() -> int,
+--   GetColumn() -> core.UTF16Offset, GetIndent() -> int, IsAtStartOfLine() -> bool,
+--   HasTrailingComment() -> bool, HasTrailingWhitespace() -> bool
+-- Implementations: textWriter (textwriter.lua), singleLineStringWriter (singlelinestringwriter.lua),
+-- trailingSemicolonDeferringWriter (semicolon_writer.lua).
+local _ = require("tslua.printer")

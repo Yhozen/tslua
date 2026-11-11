@@ -1,0 +1,57 @@
+-- SymbolAccessibility and TypeReferenceSerializationKind constants are generated:
+-- printer.SymbolAccessibility.Accessible, ..., printer.TypeReferenceSerializationKindUnknown, ...
+local _ = require("tslua.printer")
+
+-- SymbolAccessibilityResult is a plain value table:
+--   { accessibility = printer.SymbolAccessibility.*, aliasesToMakeVisible = []ast.Node or nil,
+--     errorSymbolName = "", errorNode = ast.Node or nil, errorModuleName = "" }
+
+-- EmitResolver is an interface (implemented by the checker). Method set (Go names, Go parameter order):
+--   binder.ReferenceResolver methods:
+--     GetReferencedExportContainer(node, prefixLocals), GetReferencedImportDeclaration(node),
+--     GetReferencedValueDeclaration(node), GetReferencedValueDeclarations(node),
+--     GetElementAccessExpressionName(expression), GetReferencedMemberValueDeclaration(node)
+--   IsReferencedAliasDeclaration(node) -> bool
+--   IsValueAliasDeclaration(node) -> bool
+--   IsTopLevelValueImportEqualsWithEntityName(node) -> bool
+--   MarkLinkedReferencesRecursively(file)
+--   GetExternalModuleFileFromDeclaration(node) -> ast.SourceFile
+--   GetEffectiveDeclarationFlags(node, flags) -> ast.ModifierFlags
+--   GetResolutionModeOverride(node) -> core.ResolutionMode
+--   -- decorator metadata
+--   GetTypeReferenceSerializationKind(name, serialScope) -> TypeReferenceSerializationKind
+--   -- const enum inlining
+--   GetConstantValue(node) -> any (nil, number or string)
+--   -- JSX Emit
+--   GetJsxFactoryEntity(location) -> ast.Node
+--   GetJsxFragmentFactoryEntity(location) -> ast.Node
+--   SetReferencedImportDeclaration(node, ref)
+--   -- declaration emit checker functionality projections
+--   PrecalculateDeclarationEmitVisibility(file)
+--   IsSymbolAccessible(symbol, enclosingDeclaration, meaning, shouldComputeAliasToMarkVisible) -> SymbolAccessibilityResult
+--   IsEntityNameVisible(entityName, enclosingDeclaration) -> SymbolAccessibilityResult
+--   IsExpandoFunctionDeclaration(node) -> bool
+--   IsExpandoFunctionDeclarationUnsafe(node) -> bool
+--   IsLiteralConstDeclaration(node) -> bool
+--   RequiresAddingImplicitUndefined(node, symbol, enclosingDeclaration) -> bool
+--   IsDeclarationVisible(node) -> bool
+--   IsNameResolvable(location, name) -> bool
+--   IsImportRequiredByAugmentation(decl) -> bool
+--   IsDefinitelyReferenceToGlobalSymbolObject(node) -> bool
+--   IsImplementationOfOverload(node) -> bool
+--   GetEnumMemberValue(node) -> evaluator.Result
+--   IsLateBound(node) -> bool
+--   IsOptionalParameter(node) -> bool
+--   IsThisPropertyAssignmentDeclarationRedundant(node) -> bool
+--   -- isolatedDeclarations-specific declaration emit
+--   GetPropertiesOfContainerFunction(node) -> []ast.Symbol
+--   RequiresAddingImplicitUndefinedUnsafe(node, symbol, enclosingDeclaration) -> bool
+--   GetReferencedValueDeclarationUnsafe(node) -> ast.Declaration
+--   -- Node construction for declaration emit
+--   CreateTypeOfDeclaration(emitContext, declaration, enclosingDeclaration, flags, internalFlags, tracker) -> ast.Node
+--   CreateReturnTypeOfSignatureDeclaration(emitContext, signatureDeclaration, enclosingDeclaration, flags, internalFlags, tracker) -> ast.Node
+--   CreateTypeParametersOfSignatureDeclaration(emitContext, signatureDeclaration, enclosingDeclaration, flags, internalFlags, tracker) -> []ast.Node
+--   CreateLiteralConstValue(emitContext, node, tracker) -> ast.Node
+--   CreateTypeOfExpression(emitContext, expression, enclosingDeclaration, flags, internalFlags, tracker) -> ast.Node
+--   CreateLateBoundIndexSignatures(emitContext, container, enclosingDeclaration, flags, internalFlags, tracker) -> []ast.Node
+--   TryJSTypeNodeToTypeNode(emitContext, typeNode, enclosingDeclaration, flags, internalFlags, tracker) -> ast.Node
