@@ -1657,3 +1657,807 @@ function Checker:getDecoratorCallSignature(decorator)
     end
     return self:getESDecoratorCallSignature(decorator)
 end
+
+function Checker:getLegacyDecoratorCallSignature(decorator)
+    local node = decorator.parent
+    local links = self.signatureLinks:Get(node)
+    if links.decoratorSignature == nil then
+        links.decoratorSignature = self.anySignature
+        local k = node.kind
+        if k == Kind.ClassDeclaration or k == Kind.ClassExpression then
+            -- For a class decorator, the `target` is the type of the class (e.g. the
+            -- "static" or "constructor" side of the class).
+            local targetType = self:getTypeOfSymbol(self:getSymbolOfDeclaration(node))
+            local targetParam = self:newParameter("target", targetType)
+            links.decoratorSignature = self:newCallSignature(nil, nil, { targetParam }, self:getUnionType({ targetType, self.voidType }))
+        elseif k == Kind.Parameter then
+            if not ast.IsConstructorDeclaration(node.parent) and not (ast.IsMethodDeclaration(node.parent) or ast.IsSetAccessorDeclaration(node.parent) and ast.IsClassLike(node.parent.parent)) then
+                goto done
+            end
+            if ast.GetThisParameter(node.parent) == node then
+                goto done
+            end
+            do
+                local index = slicesIndex(node.parent:Parameters(), node) - core.IfElse(ast.GetThisParameter(node.parent) ~= nil, 1, 0)
+                debug.Assert(index >= 0)
+                -- A parameter declaration decorator will have three arguments (see `ParameterDecorator` in
+                -- core.d.ts).
+                local targetType
+                local keyType
+                if ast.IsConstructorDeclaration(node.parent) then
+                    targetType = self:getTypeOfSymbol(self:getSymbolOfDeclaration(node.parent.parent))
+                    keyType = self.undefinedType
+                else
+                    targetType = self:getParentTypeOfClassElement(node.parent)
+                    keyType = self:getClassElementPropertyKeyType(node.parent)
+                end
+                local indexType = self:getNumberLiteralType(index + 0.0)
+                local targetParam = self:newParameter("target", targetType)
+                local keyParam = self:newParameter("propertyKey", keyType)
+                local indexParam = self:newParameter("parameterIndex", indexType)
+                links.decoratorSignature = self:newCallSignature(nil, nil, { targetParam, keyParam, indexParam }, self.voidType)
+            end
+        elseif k == Kind.MethodDeclaration or k == Kind.GetAccessor or k == Kind.SetAccessor or k == Kind.PropertyDeclaration then
+            if not ast.IsClassLike(node.parent) then
+                goto done
+            end
+            do
+                -- A method or accessor declaration decorator will have either two or three arguments (see
+                -- `PropertyDecorator` and `MethodDecorator` in core.d.ts).
+                local targetType = self:getParentTypeOfClassElement(node)
+                local targetParam = self:newParameter("target", targetType)
+                local keyType = self:getClassElementPropertyKeyType(node)
+                local keyParam = self:newParameter("propertyKey", keyType)
+                local returnType = self.voidType
+                if not ast.IsPropertyDeclaration(node) then
+                    returnType = self:newTypedPropertyDescriptorType(self:getTypeOfNode(node))
+                end
+                local hasPropDesc = not ast.IsPropertyDeclaration(node) or ast.HasAccessorModifier(node)
+                if hasPropDesc then
+                    local descriptorType = self:newTypedPropertyDescriptorType(self:getTypeOfNode(node))
+                    local descriptorParam = self:newParameter("descriptor", descriptorType)
+                    links.decoratorSignature = self:newCallSignature(nil, nil, { targetParam, keyParam, descriptorParam }, self:getUnionType({ returnType, self.voidType }))
+                else
+                    links.decoratorSignature = self:newCallSignature(nil, nil, { targetParam, keyParam }, self:getUnionType({ returnType, self.voidType }))
+                end
+            end
+        end
+    end
+    ::done::
+    if links.decoratorSignature == self.anySignature then
+        return nil
+    end
+    return links.decoratorSignature
+end
+
+function Checker:getESDecoratorCallSignature(decorator)
+    -- We are considering a future change that would allow the type of a decorator to affect the type of the
+    -- class and its members, such as a `@Stringify` decorator changing the type of a `number` field to `string`, or
+    -- a `@Callable` decorator adding a call signature to a `class`. The type arguments for the various context
+    -- types may eventually change to reflect such mutations.
+    --
+    -- In some cases we describe such potential mutations as coming from a "prior decorator application". It is
+    -- important to note that, while decorators are *evaluated* left to right, they are *applied* right to left
+    -- to preserve f ৹ g -> f(g(x)) application order. In these cases, a "prior" decorator usually means the
+    -- next decorator following this one in document order.
+    --
+    -- The "original type" of a class or member is the type it was declared as, or the type we infer from
+    -- initializers, before _any_ decorators are applied.
+    --
+    -- The type of a class or member that is a result of a prior decorator application represents the
+    -- "current type", i.e., the type for the declaration at the time the decorator is _applied_.
+    --
+    -- The type of a class or member that is the result of the application of *all* relevant decorators is the
+    -- "final type".
+    --
+    -- Any decorator that allows mutation or replacement will also refer to an "input type" and an
+    -- "output type". The "input type" corresponds to the "current type" of the declaration, while the
+    -- "output type" will become either the "input type/current type" for a subsequent decorator application,
+    -- or the "final type" for the decorated declaration.
+    --
+    -- It is important to understand decorator application order as it relates to how the "current", "input",
+    -- "output", and "final" types will be determined:
+    --
+    --  @E2 @E1 class SomeClass {
+    --      @A2 @A1 static f() {}
+    --      @B2 @B1 g() {}
+    --      @C2 @C1 static x;
+    --      @D2 @D1 y;
+    --  }
+    --
+    -- Per [the specification][1], decorators are applied in the following order:
+    --
+    -- 1. For each static method (incl. get/set methods and `accessor` fields), in document order:
+    --    a. Apply each decorator for that method, in reverse order (`A1`, `A2`).
+    -- 2. For each instance method (incl. get/set methods and `accessor` fields), in document order:
+    --    a. Apply each decorator for that method, in reverse order (`B1`, `B2`).
+    -- 3. For each static field (excl. auto-accessors), in document order:
+    --    a. Apply each decorator for that field, in reverse order (`C1`, `C2`).
+    -- 4. For each instance field (excl. auto-accessors), in document order:
+    --    a. Apply each decorator for that field, in reverse order (`D1`, `D2`).
+    -- 5. Apply each decorator for the class, in reverse order (`E1`, `E2`).
+    --
+    -- As a result, "current" types at each decorator application are as follows:
+    -- - For `A1`, the "current" types of the class and method are their "original" types.
+    -- - For `A2`, the "current type" of the method is the "output type" of `A1`, and the "current type" of the
+    --   class is the type of `SomeClass` where `f` is the "output type" of `A1`. This becomes the "final type"
+    --   of `f`.
+    -- - For `B1`, the "current type" of the method is its "original type", and the "current type" of the class
+    --   is the type of `SomeClass` where `f` now has its "final type".
+    -- - etc.
+    --
+    -- [1]: https://arai-a.github.io/ecma262-compare/?pr=2417&id=sec-runtime-semantics-classdefinitionevaluation
+    --
+    -- When a decorator is applied, it is passed two arguments: "target", which is a value representing the
+    -- thing being decorated (constructors for classes, functions for methods/accessors, `undefined` for fields,
+    -- and a `{ get, set }` object for auto-accessors), and "context", which is an object that provides
+    -- reflection information about the decorated element, as well as the ability to add additional "extra"
+    -- initializers. In most cases, the "target" argument corresponds to the "input type" in some way, and the
+    -- return value similarly corresponds to the "output type" (though if the "output type" is `void` or
+    -- `undefined` then the "output type" is the "input type").
+    local node = decorator.parent
+    local links = self.signatureLinks:Get(node)
+    if links.decoratorSignature == nil then
+        links.decoratorSignature = self.anySignature
+        local k = node.kind
+        if k == Kind.ClassDeclaration or k == Kind.ClassExpression then
+            -- Class decorators have a `context` of `ClassDecoratorContext<Class>`, where the `Class` type
+            -- argument will be the "final type" of the class after all decorators are applied.
+            local targetType = self:getTypeOfSymbol(self:getSymbolOfDeclaration(node))
+            local contextType = self:newClassDecoratorContextType(targetType)
+            links.decoratorSignature = self:newESDecoratorCallSignature(targetType, contextType, targetType)
+        elseif k == Kind.MethodDeclaration or k == Kind.GetAccessor or k == Kind.SetAccessor then
+            if ast.IsClassLike(node.parent) then
+                -- Method decorators have a `context` of `ClassMethodDecoratorContext<This, Value>`, where the
+                -- `Value` type argument corresponds to the "final type" of the method.
+                --
+                -- Getter decorators have a `context` of `ClassGetterDecoratorContext<This, Value>`, where the
+                -- `Value` type argument corresponds to the "final type" of the value returned by the getter.
+                --
+                -- Setter decorators have a `context` of `ClassSetterDecoratorContext<This, Value>`, where the
+                -- `Value` type argument corresponds to the "final type" of the parameter of the setter.
+                --
+                -- In all three cases, the `This` type argument is the "final type" of either the class or
+                -- instance, depending on whether the member was `static`.
+                local valueType
+                if ast.IsMethodDeclaration(node) then
+                    valueType = self:getOrCreateTypeFromSignature(self:getSignatureFromDeclaration(node))
+                else
+                    valueType = self:getTypeOfNode(node)
+                end
+                local thisType
+                if ast.HasStaticModifier(node) then
+                    thisType = self:getTypeOfSymbol(self:getSymbolOfDeclaration(node.parent))
+                else
+                    thisType = self:getDeclaredTypeOfClassOrInterface(self:getSymbolOfDeclaration(node.parent))
+                end
+                -- We wrap the "input type", if necessary, to match the decoration target. For getters this is
+                -- something like `() => inputType`, for setters it's `(value: inputType) => void` and for
+                -- methods it is just the input type.
+                local targetType
+                if ast.IsGetAccessorDeclaration(node) then
+                    targetType = self:newGetterFunctionType(valueType)
+                elseif ast.IsSetAccessorDeclaration(node) then
+                    targetType = self:newSetterFunctionType(valueType)
+                else
+                    targetType = valueType
+                end
+                local contextType = self:newClassMemberDecoratorContextTypeForNode(node, thisType, valueType)
+                links.decoratorSignature = self:newESDecoratorCallSignature(targetType, contextType, targetType)
+            end
+        elseif k == Kind.PropertyDeclaration then
+            if ast.IsClassLike(node.parent) then
+                -- Field decorators have a `context` of `ClassFieldDecoratorContext<This, Value>` and
+                -- auto-accessor decorators have a `context` of `ClassAccessorDecoratorContext<This, Value>. In
+                -- both cases, the `This` type argument is the "final type" of either the class or instance,
+                -- depending on whether the member was `static`, and the `Value` type argument corresponds to
+                -- the "final type" of the value stored in the field.
+                local valueType = self:getTypeOfNode(node)
+                local thisType
+                if ast.HasStaticModifier(node) then
+                    thisType = self:getTypeOfSymbol(self:getSymbolOfDeclaration(node.parent))
+                else
+                    thisType = self:getDeclaredTypeOfClassOrInterface(self:getSymbolOfDeclaration(node.parent))
+                end
+                -- The `target` of an auto-accessor decorator is a `{ get, set }` object, representing the
+                -- runtime-generated getter and setter that are added to the class/prototype. The `target` of a
+                -- regular field decorator is always `undefined` as it isn't installed until it is initialized.
+                local targetType
+                if ast.HasAccessorModifier(node) then
+                    targetType = self:newClassAccessorDecoratorTargetType(thisType, valueType)
+                else
+                    targetType = self.undefinedType
+                end
+                -- We wrap the "output type" depending on the declaration. For auto-accessors, we wrap the
+                -- "output type" in a `ClassAccessorDecoratorResult<This, In, Out>` type, which allows for
+                -- mutation of the runtime-generated getter and setter, as well as the injection of an
+                -- initializer mutator. For regular fields, we wrap the "output type" in an initializer mutator.
+                local returnType
+                if ast.HasAccessorModifier(node) then
+                    returnType = self:newClassAccessorDecoratorResultType(thisType, valueType)
+                else
+                    returnType = self:newClassFieldDecoratorInitializerMutatorType(thisType, valueType)
+                end
+                local contextType = self:newClassMemberDecoratorContextTypeForNode(node, thisType, valueType)
+                links.decoratorSignature = self:newESDecoratorCallSignature(targetType, contextType, returnType)
+            end
+        end
+    end
+    if links.decoratorSignature == self.anySignature then
+        return nil
+    end
+    return links.decoratorSignature
+end
+
+function Checker:newClassDecoratorContextType(classType)
+    return self:tryCreateTypeReference(self.getGlobalClassDecoratorContextType(), { classType })
+end
+
+function Checker:newClassMethodDecoratorContextType(classType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassMethodDecoratorContextType(), { classType, valueType })
+end
+
+function Checker:newClassGetterDecoratorContextType(classType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassGetterDecoratorContextType(), { classType, valueType })
+end
+
+function Checker:newClassSetterDecoratorContextType(classType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassSetterDecoratorContextType(), { classType, valueType })
+end
+
+function Checker:newClassAccessorDecoratorContextType(thisType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassAccessorDecoratorContextType(), { thisType, valueType })
+end
+
+function Checker:newClassFieldDecoratorContextType(thisType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassFieldDecoratorContextType(), { thisType, valueType })
+end
+
+-- Gets a type like `{ name: "foo", private: false, static: true }` that is used to provided member-specific
+-- details that will be intersected with a decorator context type.
+function Checker:getClassMemberDecoratorContextOverrideType(nameType, isPrivate, isStatic)
+    local kind = core.IfElse(
+        isPrivate,
+        core.IfElse(isStatic, CachedTypeKind.DecoratorContextPrivateStatic, CachedTypeKind.DecoratorContextPrivate),
+        core.IfElse(isStatic, CachedTypeKind.DecoratorContextStatic, CachedTypeKind.DecoratorContext)
+    )
+    local key = checker.CachedTypeKey(kind, nameType.id)
+    local cachedOverrideType = self.cachedTypes[key]
+    if cachedOverrideType ~= nil then
+        return cachedOverrideType
+    end
+    local members = ast.NewSymbolTable()
+    members["name"] = self:newProperty("name", nameType)
+    members["private"] = self:newProperty("private", core.IfElse(isPrivate, self.trueType, self.falseType))
+    members["static"] = self:newProperty("static", core.IfElse(isStatic, self.trueType, self.falseType))
+    local overrideType = self:newAnonymousType(nil, members, nil, nil, nil)
+    self.cachedTypes[key] = overrideType
+    return overrideType
+end
+
+function Checker:newClassMemberDecoratorContextTypeForNode(node, thisType, valueType)
+    local isStatic = ast.HasStaticModifier(node)
+    local isPrivate = ast.IsPrivateIdentifier(node:Name())
+    local nameType
+    if isPrivate then
+        nameType = self:getStringLiteralType(node:Name():Text())
+    else
+        nameType = self:getLiteralTypeFromPropertyName(node:Name())
+    end
+    local contextType
+    if ast.IsMethodDeclaration(node) then
+        contextType = self:newClassMethodDecoratorContextType(thisType, valueType)
+    elseif ast.IsGetAccessorDeclaration(node) then
+        contextType = self:newClassGetterDecoratorContextType(thisType, valueType)
+    elseif ast.IsSetAccessorDeclaration(node) then
+        contextType = self:newClassSetterDecoratorContextType(thisType, valueType)
+    elseif ast.IsAutoAccessorPropertyDeclaration(node) then
+        contextType = self:newClassAccessorDecoratorContextType(thisType, valueType)
+    elseif ast.IsPropertyDeclaration(node) then
+        contextType = self:newClassFieldDecoratorContextType(thisType, valueType)
+    else
+        error("Unhandled case in createClassMemberDecoratorContextTypeForNode", 0)
+    end
+    local overrideType = self:getClassMemberDecoratorContextOverrideType(nameType, isPrivate, isStatic)
+    return self:getIntersectionType({ contextType, overrideType })
+end
+
+function Checker:newClassAccessorDecoratorTargetType(thisType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassAccessorDecoratorTargetType(), { thisType, valueType })
+end
+
+function Checker:newClassAccessorDecoratorResultType(thisType, valueType)
+    return self:tryCreateTypeReference(self.getGlobalClassAccessorDecoratorResultType(), { thisType, valueType })
+end
+
+function Checker:newClassFieldDecoratorInitializerMutatorType(thisType, valueType)
+    local thisParam = self:newParameter("this", thisType)
+    local valueParam = self:newParameter("value", valueType)
+    return self:newFunctionType(nil, thisParam, { valueParam }, valueType)
+end
+
+-- Creates a call signature for an ES Decorator. This method is used by the semantics of
+-- `getESDecoratorCallSignature`, which you should probably be using instead.
+function Checker:newESDecoratorCallSignature(targetType, contextType, nonOptionalReturnType)
+    local targetParam = self:newParameter("target", targetType)
+    local contextParam = self:newParameter("context", contextType)
+    local returnType = self:getUnionType({ nonOptionalReturnType, self.voidType })
+    return self:newCallSignature(nil, nil --[[thisParameter]], { targetParam, contextParam }, returnType)
+end
+
+-- Creates a synthetic `FunctionType`
+function Checker:newFunctionType(typeParameters, thisParameter, parameters, returnType)
+    local signature = self:newCallSignature(typeParameters, thisParameter, parameters, returnType)
+    return self:getOrCreateTypeFromSignature(signature)
+end
+
+function Checker:newGetterFunctionType(t)
+    return self:newFunctionType(nil, nil --[[thisParameter]], nil, t)
+end
+
+function Checker:newSetterFunctionType(t)
+    local valueParam = self:newParameter("value", t)
+    return self:newFunctionType(nil, nil --[[thisParameter]], { valueParam }, self.voidType)
+end
+
+-- Creates a synthetic `Signature` corresponding to a call signature.
+function Checker:newCallSignature(typeParameters, thisParameter, parameters, returnType)
+    local decl = self.factory:NewFunctionTypeNode(nil, nil, self.factory:NewKeywordTypeNode(Kind.AnyKeyword))
+    return self:newSignature(SignatureFlags.None, decl, typeParameters, thisParameter, parameters, returnType, nil, core.Len(parameters))
+end
+
+function Checker:newTypedPropertyDescriptorType(propertyType)
+    return self:createTypeFromGenericGlobalType(self.getGlobalTypedPropertyDescriptorType(), { propertyType })
+end
+
+function Checker:getParentTypeOfClassElement(node)
+    local classSymbol = self:getSymbolOfNode(node.parent)
+    if ast.IsStatic(node) then
+        return self:getTypeOfSymbol(classSymbol)
+    end
+    return self:getDeclaredTypeOfSymbol(classSymbol)
+end
+
+function Checker:getClassElementPropertyKeyType(element)
+    local name = element:Name()
+    local k = name.kind
+    if k == Kind.Identifier or k == Kind.NumericLiteral or k == Kind.StringLiteral then
+        return self:getStringLiteralType(name:Text())
+    elseif k == Kind.ComputedPropertyName then
+        local nameType = self:checkComputedPropertyName(name)
+        if self:isTypeAssignableToKind(nameType, TypeFlags.ESSymbolLike) then
+            return nameType
+        end
+        return self.stringType
+    end
+    return self.errorType
+end
+
+function Checker:getTypeOfPropertyOfContextualType(t, name)
+    return self:getTypeOfPropertyOfContextualTypeEx(t, name, nil)
+end
+
+function Checker:getTypeOfPropertyOfContextualTypeEx(t, name, nameType)
+    return self:mapTypeEx(t, function(t1)
+        if t1.flags & TypeFlags.Intersection ~= 0 then
+            local types = {}
+            local indexInfoCandidates = {}
+            local ignoreIndexInfos = false
+            for _, constituentType in ipairs(t1:Types()) do
+                if constituentType.flags & TypeFlags.Object == 0 then
+                    goto continue
+                end
+                if self:isGenericMappedType(constituentType) and self:getMappedTypeNameTypeKind(constituentType) ~= checker.MappedTypeNameTypeKind.Remapping then
+                    local substitutedType = self:getIndexedMappedTypeSubstitutedTypeOfContextualType(constituentType, name, nameType)
+                    types = self:appendContextualPropertyTypeConstituent(types, substitutedType)
+                    goto continue
+                end
+                do
+                    local propertyType = self:getTypeOfConcretePropertyOfContextualType(constituentType, name)
+                    if propertyType == nil then
+                        if not ignoreIndexInfos then
+                            indexInfoCandidates[#indexInfoCandidates + 1] = constituentType
+                        end
+                        goto continue
+                    end
+                    ignoreIndexInfos = true
+                    indexInfoCandidates = {}
+                    types = self:appendContextualPropertyTypeConstituent(types, propertyType)
+                end
+                ::continue::
+            end
+            for _, candidate in ipairs(indexInfoCandidates) do
+                local indexInfoType = self:getTypeFromIndexInfosOfContextualType(candidate, name, nameType)
+                types = self:appendContextualPropertyTypeConstituent(types, indexInfoType)
+            end
+            if #types == 0 then
+                return nil
+            end
+            if #types == 1 then
+                return types[1]
+            end
+            return self:getIntersectionType(types)
+        end
+        if t1.flags & TypeFlags.Object == 0 then
+            return nil
+        end
+        if self:isGenericMappedType(t1) and self:getMappedTypeNameTypeKind(t1) ~= checker.MappedTypeNameTypeKind.Remapping then
+            return self:getIndexedMappedTypeSubstitutedTypeOfContextualType(t1, name, nameType)
+        end
+        local result = self:getTypeOfConcretePropertyOfContextualType(t1, name)
+        if result ~= nil then
+            return result
+        end
+        return self:getTypeFromIndexInfosOfContextualType(t1, name, nameType)
+    end, true --[[noReductions]])
+end
+
+function Checker:getIndexedMappedTypeSubstitutedTypeOfContextualType(t, name, nameType)
+    local propertyNameType = nameType
+    if propertyNameType == nil then
+        propertyNameType = self:getStringLiteralType(name)
+    end
+    local constraint = self:getConstraintTypeFromMappedType(t)
+    -- special case for conditional types pretending to be negated types
+    if t:AsMappedType().nameType ~= nil and self:isExcludedMappedPropertyName(t:AsMappedType().nameType, propertyNameType) or self:isExcludedMappedPropertyName(constraint, propertyNameType) then
+        return nil
+    end
+    local constraintOfConstraint = self:getBaseConstraintOrType(constraint)
+    if not self:isTypeAssignableTo(propertyNameType, constraintOfConstraint) then
+        return nil
+    end
+    return self:substituteIndexedMappedType(t, propertyNameType)
+end
+
+function Checker:isExcludedMappedPropertyName(t, propertyNameType)
+    if t.flags & TypeFlags.Conditional ~= 0 then
+        return self:getReducedType(self:getTrueTypeFromConditionalType(t)).flags & TypeFlags.Never ~= 0 and
+            self:getActualTypeVariable(self:getFalseTypeFromConditionalType(t)) == self:getActualTypeVariable(t:AsConditionalType().checkType) and
+            self:isTypeAssignableTo(propertyNameType, t:AsConditionalType().extendsType)
+    end
+    if t.flags & TypeFlags.Intersection ~= 0 then
+        return core.Some(t:Types(), function(t1)
+            return self:isExcludedMappedPropertyName(t1, propertyNameType)
+        end)
+    end
+    return false
+end
+
+function Checker:getTypeOfConcretePropertyOfContextualType(t, name)
+    local prop = self:getPropertyOfType(t, name)
+    if prop == nil or self:isCircularMappedProperty(prop) then
+        return nil
+    end
+    return self:removeMissingType(self:getTypeOfSymbol(prop), prop.flags & SymbolFlags.Optional ~= 0)
+end
+
+function Checker:getTypeFromIndexInfosOfContextualType(t, name, nameType)
+    if checker.isTupleType(t) and checker.isNumericLiteralName(name) and jsnum.FromString(name) >= 0 then
+        local restType = self:getElementTypeOfSliceOfTupleType(t, t:TargetTupleType().fixedLength, 0 --[[endSkipCount]], false --[[writing]], true --[[noReductions]])
+        if restType ~= nil then
+            return restType
+        end
+    end
+    if nameType == nil then
+        nameType = self:getStringLiteralType(name)
+    end
+    local indexInfo = self:findApplicableIndexInfo(self:getIndexInfosOfStructuredType(t), nameType)
+    if indexInfo == nil then
+        return nil
+    end
+    return indexInfo.valueType
+end
+
+function Checker:isCircularMappedProperty(symbol)
+    if symbol.checkFlags & ast.CheckFlags.Mapped ~= 0 then
+        local links = self.valueSymbolLinks:Get(symbol)
+        return links.resolvedType == nil and self:findResolutionCycleStartIndex(symbol, checker.TypeSystemPropertyName.Type) >= 0
+    end
+    return false
+end
+
+function Checker:appendContextualPropertyTypeConstituent(types, t)
+    -- any doesn't provide any contextual information but could spoil the overall result by nullifying contextual information
+    -- provided by other intersection constituents so it gets replaced with `unknown` as `T & unknown` is just `T` and all
+    -- types computed based on the contextual information provided by other constituens are still assignable to any
+    if t == nil then
+        return types
+    end
+    if t.flags & TypeFlags.Any ~= 0 then
+        return core.Append(types, self.unknownType)
+    end
+    return core.Append(types, t)
+end
+
+-- Return the contextual type for a given expression node. During overload resolution, a contextual type may temporarily
+-- be "pushed" onto a node using the contextualType property.
+function Checker:getApparentTypeOfContextualType(node, contextFlags)
+    local contextualType
+    if ast.IsObjectLiteralMethod(node) then
+        contextualType = self:getContextualTypeForObjectLiteralMethod(node, contextFlags)
+    else
+        contextualType = self:getContextualType(node, contextFlags)
+    end
+    local instantiatedType = self:instantiateContextualType(contextualType, node, contextFlags)
+    if instantiatedType ~= nil and not (contextFlags & ContextFlags.NoConstraints ~= 0 and instantiatedType.flags & TypeFlags.TypeVariable ~= 0) then
+        local apparentType = self:mapTypeEx(instantiatedType, function(t)
+            if t.objectFlags & ObjectFlags.Mapped ~= 0 then
+                return t
+            end
+            return self:getApparentType(t)
+        end, true)
+        if apparentType.flags & TypeFlags.Union ~= 0 and ast.IsObjectLiteralExpression(node) then
+            return self:discriminateContextualTypeByObjectMembers(node, apparentType)
+        elseif apparentType.flags & TypeFlags.Union ~= 0 and ast.IsJsxAttributes(node) then
+            return self:discriminateContextualTypeByJSXAttributes(node, apparentType)
+        else
+            return apparentType
+        end
+    end
+    return nil
+end
+
+-- ObjectLiteralDiscriminator: { c, props, members }; implements the Discriminator interface
+-- (len, name, matches).
+local ObjectLiteralDiscriminator = defineStruct("ObjectLiteralDiscriminator", nil, nil)
+
+function ObjectLiteralDiscriminator:len()
+    return core.Len(self.props) + core.Len(self.members)
+end
+
+function ObjectLiteralDiscriminator:name(index)
+    if index < core.Len(self.props) then
+        return self.props[index + 1]:Symbol().name
+    end
+    return self.members[index - core.Len(self.props) + 1].name
+end
+
+function ObjectLiteralDiscriminator:matches(index, t)
+    local propType
+    if index < core.Len(self.props) then
+        local prop = self.props[index + 1]
+        if ast.IsPropertyAssignment(prop) or ast.IsJsxAttribute(prop) then
+            local initializer = prop:Initializer()
+            if initializer ~= nil then
+                propType = self.c:getContextFreeTypeOfExpression(prop:Initializer())
+            else
+                propType = self.c.trueType -- JsxAttribute without initializer is always true
+            end
+        else
+            propType = self.c:getContextFreeTypeOfExpression(prop:Name())
+        end
+    else
+        propType = self.c.undefinedType
+    end
+    for _, s in ipairs(propType:Distributed()) do
+        if self.c:isTypeAssignableTo(s, t) then
+            return true
+        end
+    end
+    return false
+end
+
+function Checker:discriminateContextualTypeByObjectMembers(node, contextualType)
+    local key = checker.DiscriminatedContextualTypeKey(ast.GetNodeId(node), contextualType.id)
+    local cachedDiscriminated = self.discriminatedContextualTypes[key]
+    if cachedDiscriminated ~= nil then
+        return cachedDiscriminated
+    end
+    local discriminated = self:getMatchingUnionConstituentForObjectLiteral(contextualType, node)
+    if discriminated == nil then
+        local discriminantProperties = core.Filter(node:Properties(), function(p)
+            local symbol = p:Symbol()
+            if symbol == nil then
+                return false
+            end
+            if ast.IsPropertyAssignment(p) then
+                return self:isPossiblyDiscriminantValue(p:Initializer()) and self:isDiscriminantProperty(contextualType, symbol.name)
+            end
+            if ast.IsShorthandPropertyAssignment(p) then
+                return self:isDiscriminantProperty(contextualType, symbol.name)
+            end
+            return false
+        end)
+        local discriminantMembers = core.Filter(self:getPropertiesOfType(contextualType), function(s)
+            return s.flags & SymbolFlags.Optional ~= 0 and (node:Symbol().members or {})[s.name] == nil and self:isDiscriminantProperty(contextualType, s.name)
+        end)
+        local discriminator = checker.ObjectLiteralDiscriminator_new({ c = self, props = discriminantProperties, members = discriminantMembers })
+        discriminated = self:discriminateTypeByDiscriminableItems(contextualType, discriminator)
+    end
+    self.discriminatedContextualTypes[key] = discriminated
+    return discriminated
+end
+
+function Checker:getMatchingUnionConstituentForObjectLiteral(unionType, node)
+    local keyPropertyName = self:getKeyPropertyName(unionType)
+    if keyPropertyName ~= "" then
+        local propNode = core.Find(node:Properties(), function(p)
+            return p:Symbol() ~= nil and ast.IsPropertyAssignment(p) and p:Symbol().name == keyPropertyName and self:isPossiblyDiscriminantValue(p:Initializer())
+        end)
+        if propNode ~= nil then
+            local propType = self:getContextFreeTypeOfExpression(propNode:Initializer())
+            return self:getConstituentTypeForKeyType(unionType, propType)
+        end
+    end
+    return nil
+end
+
+local possiblyDiscriminantValueKinds = ast.kindSet(Kind.StringLiteral, Kind.NumericLiteral, Kind.BigIntLiteral, Kind.NoSubstitutionTemplateLiteral, Kind.TemplateExpression,
+    Kind.TrueKeyword, Kind.FalseKeyword, Kind.NullKeyword, Kind.Identifier, Kind.UndefinedKeyword)
+
+-- Return true if the given expression is possibly a discriminant value. We limit the kinds of
+-- expressions we check to those that don't depend on their contextual type in order not to cause
+-- recursive (and possibly infinite) invocations of getContextualType.
+function Checker:isPossiblyDiscriminantValue(node)
+    local k = node.kind
+    if possiblyDiscriminantValueKinds[k] then
+        return true
+    elseif k == Kind.PropertyAccessExpression or k == Kind.ParenthesizedExpression then
+        return self:isPossiblyDiscriminantValue(node:Expression())
+    elseif k == Kind.JsxExpression then
+        return node:Expression() == nil or self:isPossiblyDiscriminantValue(node:Expression())
+    end
+    return false
+end
+
+-- If the given contextual type contains instantiable types and if a mapper representing
+-- return type inferences is available, instantiate those types using that mapper.
+function Checker:instantiateContextualType(contextualType, node, contextFlags)
+    if contextualType ~= nil and self:maybeTypeOfKind(contextualType, TypeFlags.Instantiable) then
+        local inferenceContext = self:getInferenceContext(node)
+        -- If no inferences have been made, and none of the type parameters for which we are inferring
+        -- specify default types, nothing is gained from instantiating as type parameters would just be
+        -- replaced with their constraints similar to the apparent type.
+        if inferenceContext ~= nil then
+            if contextFlags & ContextFlags.Signature ~= 0 and core.Some(inferenceContext.inferences, checker.hasInferenceCandidatesOrDefault) then
+                -- For contextual signatures we incorporate all inferences made so far, e.g. from return
+                -- types as well as arguments to the left in a function call.
+                local t = self:instantiateInstantiableTypes(contextualType, inferenceContext.nonFixingMapper)
+                if t.flags & TypeFlags.AnyOrUnknown == 0 then
+                    return t
+                end
+            end
+            if inferenceContext.returnMapper ~= nil then
+                -- For other purposes (e.g. determining whether to produce literal types) we only
+                -- incorporate inferences made from the return type in a function call. We remove
+                -- the 'boolean' type from the contextual type such that contextually typed boolean
+                -- literals actually end up widening to 'boolean' (see #48363).
+                local t = self:instantiateInstantiableTypes(contextualType, inferenceContext.returnMapper)
+                if t.flags & TypeFlags.AnyOrUnknown == 0 then
+                    if t.flags & TypeFlags.Union ~= 0 and checker.containsType(t:Types(), self.regularFalseType) and checker.containsType(t:Types(), self.regularTrueType) then
+                        return self:filterType(t, function(t1)
+                            return t1 ~= self.regularFalseType and t1 ~= self.regularTrueType
+                        end)
+                    end
+                    return t
+                end
+            end
+        end
+    end
+    return contextualType
+end
+
+-- This function is similar to instantiateType, except that (a) it only instantiates types that
+-- are classified as instantiable (i.e. it doesn't instantiate object types), and (b) it performs
+-- no reductions on instantiated union types.
+function Checker:instantiateInstantiableTypes(t, mapper)
+    if t.flags & TypeFlags.Instantiable ~= 0 then
+        return self:instantiateType(t, mapper)
+    end
+    if t.flags & TypeFlags.Union ~= 0 then
+        return self:getUnionTypeEx(core.Map(t:Types(), function(t1)
+            return self:instantiateInstantiableTypes(t1, mapper)
+        end), UnionReduction.None, nil, nil)
+    end
+    if t.flags & TypeFlags.Intersection ~= 0 then
+        return self:getIntersectionType(core.Map(t:Types(), function(t1)
+            return self:instantiateInstantiableTypes(t1, mapper)
+        end))
+    end
+    return t
+end
+
+function Checker:pushCachedContextualType(node)
+    self:pushContextualType(node, self:getContextualType(node, ContextFlags.None), true --[[isCache]])
+end
+
+function Checker:pushContextualType(node, t, isCache)
+    self.contextualInfos[#self.contextualInfos + 1] = checker.ContextualInfo_new({ node = node, t = t, isCache = isCache })
+end
+
+function Checker:popContextualType()
+    self.contextualInfos[#self.contextualInfos] = nil
+end
+
+function Checker:findContextualNode(node, includeCaches)
+    for i, info in ipairs(self.contextualInfos) do
+        if node == info.node and (includeCaches or not info.isCache) then
+            return i - 1
+        end
+    end
+    return -1
+end
+
+local contextSensitiveFunctionKinds = ast.kindSet(Kind.FunctionExpression, Kind.ArrowFunction, Kind.MethodDeclaration, Kind.FunctionDeclaration)
+
+-- Returns true if the given expression contains (at any level of nesting) a function or arrow expression
+-- that is subject to contextual typing.
+function Checker:isContextSensitive(node)
+    local k = node.kind
+    local isContextSensitive = function(n) return self:isContextSensitive(n) end
+    if contextSensitiveFunctionKinds[k] then
+        return self:isContextSensitiveFunctionLikeDeclaration(node)
+    elseif k == Kind.ObjectLiteralExpression then
+        return core.Some(node:Properties(), isContextSensitive)
+    elseif k == Kind.ArrayLiteralExpression then
+        return core.Some(node:Elements(), isContextSensitive)
+    elseif k == Kind.ConditionalExpression then
+        return self:isContextSensitive(node:AsConditionalExpression().whenTrue) or self:isContextSensitive(node:AsConditionalExpression().whenFalse)
+    elseif k == Kind.BinaryExpression then
+        local binary = node:AsBinaryExpression()
+        return ast.NodeKindIs(binary.operatorToken, Kind.BarBarToken, Kind.QuestionQuestionToken) and (self:isContextSensitive(binary.left) or self:isContextSensitive(binary.right))
+    elseif k == Kind.PropertyAssignment then
+        return self:isContextSensitive(node:Initializer())
+    elseif k == Kind.ParenthesizedExpression then
+        return self:isContextSensitive(node:Expression())
+    elseif k == Kind.JsxAttributes then
+        return core.Some(node:Properties(), isContextSensitive) or ast.IsJsxOpeningElement(node.parent) and core.Some(node.parent.parent:Children().nodes, isContextSensitive)
+    elseif k == Kind.JsxAttribute then
+        -- If there is no initializer, JSX attribute has a boolean value of true which is not context sensitive.
+        local initializer = node:Initializer()
+        return initializer ~= nil and self:isContextSensitive(initializer)
+    elseif k == Kind.JsxExpression then
+        -- It is possible to that node.expression is undefined (e.g <div x={} />)
+        local expression = node:Expression()
+        return expression ~= nil and self:isContextSensitive(expression)
+    elseif k == Kind.YieldExpression then
+        local expression = node:Expression()
+        return expression ~= nil and self:isContextSensitive(expression)
+    end
+    return false
+end
+
+function Checker:isContextSensitiveFunctionLikeDeclaration(node)
+    return ast.HasContextSensitiveParameters(node) or self:hasContextSensitiveReturnExpression(node) or self:hasContextSensitiveYieldExpression(node)
+end
+
+function Checker:hasContextSensitiveReturnExpression(node)
+    if node:TypeParameters() ~= nil or node:Type() ~= nil then
+        return false
+    end
+    local body = node:Body()
+    if body == nil then
+        return false
+    end
+    if not ast.IsBlock(body) then
+        return self:isContextSensitive(body)
+    end
+    return ast.ForEachReturnStatement(body, function(statement)
+        return statement:Expression() ~= nil and self:isContextSensitive(statement:Expression())
+    end)
+end
+
+function Checker:hasContextSensitiveYieldExpression(node)
+    return ast.GetFunctionFlags(node) & FunctionFlags.Generator ~= 0 and node:Body() ~= nil and checker.forEachYieldExpression(node:Body(), function(n) return self:isContextSensitive(n) end)
+end
+
+function Checker:pushInferenceContext(node, context)
+    self.inferenceContextInfos[#self.inferenceContextInfos + 1] = checker.InferenceContextInfo_new({ node = node, context = context })
+end
+
+function Checker:popInferenceContext()
+    self.inferenceContextInfos[#self.inferenceContextInfos] = nil
+end
+
+function Checker:getInferenceContext(node)
+    for i = #self.inferenceContextInfos, 1, -1 do
+        if checker.isNodeDescendantOf(node, self.inferenceContextInfos[i].node) then
+            return self.inferenceContextInfos[i].context
+        end
+    end
+    return nil
+end
+
+function Checker:getTypeFacts(t, mask)
+    return self:getTypeFactsWorker(t, mask) & mask
+end
