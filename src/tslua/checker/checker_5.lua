@@ -3686,6 +3686,6 @@ function Checker:getRestType(source, properties, symbol)
         members[prop.name] = self:getSpreadSymbol(prop, false --[[readonly]])
     end
     local result = self:newAnonymousType(symbol, members, nil, nil, self:getIndexInfosOfType(source))
-    result.objectFlags = result.objectFlags | ObjectFlags.ObjectRestType
+    result.objectFlags = result.objectFlags | checker.ObjectFlagsObjectRestType
     return result
 end
