@@ -1864,7 +1864,7 @@ function NodeFactory:NewSourceFile(opts, text, statements, endOfFileToken)
         languageVariant = core.LanguageVariant.Standard,
         scriptKind = core.ScriptKind.Unknown,
         isDeclarationFile = false,
-        usesUriStyleNodeCoreModules = core.Tristate.Unknown,
+        usesUriStyleNodeCoreModules = core.Tristate.TSUnknown,
         identifierCount = 0,
         imports = nil,
         moduleAugmentations = nil,
