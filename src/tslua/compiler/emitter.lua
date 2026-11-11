@@ -259,14 +259,12 @@ function emitter:emitDeclarationFile(sourceFile, declarationFilePath, declaratio
         -- !!!
     }, emitContext)
 
-    -- a *core.CompilerOptions holding only the source map related options
-    local declarationMapOptions = {
+    local declarationMapOptions = core.NewCompilerOptions({
         sourceMap = emitDeclarationMap and Tristate.TSTrue or Tristate.TSFalse,
-        inlineSourceMap = Tristate.TSUnknown,
         sourceRoot = options.sourceRoot,
         mapRoot = options.mapRoot,
         -- Explicitly do not pass through either inline option.
-    }
+    })
     self:printSourceFile(declarationFilePath, declarationMapPath, sourceFile, p, declarationMapOptions, compiler.shouldEmitSourceMaps(declarationMapOptions, sourceFile))
     done()
 end
@@ -280,10 +278,7 @@ function emitter:printSourceFile(jsFilePath, sourceMapFilePath, sourceFile, prin
             tspath.GetBaseFileName(tspath.NormalizeSlashes(jsFilePath)),
             compiler.getSourceRoot(mapOptions),
             self:getSourceMapDirectory(mapOptions, jsFilePath, sourceFile),
-            {
-                useCaseSensitiveFileNames = self.host:UseCaseSensitiveFileNames(),
-                currentDirectory = self.host:GetCurrentDirectory(),
-            }
+            tspath.NewComparePathsOptions(self.host:UseCaseSensitiveFileNames(), self.host:GetCurrentDirectory())
         )
     end
 
@@ -429,10 +424,7 @@ function emitter:getSourceMappingURL(mapOptions, sourceMapGenerator, filePath, s
                     tspath.GetDirectoryPath(tspath.NormalizePath(filePath)), -- get the relative sourceMapDir path based on jsFilePath
                     tspath.CombinePaths(sourceMapDir, sourceMapFile), -- this is where user expects to see sourceMap
                     true, -- isAbsolutePathAnUrl
-                    {
-                        useCaseSensitiveFileNames = self.host:UseCaseSensitiveFileNames(),
-                        currentDirectory = self.host:GetCurrentDirectory(),
-                    }
+                    tspath.NewComparePathsOptions(self.host:UseCaseSensitiveFileNames(), self.host:GetCurrentDirectory())
                 )
             )
         else
@@ -494,10 +486,7 @@ function compiler.sourceFileMayBeEmitted(sourceFile, host, forceDtsEmit, forceJs
     if options.rootDir ~= "" or options.configFilePath ~= "" then
         local commonDir = tspath.GetNormalizedAbsolutePath(outputpaths.GetCommonSourceDirectory(options, function() return nil end, host:GetCurrentDirectory(), host:UseCaseSensitiveFileNames(), nil), host:GetCurrentDirectory())
         local outputPath = outputpaths.GetSourceFilePathInNewDirWorker(sourceFile:FileName(), options.outDir, host:GetCurrentDirectory(), commonDir, host:UseCaseSensitiveFileNames())
-        if tspath.ComparePaths(sourceFile:FileName(), outputPath, {
-            useCaseSensitiveFileNames = host:UseCaseSensitiveFileNames(),
-            currentDirectory = host:GetCurrentDirectory(),
-        }) == 0 then
+        if tspath.ComparePaths(sourceFile:FileName(), outputPath, tspath.NewComparePathsOptions(host:UseCaseSensitiveFileNames(), host:GetCurrentDirectory())) == 0 then
             return false
         end
     end

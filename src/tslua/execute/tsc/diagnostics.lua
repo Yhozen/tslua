@@ -1,16 +1,14 @@
 local tsc = require("tslua.execute.tsc")
 local core = require("tslua.core")
 local diagnosticwriter = require("tslua.diagnosticwriter")
+local tspath = require("tslua.tspath")
 
+-- diagnosticwriter.FormattingOptions embeds tspath.ComparePathsOptions; its fields are flattened.
 function tsc.getFormatOptsOfSys(sys, locale)
-    return {
-        newLine = "\n",
-        comparePathsOptions = {
-            currentDirectory = sys:GetCurrentDirectory(),
-            useCaseSensitiveFileNames = sys:FS():UseCaseSensitiveFileNames(),
-        },
-        locale = locale,
-    }
+    local opts = tspath.NewComparePathsOptions(sys:FS():UseCaseSensitiveFileNames(), sys:GetCurrentDirectory())
+    opts.newLine = "\n"
+    opts.locale = locale
+    return opts
 end
 
 -- DiagnosticReporter = func(*ast.Diagnostic)

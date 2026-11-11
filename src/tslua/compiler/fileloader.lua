@@ -79,10 +79,10 @@ function compiler.processAllProgramFiles(opts, singleThreaded)
         opts = opts,
         resolver = nil,
         defaultLibraryPath = tspath.GetNormalizedAbsolutePath(opts.host:DefaultLibraryPath(), opts.host:GetCurrentDirectory()),
-        comparePathsOptions = {
-            useCaseSensitiveFileNames = opts.host:FS():UseCaseSensitiveFileNames(),
-            currentDirectory = opts.host:GetCurrentDirectory(),
-        },
+        comparePathsOptions = tspath.NewComparePathsOptions(
+            opts.host:FS():UseCaseSensitiveFileNames(),
+            opts.host:GetCurrentDirectory()
+        ),
         filesParser = compiler.newFilesParser(core.NewWorkGroup(singleThreaded), maxNodeModuleJsDepth),
         rootTasks = {},
         supportedExtensions = supportedExtensions,
@@ -101,10 +101,10 @@ function compiler.processAllProgramFiles(opts, singleThreaded)
     }, fileLoader)
     loader:addProjectReferenceTasks(singleThreaded)
     loader.resolver = module.NewResolver(loader.projectReferenceFileMapper.host, compilerOptions, opts.typingsLocation, opts.projectName, opts.config:ContentMapperExtensions())
-    for index1, rootFile in ipairs(rootFiles) do
+    for index1, rootFile in ipairs(rootFiles or {}) do
         loader:addRootFileTask(rootFile, nil, compiler.newFileIncludeReason(compiler.fileIncludeKindRootFile, index1 - 1))
     end
-    if #rootFiles > 0 and core.Tristate_IsFalseOrUnknown(compilerOptions.noLib) then
+    if core.Len(rootFiles) > 0 and core.Tristate_IsFalseOrUnknown(compilerOptions.noLib) then
         if compilerOptions.lib == nil then
             local name = tsoptions.GetDefaultLibFileName(compilerOptions)
             local libFile = loader:pathForLibFile(name)
@@ -121,7 +121,7 @@ function compiler.processAllProgramFiles(opts, singleThreaded)
         end
     end
 
-    if #rootFiles > 0 then
+    if core.Len(rootFiles) > 0 then
         loader:addAutomaticTypeDirectiveTasks()
     end
 

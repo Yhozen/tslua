@@ -88,7 +88,7 @@ local function newProgramTable(opts)
         -- (i.e. CreateCheckerPool was not provided).
         compilerCheckerPool = nil,
 
-        comparePathsOptions = { useCaseSensitiveFileNames = false, currentDirectory = "" },
+        comparePathsOptions = tspath.NewComparePathsOptions(false, ""),
 
         -- processedFiles (embedded)
         finishedProcessing = false,
@@ -1082,7 +1082,7 @@ function Program:verifyCompilerOptions()
 
     if isTrue(options.composite) then
         local rootPaths = {}
-        for _, fileName in ipairs(self.opts.config:FileNames()) do
+        for _, fileName in ipairs(self.opts.config:FileNames() or {}) do
             rootPaths[self:toPath(fileName)] = true
         end
 
@@ -1811,7 +1811,7 @@ end
 
 function Program:checkSourceFilesBelongToPath(sourceFiles, rootDirectory)
     local allFilesBelongToPath = true
-    for _, file in ipairs(sourceFiles) do
+    for _, file in ipairs(sourceFiles or {}) do
         local absoluteSourceFilePath = tspath.GetCanonicalFileName(tspath.GetNormalizedAbsolutePath(file, self:GetCurrentDirectory()), self:UseCaseSensitiveFileNames())
         if not tspath.ContainsPath(rootDirectory, file, self.comparePathsOptions) then
             self.includeProcessor:addProcessingDiagnostic(compiler.newProcessingDiagnostic(
@@ -1889,7 +1889,7 @@ function Program:Emit(ctx, options)
     local forceJsEmit = options.forceEmit and options.emitOnly == EmitOnly.Js
     local sourceFiles = self:getSourceFilesToEmit(options.targetSourceFiles, forceDtsEmit, forceJsEmit)
 
-    for _, sourceFile in ipairs(sourceFiles) do
+    for _, sourceFile in ipairs(sourceFiles or {}) do
         local e = compiler.newEmitter({
             writer = nil,
             sourceFile = sourceFile,
