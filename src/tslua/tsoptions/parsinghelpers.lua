@@ -15,8 +15,30 @@ function tsoptions.isOrderedMap(value)
     return type(value) == "table" and getmetatable(value) == collections.OrderedMap
 end
 
+-- Go distinguishes a nil []any stored in an `any` (non-nil interface) from a nil interface, and
+-- []string from []any. tsoptions.NilSlice stands for a typed nil []any; tables with the
+-- tsoptions.StringSlice metatable stand for []string values.
+tsoptions.NilSlice = setmetatable({}, { __name = "[]any(nil)" })
+tsoptions.StringSlice = { __name = "[]string" }
+
+function tsoptions.newStringSlice(t)
+    return setmetatable(t, tsoptions.StringSlice)
+end
+
 function tsoptions.isSlice(value)
-    return type(value) == "table" and getmetatable(value) == nil
+    if type(value) ~= "table" then
+        return false
+    end
+    local mt = getmetatable(value)
+    return mt == nil or mt == tsoptions.StringSlice or value == tsoptions.NilSlice
+end
+
+-- Go `v, _ := value.([]any)`: the []any, or nil (also for a typed nil []any).
+function tsoptions.asAnySlice(value)
+    if value == tsoptions.NilSlice or not tsoptions.isSlice(value) or getmetatable(value) == tsoptions.StringSlice then
+        return nil
+    end
+    return value
 end
 
 function tsoptions.ParseTristate(value)
@@ -34,7 +56,10 @@ function tsoptions.ParseTristate(value)
 end
 
 function tsoptions.ParseStringArray(value)
-    if tsoptions.isSlice(value) then
+    if tsoptions.isSlice(value) and getmetatable(value) ~= tsoptions.StringSlice then
+        if value == tsoptions.NilSlice then
+            return nil
+        end
         local result = {}
         for _, v in ipairs(value) do
             if type(v) == "string" then
@@ -171,7 +196,7 @@ end
 -- parseStringArrayStrict returns the string slice and true only if value is an array whose
 -- elements are all strings. A missing element or wrong element type yields false.
 function tsoptions.parseStringArrayStrict(value)
-    if not tsoptions.isSlice(value) then
+    if tsoptions.asAnySlice(value) == nil then
         return nil, false
     end
     local result = {}
@@ -366,7 +391,12 @@ tsoptions.compilerOptionsSwitch = {
     jsxFactory = { "jsxFactory", P.string },
     jsxFragmentFactory = { "jsxFragmentFactory", P.string },
     jsxImportSource = { "jsxImportSource", P.string },
-    lib = { "lib", P.stringArray },
+    lib = { "lib", function(value)
+        if getmetatable(value) == tsoptions.StringSlice then
+            return setmetatable(core.Slice(value, 0), nil)
+        end
+        return tsoptions.ParseStringArray(value)
+    end },
     libReplacement = { "libReplacement", P.tristate },
     listEmittedFiles = { "listEmittedFiles", P.tristate },
     listFiles = { "listFiles", P.tristate },
@@ -629,6 +659,14 @@ function tsoptions.ConvertOptionToAbsolutePath(o, v, optionMap, cwd)
     end
     if option.kind == "list" then
         if option:Elements().isFilePath then
+            if getmetatable(v) == tsoptions.StringSlice then
+                return tsoptions.newStringSlice(core.Map(v, function(item)
+                    return tspath.GetNormalizedAbsolutePath(item, cwd)
+                end)), true
+            end
+            if v == tsoptions.NilSlice then
+                return tsoptions.NilSlice, true
+            end
             if tsoptions.isSlice(v) then
                 return core.Map(v, function(item)
                     if type(item) == "string" then

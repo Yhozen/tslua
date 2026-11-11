@@ -334,6 +334,9 @@ function tsoptions.convertJsonOptionOfListType(
 )
     local expression = nil
     local errors = nil
+    if values == tsoptions.NilSlice then
+        return tsoptions.NilSlice, errors
+    end
     if isSlice(values) then
         local mappedValues = {}
         for index1, v in ipairs(values) do
@@ -621,7 +624,8 @@ function tsoptions.convertArrayLiteralExpressionToJson(
             value = core.Append(value, convertedValue)
         end
     end
-    return value, errors
+    -- A nil Go []any returned as `any` is a typed nil, not a JSON null.
+    return value or tsoptions.NilSlice, errors
 end
 
 function tsoptions.directoryOfCombinedPath(fileName, basePath)
@@ -830,6 +834,9 @@ local function isPlainArray(t)
 end
 
 function tsoptions.normalizeJsonValue(value)
+    if value == tsoptions.NilSlice then
+        return {}
+    end
     if isOrderedMap(value) then
         local updates = {}
         for key, child in value:Entries() do
@@ -1094,8 +1101,8 @@ function tsoptions.parseConfig(
                 end
                 if propertyName == "include" or propertyName == "exclude" or propertyName == "files" then
                     if isOrderedMap(extendsRaw) and extendsRaw:Has(propertyName) then
-                        local slice = extendsRaw:GetOrZero(propertyName)
-                        if isSlice(slice) then
+                        local slice = tsoptions.asAnySlice(extendsRaw:GetOrZero(propertyName))
+                        if slice ~= nil then
                             local value = core.Map(slice, function(path)
                                 if type(path) ~= "string" then
                                     return path
@@ -1130,12 +1137,7 @@ function tsoptions.parseConfig(
             setPropertyValue("exclude")
             setPropertyValue("files")
             if isOrderedMap(extendsRaw) and extendsRaw:Has("contentMappers") then
-                local contentMappers = extendsRaw:GetOrZero("contentMappers")
-                if isSlice(contentMappers) then
-                    result.contentMappers = contentMappers
-                else
-                    result.contentMappers = nil
-                end
+                result.contentMappers = tsoptions.asAnySlice(extendsRaw:GetOrZero("contentMappers"))
             end
             if isOrderedMap(extendsRaw) and extendsRaw:Has("compileOnSave") then
                 local compileOnSave = extendsRaw:GetOrZero("compileOnSave")
@@ -1242,10 +1244,12 @@ function tsoptions.parseJsonConfigFileContentWorker(
         if exists and value ~= nil then
             if isSlice(value) then
                 local result = rawConfig:GetOrZero(prop)
-                if sourceFile == nil and not core.Every(result, validateElement) then
-                    errors = core.Append(errors, ast.NewCompilerDiagnostic(diagnostics.Compiler_option_0_requires_a_value_of_type_1, prop, elementTypeName))
+                if tsoptions.asAnySlice(result) ~= nil or result == tsoptions.NilSlice then
+                    if sourceFile == nil and not core.Every(result, validateElement) then
+                        errors = core.Append(errors, ast.NewCompilerDiagnostic(diagnostics.Compiler_option_0_requires_a_value_of_type_1, prop, elementTypeName))
+                    end
                 end
-                return { sliceValue = result, wrongValue = "" }
+                return { sliceValue = tsoptions.asAnySlice(result), wrongValue = "" }
             elseif sourceFile == nil then
                 errors = core.Append(errors, ast.NewCompilerDiagnostic(diagnostics.Compiler_option_0_requires_a_value_of_type_1, prop, "Array"))
                 return { sliceValue = nil, wrongValue = "not-array" }

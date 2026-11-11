@@ -282,7 +282,7 @@ function commandLineParser:parseOptionValue(
             if opt.kind ~= "boolean" then
                 self.errors[#self.errors + 1] = ast.NewCompilerDiagnostic(diag, opt.name, tsoptions.getCompilerOptionValueTypeString(opt))
                 if opt.kind == "list" then
-                    self.options:Set(opt.name, {})
+                    self.options:Set(opt.name, tsoptions.newStringSlice({}))
                 elseif opt.kind == "enum" then
                     self.errors[#self.errors + 1] = tsoptions.createDiagnosticForInvalidEnumType(opt, nil, nil)
                 end
@@ -384,7 +384,7 @@ function tsoptions.ParseListTypeOption(opt, value)
             errors = appendAll(errors, err)
             return "", false
         end)
-        return elements, errors
+        return elements or tsoptions.NilSlice, errors
     elseif elementKind == "boolean" or elementKind == "object" or elementKind == "number" then
         -- do nothing: only string and enum/object types currently allowed as list entries
         -- 				!!! we don't actually have number list options, so I didn't implement number list parsing
@@ -398,7 +398,7 @@ function tsoptions.ParseListTypeOption(opt, value)
             errors = appendAll(errors, err)
             return "", false
         end)
-        return result, errors
+        return result or tsoptions.NilSlice, errors
     end
 end
 
