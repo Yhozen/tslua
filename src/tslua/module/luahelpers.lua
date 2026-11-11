@@ -1,5 +1,7 @@
 -- Lua-only helpers (Go `strings` package equivalents) used by ported code. No Go counterpart file.
 local module = require("tslua.module")
+local stringutil = require("tslua.stringutil")
+local tspath = require("tslua.tspath")
 
 local strings = {}
 module.strings = strings
@@ -144,10 +146,40 @@ function strings.Compare(a, b)
     return 1
 end
 
--- strings.ToLower (ASCII; Go lowers Unicode too, but option names and paths compared here are ASCII
--- except where tspath handles canonicalization).
+-- strings.ToLower
 function strings.ToLower(s)
-    return string.lower(s)
+    return stringutil.StringsToLower(s)
+end
+
+-- strings.TrimFunc(s, f) with f(rune) -> bool.
+function strings.TrimFunc(s, f)
+    local start = 0
+    while start < #s do
+        local r, size = stringutil.DecodeRune(s, start)
+        if not f(r) then
+            break
+        end
+        start = start + size
+    end
+    local stop = #s
+    while stop > start do
+        local r, size = stringutil.DecodeLastRune(s, stop)
+        if not f(r) then
+            break
+        end
+        stop = stop - size
+    end
+    return string.sub(s, start + 1, stop)
+end
+
+-- strings.TrimSpace
+function strings.TrimSpace(s)
+    return strings.TrimFunc(s, stringutil.UnicodeIsSpace)
+end
+
+-- strings.EqualFold
+function strings.EqualFold(a, b)
+    return stringutil.EqualFold(a, b)
 end
 
 -- slices.Contains for arrays of comparable values.
@@ -180,5 +212,5 @@ end
 
 -- tspath.ComparePathsOptions value struct.
 function module.newComparePathsOptions(useCaseSensitiveFileNames, currentDirectory)
-    return { useCaseSensitiveFileNames = useCaseSensitiveFileNames or false, currentDirectory = currentDirectory or "" }
+    return tspath.NewComparePathsOptions(useCaseSensitiveFileNames or false, currentDirectory or "")
 end

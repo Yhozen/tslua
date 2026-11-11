@@ -43,10 +43,7 @@ end
 -- ForceEmitPaths: { dts = bool, js = bool, declarationMap = bool } (nil fields are false).
 
 local function comparePathsOptions(host)
-    return {
-        currentDirectory = host:GetCurrentDirectory(),
-        useCaseSensitiveFileNames = host:UseCaseSensitiveFileNames(),
-    }
+    return tspath.NewComparePathsOptions(host:UseCaseSensitiveFileNames(), host:GetCurrentDirectory())
 end
 
 function outputpaths.GetOutputPathsFor(sourceFile, options, host, force)

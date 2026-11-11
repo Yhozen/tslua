@@ -2187,7 +2187,7 @@ function module.TryParsePatterns(pathMappings)
 end
 
 function module.newPattern(text, starIndex)
-    return setmetatable({ text = text, starIndex = starIndex }, core.Pattern)
+    return core.NewPattern(text, starIndex)
 end
 
 function module.MatchPatternOrExact(patterns, candidate)
@@ -2239,8 +2239,7 @@ function module.extensionIsOk(extensions, extension)
 end
 
 function module.ResolveConfig(moduleName, containingFile, host)
-    local options = core.NewCompilerOptions()
-    options.moduleResolution = ModuleResolutionKind.NodeNext
+    local options = core.NewCompilerOptions({ moduleResolution = ModuleResolutionKind.NodeNext })
     local resolver = module.NewResolver(host, options, "", "", nil)
     return resolver:resolveConfig(moduleName, containingFile)
 end
