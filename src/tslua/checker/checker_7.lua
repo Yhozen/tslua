@@ -6,6 +6,7 @@ local diagnostics = require("tslua.diagnostics")
 local jsnum = require("tslua.jsnum")
 local debug = require("tslua.debug")
 local evaluator = require("tslua.evaluator")
+local scanner = require("tslua.scanner")
 
 local Checker = checker.Checker
 local TypeFlags = checker.TypeFlags
@@ -1864,4 +1865,1399 @@ function Checker:getTypeReferenceType(node, symbol)
 
     -- !!! Resolving values as types for JS
     return self.errorType
+end
+
+--[[
+ * Get type from type-reference that reference to class or interface
+]]
+function Checker:getTypeFromClassOrInterfaceReference(node, symbol)
+    local t = self:getDeclaredTypeOfClassOrInterface(self:getMergedSymbol(symbol))
+    local d = t:AsInterfaceType()
+    local typeParameters = d:LocalTypeParameters()
+    if core.Len(typeParameters) ~= 0 then
+        local numTypeArguments = core.Len(node:TypeArguments())
+        local minTypeArgumentCount = self:getMinTypeArgumentCount(typeParameters)
+        local isJs = ast.IsInJSFile(node)
+        local isJsImplicitAny = not self.noImplicitAny and isJs
+        if not isJsImplicitAny and (numTypeArguments < minTypeArgumentCount or numTypeArguments > #typeParameters) then
+            local message
+
+            local missingAugmentsTag = isJs and ast.IsExpressionWithTypeArguments(node) and not ast.IsJSDocAugmentsTag(node.parent)
+            if missingAugmentsTag then
+                message = diagnostics.Expected_0_type_arguments_provide_these_with_an_extends_tag
+                if minTypeArgumentCount < #typeParameters then
+                    message = diagnostics.Expected_0_1_type_arguments_provide_these_with_an_extends_tag
+                end
+            else
+                message = diagnostics.Generic_type_0_requires_1_type_argument_s
+                if minTypeArgumentCount < #typeParameters then
+                    message = diagnostics.Generic_type_0_requires_between_1_and_2_type_arguments
+                end
+            end
+            local typeStr = self:TypeToStringEx(t, nil --[[enclosingDeclaration]], TypeFormatFlags.WriteArrayAsGenericType, nil)
+            self:error(node, message, typeStr, minTypeArgumentCount, #typeParameters)
+            if not isJs then
+                -- TODO: Adopt same permissive behavior in TS as in JS to reduce follow-on editing experience failures (requires editing fillMissingTypeArguments)
+                return self.errorType
+            end
+        end
+        if node.kind == Kind.TypeReference and self:isDeferredTypeReferenceNode(node, numTypeArguments ~= #typeParameters) then
+            return self:createDeferredTypeReference(t, node, nil --[[mapper]], nil --[[alias]])
+        end
+        -- In a type reference, the outer type parameters of the referenced class or interface are automatically
+        -- supplied as type arguments and the type reference only specifies arguments for the local type parameters
+        -- of the class or interface.
+        local localTypeArguments = self:fillMissingTypeArguments(self:getTypeArgumentsFromNode(node), typeParameters, minTypeArgumentCount, isJs)
+        local typeArguments = core.AppendAll(d:OuterTypeParameters(), localTypeArguments)
+        return self:createTypeReferenceEx(t, typeArguments, checker.ObjectFlagsFromTypeNode)
+    end
+    if self:checkNoTypeArguments(node, symbol) then
+        return t
+    end
+    return self.errorType
+end
+
+function Checker:getTypeArgumentsFromNode(node)
+    return core.Map(node:TypeArguments(), function(n) return self:getTypeFromTypeNode(n) end)
+end
+
+function Checker:checkNoTypeArguments(node, symbol)
+    if core.Len(node:TypeArguments()) ~= 0 then
+        local typeName
+        if symbol ~= nil then
+            typeName = self:symbolToString(symbol)
+        else
+            typeName = scanner.DeclarationNameToString(node:AsTypeReferenceNode().typeName)
+        end
+        self:error(node, diagnostics.Type_0_is_not_generic, typeName)
+        return false
+    end
+    return true
+end
+
+-- Return true if the given type reference node is directly aliased or if it needs to be deferred
+-- because it is possibly contained in a circular chain of eagerly resolved types.
+function Checker:isDeferredTypeReferenceNode(node, hasDefaultTypeArguments)
+    if self:getAliasSymbolForTypeNode(node) ~= nil then
+        return true
+    end
+    if self:isResolvedByTypeAlias(node) then
+        if node.kind == Kind.ArrayType then
+            return self:mayResolveTypeAlias(node:AsArrayTypeNode().elementType)
+        elseif node.kind == Kind.TupleType then
+            return core.Some(node:Elements(), function(e) return self:mayResolveTypeAlias(e) end)
+        elseif node.kind == Kind.TypeReference then
+            return hasDefaultTypeArguments or core.Some(node:TypeArguments(), function(e) return self:mayResolveTypeAlias(e) end)
+        end
+        error("Unhandled case in isDeferredTypeReferenceNode", 0)
+    end
+    return false
+end
+
+local resolvedByTypeAliasParentKinds = ast.kindSet(Kind.ParenthesizedType, Kind.NamedTupleMember, Kind.TypeReference, Kind.UnionType, Kind.IntersectionType,
+    Kind.IndexedAccessType, Kind.ConditionalType, Kind.TypeOperator, Kind.ArrayType, Kind.TupleType)
+
+-- Return true when the given node is transitively contained in type constructs that eagerly
+-- resolve their constituent types. We include SyntaxKind.TypeReference because type arguments
+-- of type aliases are eagerly resolved.
+function Checker:isResolvedByTypeAlias(node)
+    local parent = node.parent
+    if resolvedByTypeAliasParentKinds[parent.kind] then
+        return self:isResolvedByTypeAlias(parent)
+    elseif parent.kind == Kind.TypeAliasDeclaration or parent.kind == Kind.JSTypeAliasDeclaration then
+        return true
+    end
+    return false
+end
+
+-- Return true if resolving the given node (i.e. getTypeFromTypeNode) possibly causes resolution
+-- of a type alias.
+function Checker:mayResolveTypeAlias(node)
+    local kind = node.kind
+    local f = function(n) return self:mayResolveTypeAlias(n) end
+    if kind == Kind.TypeReference then
+        return self:resolveTypeReferenceName(node, SymbolFlags.Type, false).flags & SymbolFlags.TypeAlias ~= 0
+    elseif kind == Kind.TypeQuery then
+        return true
+    elseif kind == Kind.TypeOperator then
+        return node:AsTypeOperatorNode().operator ~= Kind.UniqueKeyword and self:mayResolveTypeAlias(node:Type())
+    elseif kind == Kind.ParenthesizedType or kind == Kind.OptionalType or kind == Kind.NamedTupleMember then
+        return self:mayResolveTypeAlias(node:Type())
+    elseif kind == Kind.RestType then
+        return node:Type().kind ~= Kind.ArrayType or self:mayResolveTypeAlias(node:Type():AsArrayTypeNode().elementType)
+    elseif kind == Kind.UnionType then
+        return core.Some(node:AsUnionTypeNode().types.nodes, f)
+    elseif kind == Kind.IntersectionType then
+        return core.Some(node:AsIntersectionTypeNode().types.nodes, f)
+    elseif kind == Kind.IndexedAccessType then
+        return self:mayResolveTypeAlias(node:AsIndexedAccessTypeNode().objectType) or self:mayResolveTypeAlias(node:AsIndexedAccessTypeNode().indexType)
+    elseif kind == Kind.ConditionalType then
+        return self:mayResolveTypeAlias(node:AsConditionalTypeNode().checkType) or self:mayResolveTypeAlias(node:AsConditionalTypeNode().extendsType) or
+            self:mayResolveTypeAlias(node:AsConditionalTypeNode().trueType) or self:mayResolveTypeAlias(node:AsConditionalTypeNode().falseType)
+    end
+    return false
+end
+
+function Checker:createNormalizedTypeReference(target, typeArguments)
+    if target.objectFlags & ObjectFlags.Tuple ~= 0 then
+        return self:createNormalizedTupleType(target, typeArguments)
+    end
+    return self:createTypeReference(target, typeArguments)
+end
+
+function Checker:createNormalizedTupleTypeEx(target, elementTypes, objectFlags)
+    local d = target:AsTupleType()
+    if d.combinedFlags & ElementFlags.NonRequired == 0 then
+        -- No need to normalize when we only have regular required elements
+        return self:createTypeReferenceEx(target, elementTypes, objectFlags)
+    end
+    local numInfos = core.Len(d.elementInfos)
+    if d.combinedFlags & ElementFlags.Variadic ~= 0 then
+        for i1, e in ipairs(elementTypes or {}) do
+            local i = i1 - 1
+            if i < numInfos and d.elementInfos[i1].flags & ElementFlags.Variadic ~= 0 and e.flags & (TypeFlags.Never | TypeFlags.Union) ~= 0 then
+                -- Transform [A, ...(X | Y | Z)] into [A, ...X] | [A, ...Y] | [A, ...Z]
+                local checkTypes = core.MapIndex(elementTypes, function(t, j)
+                    if j < numInfos and d.elementInfos[j + 1].flags & ElementFlags.Variadic ~= 0 then
+                        return t
+                    end
+                    return self.unknownType
+                end)
+                if self:checkCrossProductUnion(checkTypes) then
+                    return self:mapType(e, function(t)
+                        return self:createNormalizedTupleTypeEx(target, core.ReplaceElement(elementTypes, i, t), objectFlags)
+                    end)
+                end
+            end
+        end
+    end
+    -- We have optional, rest, or variadic elements that may need normalizing. Normalization ensures that all variadic
+    -- elements are generic and that the tuple type has one of the following layouts, disregarding variadic elements:
+    -- (1) Zero or more required elements, followed by zero or more optional elements, followed by zero or one rest element.
+    -- (2) Zero or more required elements, followed by a rest element, followed by zero or more required elements.
+    -- In either layout, zero or more generic variadic elements may be present at any location.
+    -- Note that the element types may contain an extra 'this' type argument that we want to ignore during normalization
+    -- and then just append to the normalized element types.
+    local n = checker.TupleNormalizer_new()
+    if not n:normalize(self, core.Slice(elementTypes, 0, numInfos), d.elementInfos) then
+        return self.errorType
+    end
+    if core.Len(elementTypes) > numInfos then
+        n.types = core.Append(n.types, elementTypes[numInfos + 1])
+    end
+    local tupleTarget = self:getTupleTargetType(n.infos, d.readonly)
+    if tupleTarget == self.emptyGenericType then
+        return self.emptyObjectType
+    elseif core.Len(n.types) ~= 0 then
+        return self:createTypeReferenceEx(tupleTarget, n.types, objectFlags)
+    end
+    return tupleTarget
+end
+
+function Checker:createNormalizedTupleType(target, elementTypes)
+    return self:createNormalizedTupleTypeEx(target, elementTypes, ObjectFlags.None)
+end
+
+-- TupleNormalizer: { c, types, infos, lastRequiredIndex, firstRestIndex, lastOptionalOrRestIndex }.
+-- infos holds TupleElementInfo values, which are never mutated in place.
+local TupleNormalizer = checker.defineStruct("TupleNormalizer", nil, {
+    lastRequiredIndex = 0,
+    firstRestIndex = 0,
+    lastOptionalOrRestIndex = 0,
+})
+
+function TupleNormalizer:normalize(c, elementTypes, elementInfos)
+    self.c = c
+    self.lastRequiredIndex = -1
+    self.firstRestIndex = -1
+    self.lastOptionalOrRestIndex = -1
+    for i, t in ipairs(elementTypes or {}) do
+        local info = elementInfos[i]
+        if info.flags & ElementFlags.Variadic ~= 0 then
+            if t.flags & TypeFlags.Any ~= 0 then
+                self:add(t, checker.TupleElementInfo_new({ flags = ElementFlags.Rest, labeledDeclaration = info.labeledDeclaration }))
+            elseif t.flags & TypeFlags.InstantiableNonPrimitive ~= 0 or c:isGenericMappedType(t) then
+                -- Generic variadic elements stay as they are.
+                self:add(t, info)
+            elseif checker.isTupleType(t) then
+                local spreadTypes = c:getElementTypes(t)
+                if core.Len(spreadTypes) + core.Len(self.types) >= 10000 then
+                    local message = core.IfElse(ast.IsPartOfTypeNode(c.currentNode),
+                        diagnostics.Type_produces_a_tuple_type_that_is_too_large_to_represent,
+                        diagnostics.Expression_produces_a_tuple_type_that_is_too_large_to_represent)
+                    c:error(c.currentNode, message)
+                    return false
+                end
+                -- Spread variadic elements with tuple types into the resulting tuple.
+                local spreadInfos = t:TargetTupleType().elementInfos
+                for j, s in ipairs(spreadTypes or {}) do
+                    self:add(s, spreadInfos[j])
+                end
+            else
+                -- Treat everything else as an array type and create a rest element.
+                local s = nil
+                if c:isArrayLikeType(t) then
+                    s = c:getIndexTypeOfType(t, c.numberType)
+                end
+                if s == nil then
+                    s = c.errorType
+                end
+                self:add(s, checker.TupleElementInfo_new({ flags = ElementFlags.Rest, labeledDeclaration = info.labeledDeclaration }))
+            end
+        else
+            -- Copy other element kinds with no change.
+            self:add(t, info)
+        end
+    end
+    -- Turn optional elements preceding the last required element into required elements
+    for i = 1, self.lastRequiredIndex do
+        local info = self.infos[i]
+        if info.flags & ElementFlags.Optional ~= 0 then
+            self.infos[i] = checker.TupleElementInfo_new({ flags = ElementFlags.Required, labeledDeclaration = info.labeledDeclaration })
+        end
+    end
+    if self.firstRestIndex >= 0 and self.firstRestIndex < self.lastOptionalOrRestIndex then
+        -- Turn elements between first rest and last optional/rest into a single rest element
+        local types = nil
+        for i = self.firstRestIndex, self.lastOptionalOrRestIndex do
+            local t = self.types[i + 1]
+            if self.infos[i + 1].flags & ElementFlags.Variadic ~= 0 then
+                t = c:getIndexedAccessType(t, c.numberType)
+            end
+            types = core.Append(types, t)
+        end
+        self.types[self.firstRestIndex + 1] = c:getUnionType(types)
+        -- slices.Delete(xs, firstRestIndex+1, lastOptionalOrRestIndex+1)
+        local deleteCount = self.lastOptionalOrRestIndex - self.firstRestIndex
+        for _ = 1, deleteCount do
+            table.remove(self.types, self.firstRestIndex + 2)
+            table.remove(self.infos, self.firstRestIndex + 2)
+        end
+    end
+    return true
+end
+
+function TupleNormalizer:add(t, info)
+    if info.flags & ElementFlags.Required ~= 0 then
+        self.lastRequiredIndex = core.Len(self.types)
+    end
+    if info.flags & ElementFlags.Rest ~= 0 and self.firstRestIndex < 0 then
+        self.firstRestIndex = core.Len(self.types)
+    end
+    if info.flags & (ElementFlags.Optional | ElementFlags.Rest) ~= 0 then
+        self.lastOptionalOrRestIndex = core.Len(self.types)
+    end
+    self.types = core.Append(self.types, self.c:addOptionalityEx(t, true --[[isProperty]], info.flags & ElementFlags.Optional ~= 0))
+    self.infos = core.Append(self.infos, info)
+end
+
+-- Return count of starting consecutive tuple elements of the given kind(s)
+function checker.getStartElementCount(t, flags)
+    for i, info in ipairs(t.elementInfos or {}) do
+        if info.flags & flags == 0 then
+            return i - 1
+        end
+    end
+    return core.Len(t.elementInfos)
+end
+
+-- Return count of ending consecutive tuple elements of the given kind(s)
+function checker.getEndElementCount(t, flags)
+    local n = core.Len(t.elementInfos)
+    for i = n, 1, -1 do
+        if t.elementInfos[i].flags & flags == 0 then
+            return n - i
+        end
+    end
+    return n
+end
+
+function checker.getTotalFixedElementCount(t)
+    return t.fixedLength + checker.getEndElementCount(t, ElementFlags.Fixed)
+end
+
+function Checker:getElementTypes(t)
+    local typeArguments = self:getTypeArguments(t)
+    local arity = self:getTypeReferenceArity(t)
+    if core.Len(typeArguments) == arity then
+        return typeArguments
+    end
+    return core.Slice(typeArguments, 0, arity)
+end
+
+function Checker:getTypeReferenceArity(t)
+    return core.Len(t:TargetInterfaceType():TypeParameters())
+end
+
+function Checker:isArrayType(t)
+    return t.objectFlags & ObjectFlags.Reference ~= 0 and (t:Target() == self.globalArrayType or t:Target() == self.globalReadonlyArrayType)
+end
+
+function Checker:isReadonlyArrayType(t)
+    return t.objectFlags & ObjectFlags.Reference ~= 0 and t:Target() == self.globalReadonlyArrayType
+end
+
+function checker.isTupleType(t)
+    return t.objectFlags & ObjectFlags.Reference ~= 0 and t:Target().objectFlags & ObjectFlags.Tuple ~= 0
+end
+
+function checker.isMutableTupleType(t)
+    return checker.isTupleType(t) and not t:TargetTupleType().readonly
+end
+
+function checker.isGenericTupleType(t)
+    return checker.isTupleType(t) and t:TargetTupleType().combinedFlags & ElementFlags.Variadic ~= 0
+end
+
+function checker.isSingleElementGenericTupleType(t)
+    return checker.isGenericTupleType(t) and core.Len(t:TargetTupleType().elementInfos) == 1
+end
+
+function Checker:isArrayOrTupleType(t)
+    return self:isArrayType(t) or checker.isTupleType(t)
+end
+
+function Checker:isMutableArrayOrTuple(t)
+    return self:isArrayType(t) and not self:isReadonlyArrayType(t) or checker.isTupleType(t) and not t:TargetTupleType().readonly
+end
+
+function Checker:getElementTypeOfArrayType(t)
+    if self:isArrayType(t) then
+        return self:getTypeArguments(t)[1]
+    end
+    return nil
+end
+
+function Checker:isArrayLikeType(t)
+    -- A type is array-like if it is a reference to the global Array or global ReadonlyArray type,
+    -- or if it is not the undefined or null type and if it is assignable to ReadonlyArray<any>
+    return self:isArrayType(t) or t.flags & TypeFlags.Nullable == 0 and self:isTypeAssignableTo(t, self.anyReadonlyArrayType)
+end
+
+function Checker:isMutableArrayLikeType(t)
+    -- A type is mutable-array-like if it is a reference to the global Array type, or if it is not the
+    -- any, undefined or null type and if it is assignable to Array<any>
+    return self:isMutableArrayOrTuple(t) or t.flags & (TypeFlags.Any | TypeFlags.Nullable) == 0 and self:isTypeAssignableTo(t, self.anyArrayType)
+end
+
+function Checker:isEmptyArrayLiteralType(t)
+    local elementType = self:getElementTypeOfArrayType(t)
+    return elementType ~= nil and self:isEmptyLiteralType(elementType)
+end
+
+function Checker:isEmptyLiteralType(t)
+    if self.strictNullChecks then
+        return t == self.implicitNeverType
+    end
+    return t == self.undefinedWideningType
+end
+
+function Checker:isTupleLikeType(t)
+    if checker.isTupleType(t) or self:getPropertyOfType(t, "0") ~= nil then
+        return true
+    end
+    if self:isArrayLikeType(t) then
+        local lengthType = self:getTypeOfPropertyOfType(t, "length")
+        if lengthType ~= nil then
+            return checker.everyType(lengthType, function(lt) return lt.flags & TypeFlags.NumberLiteral ~= 0 end)
+        end
+    end
+    return false
+end
+
+function Checker:isArrayOrTupleLikeType(t)
+    return self:isArrayLikeType(t) or self:isTupleLikeType(t)
+end
+
+function Checker:isArrayOrTupleOrIntersection(t)
+    return t.flags & TypeFlags.Intersection ~= 0 and core.Every(t:Types(), function(e) return self:isArrayOrTupleType(e) end)
+end
+
+function Checker:getTupleElementType(t, index)
+    local propType = self:getTypeOfPropertyOfType(t, tostring(index))
+    if propType ~= nil then
+        return propType
+    end
+    if checker.everyType(t, checker.isTupleType) then
+        return self:getTupleElementTypeOutOfStartCount(t, index + 0.0, core.IfElse(self.compilerOptions.noUncheckedIndexedAccess == core.Tristate.TSTrue, self.undefinedType, nil))
+    end
+    return nil
+end
+
+--[[
+ * Get type from reference to type alias. When a type alias is generic, the declared type of the type alias may include
+ * references to the type parameters of the alias. We replace those with the actual type arguments by instantiating the
+ * declared type. Instantiations are cached using the type identities of the type arguments as the key.
+]]
+function Checker:getTypeFromTypeAliasReference(node, symbol)
+    local typeArguments = node:TypeArguments()
+    if symbol.checkFlags & CheckFlags.Unresolved ~= 0 then
+        local alias = checker.TypeAlias_new({ symbol = symbol, typeArguments = core.Map(typeArguments, function(n) return self:getTypeFromTypeNode(n) end) })
+        local key = checker.getAliasKey(alias)
+        local errorType = self.errorTypes[key]
+        if errorType == nil then
+            errorType = self:newIntrinsicType(TypeFlags.Any, "error")
+            errorType.alias = alias
+            self.errorTypes[key] = errorType
+        end
+        return errorType
+    end
+    local t = self:getDeclaredTypeOfSymbol(symbol)
+    local typeParameters = self.typeAliasLinks:Get(symbol).typeParameters
+    if core.Len(typeParameters) ~= 0 then
+        local numTypeArguments = core.Len(typeArguments)
+        local minTypeArgumentCount = self:getMinTypeArgumentCount(typeParameters)
+        if numTypeArguments < minTypeArgumentCount or numTypeArguments > #typeParameters then
+            local message = core.IfElse(minTypeArgumentCount == #typeParameters,
+                diagnostics.Generic_type_0_requires_1_type_argument_s,
+                diagnostics.Generic_type_0_requires_between_1_and_2_type_arguments)
+            self:error(node, message, self:symbolToString(symbol), minTypeArgumentCount, #typeParameters)
+            return self.errorType
+        end
+        -- We refrain from associating a local type alias with an instantiation of a top-level type alias
+        -- because the local alias may end up being referenced in an inferred return type where it is not
+        -- accessible--which in turn may lead to a large structural expansion of the type when generating
+        -- a .d.ts file. See #43622 for an example.
+        local aliasSymbol = self:getAliasSymbolForTypeNode(node)
+        local newAliasSymbol = nil
+        if aliasSymbol ~= nil and (checker.isLocalTypeAlias(symbol) or not checker.isLocalTypeAlias(aliasSymbol)) then
+            newAliasSymbol = aliasSymbol
+        end
+        local aliasTypeArguments = nil
+        if newAliasSymbol ~= nil then
+            aliasTypeArguments = self:getTypeArgumentsForAliasSymbol(newAliasSymbol)
+        elseif ast.IsTypeReferenceType(node) then
+            local referencedAliasSymbol = self:resolveTypeReferenceName(node, SymbolFlags.Alias, true --[[ignoreErrors]])
+            -- refers to an alias import/export/reexport - by making sure we use the target as an aliasSymbol,
+            -- we ensure the exported symbol is used to refer to the type when it is reserialized later
+            if referencedAliasSymbol ~= nil and referencedAliasSymbol ~= self.unknownSymbol then
+                local resolved = self:resolveAlias(referencedAliasSymbol)
+                if resolved ~= nil and resolved.flags & SymbolFlags.TypeAlias ~= 0 then
+                    newAliasSymbol = resolved
+                    aliasTypeArguments = self:getTypeArgumentsFromNode(node)
+                end
+            end
+        end
+        local newAlias = nil
+        if newAliasSymbol ~= nil then
+            newAlias = checker.TypeAlias_new({ symbol = newAliasSymbol, typeArguments = aliasTypeArguments })
+        end
+        return self:getTypeAliasInstantiation(symbol, self:getTypeArgumentsFromNode(node), newAlias)
+    end
+    if self:checkNoTypeArguments(node, symbol) then
+        return t
+    end
+    return self.errorType
+end
+
+function Checker:getTypeAliasInstantiation(symbol, typeArguments, alias)
+    local t = self:getDeclaredTypeOfSymbol(symbol)
+    if t == self.intrinsicMarkerType then
+        local typeKind = checker.intrinsicTypeKinds[symbol.name]
+        if typeKind ~= nil and core.Len(typeArguments) == 1 then
+            if typeKind == checker.IntrinsicTypeKind.NoInfer then
+                return self:getNoInferType(typeArguments[1])
+            else
+                return self:getStringMappingType(symbol, typeArguments[1])
+            end
+        end
+    end
+    local links = self.typeAliasLinks:Get(symbol)
+    local typeParameters = links.typeParameters
+    local key = checker.getTypeAliasInstantiationKey(typeArguments, alias)
+    local instantiation = links.instantiations[key]
+    if instantiation == nil then
+        local mapper = checker.newTypeMapper(typeParameters, self:fillMissingTypeArguments(typeArguments, typeParameters, self:getMinTypeArgumentCount(typeParameters), ast.IsInJSFile(symbol.valueDeclaration)))
+        instantiation = self:instantiateTypeWithAlias(t, mapper, alias)
+        links.instantiations[key] = instantiation
+    end
+    return instantiation
+end
+
+function checker.isLocalTypeAlias(symbol)
+    local declaration = core.Find(symbol.declarations, function(d) return checker.isTypeAlias(d) end)
+    return declaration ~= nil and ast.GetContainingFunction(declaration) ~= nil
+end
+
+function Checker:getDeclaredTypeOfSymbol(symbol)
+    local result = self:tryGetDeclaredTypeOfSymbol(symbol)
+    if result == nil then
+        result = self.errorType
+    end
+    return result
+end
+
+function Checker:tryGetDeclaredTypeOfSymbol(symbol)
+    if symbol.flags & (SymbolFlags.Class | SymbolFlags.Interface) ~= 0 then
+        return self:getDeclaredTypeOfClassOrInterface(symbol)
+    elseif symbol.flags & SymbolFlags.TypeParameter ~= 0 then
+        return self:getDeclaredTypeOfTypeParameter(symbol)
+    elseif symbol.flags & SymbolFlags.TypeAlias ~= 0 then
+        return self:getDeclaredTypeOfTypeAlias(symbol)
+    elseif symbol.flags & SymbolFlags.Enum ~= 0 then
+        return self:getDeclaredTypeOfEnum(symbol)
+    elseif symbol.flags & SymbolFlags.EnumMember ~= 0 then
+        return self:getDeclaredTypeOfEnumMember(symbol)
+    elseif symbol.flags & SymbolFlags.Alias ~= 0 then
+        return self:getDeclaredTypeOfAlias(symbol)
+    end
+    return nil
+end
+
+function checker.getTypeReferenceName(node)
+    if node.kind == Kind.TypeReference then
+        return node:AsTypeReferenceNode().typeName
+    elseif node.kind == Kind.ExpressionWithTypeArguments then
+        -- We only support expressions that are simple qualified names. For other
+        -- expressions this produces nil
+        local expr = node:Expression()
+        if ast.IsEntityNameExpression(expr) then
+            return expr
+        end
+    end
+    return nil
+end
+
+function Checker:getAliasForTypeNode(node)
+    local symbol = self:getAliasSymbolForTypeNode(node)
+    if symbol ~= nil then
+        return checker.TypeAlias_new({ symbol = symbol, typeArguments = self:getTypeArgumentsForAliasSymbol(symbol) })
+    end
+    return nil
+end
+
+function Checker:getAliasSymbolForTypeNode(node)
+    local host = node.parent
+    while ast.IsParenthesizedTypeNode(host) or ast.IsTypeOperatorNode(host) and host:AsTypeOperatorNode().operator == Kind.ReadonlyKeyword do
+        host = host.parent
+    end
+    if checker.isTypeAlias(host) then
+        return self:getSymbolOfDeclaration(host)
+    end
+    return nil
+end
+
+function Checker:getTypeArgumentsForAliasSymbol(symbol)
+    if symbol ~= nil then
+        return self:getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol)
+    end
+    return nil
+end
+
+function Checker:getOuterTypeParametersOfClassOrInterface(symbol)
+    local declaration = self:getClassOrInterfaceLikeDeclaration(symbol)
+    debug.Assert(declaration ~= nil, "Class was missing valueDeclaration -OR- non-class had no interface declarations")
+    return self:getOuterTypeParameters(declaration, false --[[includeThisTypes]])
+end
+
+-- Returns the declaration used to obtain a class, interface, or function symbol's outer type parameters.
+function Checker:getClassOrInterfaceLikeDeclaration(symbol)
+    if symbol.flags & (SymbolFlags.Class | SymbolFlags.Function) ~= 0 then
+        return symbol.valueDeclaration
+    end
+    return core.Find(symbol.declarations, function(d)
+        if ast.IsInterfaceDeclaration(d) then
+            return true
+        end
+        if not ast.IsVariableDeclaration(d) then
+            return false
+        end
+        local initializer = d:Initializer()
+        return initializer ~= nil and ast.IsFunctionExpressionOrArrowFunction(initializer)
+    end)
+end
+
+function Checker:canGetTypeParametersOfClassOrInterface(symbol)
+    return self:getClassOrInterfaceLikeDeclaration(symbol) ~= nil
+end
+
+local outerTypeParameterContainerKinds = ast.kindSet(Kind.ClassDeclaration, Kind.ClassExpression, Kind.InterfaceDeclaration, Kind.CallSignature, Kind.ConstructSignature,
+    Kind.MethodSignature, Kind.FunctionType, Kind.ConstructorType, Kind.FunctionDeclaration,
+    Kind.MethodDeclaration, Kind.FunctionExpression, Kind.ArrowFunction, Kind.TypeAliasDeclaration, Kind.JSTypeAliasDeclaration, Kind.MappedType,
+    Kind.ConditionalType)
+
+-- Return the outer type parameters of a node or undefined if the node has no outer type parameters.
+function Checker:getOuterTypeParameters(node, includeThisTypes)
+    while true do
+        node = node.parent
+        if node == nil then
+            return nil
+        end
+        local kind = node.kind
+        if outerTypeParameterContainerKinds[kind] then
+            local outerTypeParameters = self:getOuterTypeParameters(node, includeThisTypes)
+            if (kind == Kind.FunctionExpression or kind == Kind.ArrowFunction or ast.IsObjectLiteralMethod(node)) and self:isContextSensitive(node) then
+                local signature = core.FirstOrNil(self:getSignaturesOfType(self:getTypeOfSymbol(self:getSymbolOfDeclaration(node)), checker.SignatureKind.Call))
+                if signature ~= nil and core.Len(signature.typeParameters) ~= 0 then
+                    return core.AppendAll(outerTypeParameters, signature.typeParameters)
+                end
+            end
+            if kind == Kind.MappedType then
+                return core.Append(outerTypeParameters, self:getDeclaredTypeOfTypeParameter(self:getSymbolOfDeclaration(node:AsMappedTypeNode().typeParameter)))
+            end
+            if kind == Kind.ConditionalType then
+                return core.AppendAll(outerTypeParameters, self:getInferTypeParameters(node))
+            end
+            local outerAndOwnTypeParameters = self:appendTypeParameters(outerTypeParameters, node:TypeParameters())
+            local thisType = nil
+            if includeThisTypes and (kind == Kind.ClassDeclaration or kind == Kind.ClassExpression or kind == Kind.InterfaceDeclaration) then
+                thisType = self:getDeclaredTypeOfClassOrInterface(self:getSymbolOfDeclaration(node)):AsInterfaceType().thisType
+            end
+            if thisType ~= nil then
+                return core.Append(outerAndOwnTypeParameters, thisType)
+            end
+            return outerAndOwnTypeParameters
+        end
+    end
+end
+
+function Checker:getInferTypeParameters(node)
+    local result = nil
+    for _, symbol in pairs(node:Locals() or {}) do
+        if symbol.flags & SymbolFlags.TypeParameter ~= 0 then
+            result = core.Append(result, self:getDeclaredTypeOfSymbol(symbol))
+        end
+    end
+    return result
+end
+
+-- The local type parameters are the combined set of type parameters from all declarations of the class,
+-- interface, or type alias.
+function Checker:getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol)
+    return self:appendLocalTypeParametersOfClassOrInterfaceOrTypeAlias(nil, symbol)
+end
+
+function Checker:appendLocalTypeParametersOfClassOrInterfaceOrTypeAlias(types, symbol)
+    for _, node in ipairs(symbol.declarations or {}) do
+        if ast.NodeKindIs(node, Kind.InterfaceDeclaration, Kind.ClassDeclaration, Kind.ClassExpression) or checker.isTypeAlias(node) then
+            types = self:appendTypeParameters(types, node:TypeParameters())
+        end
+    end
+    return types
+end
+
+-- Appends the type parameters given by a list of declarations to a set of type parameters and returns the resulting set.
+-- The function allocates a new array if the input type parameter set is undefined, but otherwise it modifies the set
+-- in-place and returns the same array.
+function Checker:appendTypeParameters(typeParameters, declarations)
+    for _, declaration in ipairs(declarations or {}) do
+        typeParameters = core.AppendIfUnique(typeParameters, self:getDeclaredTypeOfTypeParameter(self:getSymbolOfDeclaration(declaration)))
+    end
+    return typeParameters
+end
+
+function Checker:getDeclaredTypeOfTypeParameter(symbol)
+    local links = self.declaredTypeLinks:Get(symbol)
+    if links.declaredType == nil then
+        links.declaredType = self:newTypeParameter(symbol)
+    end
+    return links.declaredType
+end
+
+function Checker:getDeclaredTypeOfTypeAlias(symbol)
+    local links = self.typeAliasLinks:Get(symbol)
+    if links.declaredType == nil then
+        -- Note that we use the links object as the target here because the symbol object is used as the unique
+        -- identity for resolution of the 'type' property in SymbolLinks.
+        if not self:pushTypeResolution(symbol, TypeSystemPropertyName.DeclaredType) then
+            return self.errorType
+        end
+        local declaration = core.Find(symbol.declarations, function(d) return ast.IsTypeOrJSTypeAliasDeclaration(d) end)
+        local typeNode = declaration:Type()
+        local t = self:getTypeFromTypeNode(typeNode)
+        if self:popTypeResolution() then
+            local typeParameters = self:getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol)
+            if core.Len(typeParameters) ~= 0 then
+                -- Initialize the instantiation cache for generic type aliases. The declared type corresponds to
+                -- an instantiation of the type alias with the type parameters supplied as type arguments.
+                links.typeParameters = typeParameters
+                links.instantiations = {}
+                links.instantiations[checker.getTypeListKey(typeParameters)] = t
+            end
+            if t == self.intrinsicMarkerType and symbol.name == "BuiltinIteratorReturn" then
+                t = self:getBuiltinIteratorReturnType()
+            end
+        else
+            local errorNode = declaration:Name()
+            if errorNode == nil then
+                errorNode = declaration
+            end
+            self:error(errorNode, diagnostics.Type_alias_0_circularly_references_itself, self:symbolToString(symbol))
+            t = self.errorType
+        end
+        if links.declaredType == nil then
+            links.declaredType = t
+        end
+    end
+    return links.declaredType
+end
+
+function Checker:getDeclaredTypeOfEnum(symbol)
+    local links = self.declaredTypeLinks:Get(symbol)
+    if not (links.declaredType ~= nil) then
+        local memberTypeList = nil
+        for _, declaration in ipairs(symbol.declarations or {}) do
+            if declaration.kind == Kind.EnumDeclaration then
+                for _, member in ipairs(declaration:Members() or {}) do
+                    if not ast.HasDynamicName(member) then
+                        local memberSymbol = self:getSymbolOfDeclaration(member)
+                        local value = self:getEnumMemberValue(member).value
+                        local memberType
+                        if value ~= nil then
+                            memberType = self:getEnumLiteralType(value, symbol, memberSymbol)
+                        else
+                            memberType = self:createComputedEnumType(memberSymbol)
+                        end
+                        self.declaredTypeLinks:Get(memberSymbol).declaredType = self:getFreshTypeOfLiteralType(memberType)
+                        memberTypeList = core.Append(memberTypeList, memberType)
+                    end
+                end
+            end
+        end
+        local enumType
+        if core.Len(memberTypeList) ~= 0 then
+            enumType = self:getUnionTypeEx(memberTypeList, UnionReduction.Literal, checker.TypeAlias_new({ symbol = symbol }), nil --[[origin]])
+        else
+            enumType = self:createComputedEnumType(symbol)
+        end
+        if enumType.flags & TypeFlags.Union ~= 0 then
+            enumType.flags = enumType.flags | TypeFlags.EnumLiteral
+            enumType.symbol = symbol
+        end
+        links.declaredType = enumType
+    end
+    return links.declaredType
+end
+
+function Checker:getEnumMemberValue(node)
+    self:computeEnumMemberValues(node.parent)
+    return self.enumMemberLinks:Get(node).value
+end
+
+function Checker:createComputedEnumType(symbol)
+    local regularType = self:newLiteralType(TypeFlags.Enum, nil, nil)
+    regularType.symbol = symbol
+    local freshType = self:newLiteralType(TypeFlags.Enum, nil, regularType)
+    freshType.symbol = symbol
+    regularType:AsLiteralType().freshType = freshType
+    freshType:AsLiteralType().freshType = freshType
+    return regularType
+end
+
+function Checker:getDeclaredTypeOfEnumMember(symbol)
+    local links = self.declaredTypeLinks:Get(symbol)
+    if not (links.declaredType ~= nil) then
+        local enumType = self:getDeclaredTypeOfEnum(self:getParentOfSymbol(symbol))
+        if links.declaredType == nil then
+            links.declaredType = enumType
+        end
+    end
+    return links.declaredType
+end
+
+function Checker:computeEnumMemberValues(node)
+    local nodeLinks = self.nodeLinks:Get(node)
+    if not (nodeLinks.flags & checker.NodeCheckFlags.EnumValuesComputed ~= 0) then
+        nodeLinks.flags = nodeLinks.flags | checker.NodeCheckFlags.EnumValuesComputed
+        -- autoValue is Go's *jsnum.Number: a float, or nil.
+        local autoValue = 0.0
+        local previous = nil
+        for _, member in ipairs(node:Members() or {}) do
+            local result = self:computeEnumMemberValue(member, autoValue, previous)
+            self.enumMemberLinks:Get(member).value = result
+            if type(result.value) == "number" then
+                autoValue = result.value + 1
+            else
+                autoValue = nil
+            end
+            previous = member
+        end
+    end
+end
+
+function Checker:computeEnumMemberValue(member, autoValue, previous)
+    if ast.IsComputedNonLiteralName(member:Name()) then
+        self:error(member:Name(), diagnostics.Computed_property_names_are_not_allowed_in_enums)
+    elseif ast.IsBigIntLiteral(member:Name()) then
+        self:error(member:Name(), diagnostics.An_enum_member_cannot_have_a_numeric_name)
+    else
+        local text = ast.GetTextOfPropertyName(member:Name())
+        if checker.isNumericLiteralName(text) and not ast.IsInfinityOrNaNString(text) then
+            self:error(member:Name(), diagnostics.An_enum_member_cannot_have_a_numeric_name)
+        end
+    end
+    if member:Initializer() ~= nil then
+        return self:computeConstantEnumMemberValue(member)
+    end
+    -- In ambient non-const numeric enum declarations, enum members without initializers are
+    -- considered computed members (as opposed to having auto-incremented values).
+    if member.parent.flags & NodeFlags.Ambient ~= 0 and not ast.IsEnumConst(member.parent) then
+        return evaluator.NewResult(nil, false, false, false)
+    end
+    -- If the member declaration specifies no value, the member is considered a constant enum member.
+    -- If the member is the first member in the enum declaration, it is assigned the value zero.
+    -- Otherwise, it is assigned the value of the immediately preceding member plus one, and an error
+    -- occurs if the immediately preceding member is not a constant enum member.
+    if autoValue == nil then
+        self:error(member:Name(), diagnostics.Enum_member_must_have_initializer)
+        return evaluator.NewResult(nil, false, false, false)
+    end
+    if self.compilerOptions:GetIsolatedModules() and previous ~= nil and previous:Initializer() ~= nil then
+        local prevValue = self:getEnumMemberValue(previous)
+        local prevIsNum = type(prevValue.value) == "number"
+        if not prevIsNum or prevValue.resolvedOtherFiles then
+            self:error(member:Name(), diagnostics.Enum_member_following_a_non_literal_numeric_member_must_have_an_initializer_when_isolatedModules_is_enabled)
+        end
+    end
+    return evaluator.NewResult(autoValue, false, false, false)
+end
+
+function Checker:computeConstantEnumMemberValue(member)
+    local isConstEnum = ast.IsEnumConst(member.parent)
+    local initializer = member:Initializer()
+    local result = self.evaluate(initializer, member)
+    if result.value ~= nil then
+        if isConstEnum then
+            local numValue = result.value
+            if type(numValue) == "number" and (jsnum.Number_IsInf(numValue) or jsnum.Number_IsNaN(numValue)) then
+                self:error(initializer, core.IfElse(jsnum.Number_IsNaN(numValue),
+                    diagnostics.X_const_enum_member_initializer_was_evaluated_to_disallowed_value_NaN,
+                    diagnostics.X_const_enum_member_initializer_was_evaluated_to_a_non_finite_value))
+            end
+        end
+        if self.compilerOptions:GetIsolatedModules() then
+            if type(result.value) == "string" and not result.isSyntacticallyString then
+                local memberName = member.parent:Name():Text() .. "." .. member:Name():Text()
+                self:error(initializer, diagnostics.X_0_has_a_string_type_but_must_have_syntactically_recognizable_string_syntax_when_isolatedModules_is_enabled, memberName)
+            end
+        end
+    elseif isConstEnum then
+        self:error(initializer, diagnostics.X_const_enum_member_initializers_must_be_constant_expressions)
+    elseif member.parent.flags & NodeFlags.Ambient ~= 0 then
+        self:error(initializer, diagnostics.In_ambient_enum_declarations_member_initializer_must_be_constant_expression)
+    else
+        self:checkTypeAssignableTo(self:checkExpression(initializer), self.numberType, initializer, diagnostics.Type_0_is_not_assignable_to_type_1_as_required_for_computed_enum_member_values)
+    end
+    return result
+end
+
+function Checker:evaluateEntity(expr, location)
+    if expr.kind == Kind.Identifier or expr.kind == Kind.PropertyAccessExpression then
+        local symbol = self:resolveEntityName(expr, SymbolFlags.Value, true --[[ignoreErrors]], false, nil)
+        if symbol == nil then
+            return evaluator.NewResult(nil, false, false, false)
+        end
+        if expr.kind == Kind.Identifier then
+            if ast.IsInfinityOrNaNString(expr:Text()) and (symbol == self:getGlobalSymbol(expr:Text(), SymbolFlags.Value, nil --[[diagnostic]])) then
+                -- Technically we resolved a global lib file here, but the decision to treat this as numeric
+                -- is more predicated on the fact that the single-file resolution *didn't* resolve to a
+                -- different meaning of `Infinity` or `NaN`. Transpilers handle this no problem.
+                return evaluator.NewResult(jsnum.FromString(expr:Text()), false, false, false)
+            end
+        end
+        if symbol.flags & SymbolFlags.EnumMember ~= 0 then
+            if location ~= nil then
+                return self:evaluateEnumMember(expr, symbol, location)
+            end
+            return self:getEnumMemberValue(symbol.valueDeclaration)
+        end
+        if self:isConstantVariable(symbol) then
+            local declaration = symbol.valueDeclaration
+            if declaration ~= nil and ast.IsVariableDeclaration(declaration) and declaration:Type() == nil and declaration:Initializer() ~= nil and
+                (location == nil or declaration ~= location and self:isBlockScopedNameDeclaredBeforeUse(declaration, location)) then
+                local result = self.evaluate(declaration:Initializer(), declaration)
+                if location ~= nil and ast.GetSourceFileOfNode(location) ~= ast.GetSourceFileOfNode(declaration) then
+                    return evaluator.NewResult(result.value, false, true, true)
+                end
+                return evaluator.NewResult(result.value, result.isSyntacticallyString, result.resolvedOtherFiles, true --[[hasExternalReferences]])
+            end
+        end
+        return evaluator.NewResult(nil, false, false, false)
+    elseif expr.kind == Kind.ElementAccessExpression then
+        local root = expr:Expression()
+        if ast.IsEntityNameExpression(root) and ast.IsStringLiteralLike(expr:AsElementAccessExpression().argumentExpression) then
+            local rootSymbol = self:resolveEntityName(root, SymbolFlags.Value, true --[[ignoreErrors]], false, nil)
+            if rootSymbol ~= nil and rootSymbol.flags & SymbolFlags.Enum ~= 0 then
+                local name = expr:AsElementAccessExpression().argumentExpression:Text()
+                local member = rootSymbol.exports and rootSymbol.exports[name]
+                if member ~= nil then
+                    if location ~= nil then
+                        return self:evaluateEnumMember(expr, member, location)
+                    end
+                    return self:getEnumMemberValue(member.valueDeclaration)
+                end
+            end
+        end
+        return evaluator.NewResult(nil, false, false, false)
+    end
+    error("Unhandled case in evaluateEntity", 0)
+end
+
+function Checker:evaluateEnumMember(expr, symbol, location)
+    local declaration = symbol.valueDeclaration
+    if declaration == nil or declaration == location then
+        self:error(expr, diagnostics.Property_0_is_used_before_being_assigned, self:symbolToString(symbol))
+        return evaluator.NewResult(nil, false, false, false)
+    end
+    if not self:isBlockScopedNameDeclaredBeforeUse(declaration, location) then
+        self:error(expr, diagnostics.A_member_initializer_in_a_enum_declaration_cannot_reference_members_declared_after_it_including_members_defined_in_other_enums)
+        return evaluator.NewResult(0.0, false, false, false)
+    end
+    local value = self:getEnumMemberValue(declaration)
+    if location.parent ~= declaration.parent then
+        return evaluator.NewResult(value.value, value.isSyntacticallyString, value.resolvedOtherFiles, true --[[hasExternalReferences]])
+    end
+    return value
+end
+
+function Checker:getDeclaredTypeOfAlias(symbol)
+    local links = self.declaredTypeLinks:Get(symbol)
+    if links.declaredType == nil then
+        links.declaredType = self:getDeclaredTypeOfSymbol(self:resolveAlias(symbol))
+    end
+    return links.declaredType
+end
+
+function Checker:getTypeFromTypeQueryNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        -- TypeScript 1.0 spec (April 2014): 3.6.3
+        -- The expression is processed as an identifier expression (section 4.3)
+        -- or property access expression(section 4.10),
+        -- the widened type(section 3.9) of which becomes the result.
+        local t = self:checkExpressionWithTypeArguments(node)
+        links.resolvedType = self:getRegularTypeOfLiteralType(self:getWidenedType(t))
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromArrayOrTupleTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local target = self:getArrayOrTupleTargetType(node)
+        if target == self.emptyGenericType then
+            links.resolvedType = self.emptyObjectType
+        elseif not (node.kind == Kind.TupleType and core.Some(node:Elements(), function(e) return self:isVariadicTupleElement(e) end)) and self:isDeferredTypeReferenceNode(node, false) then
+            if node.kind == Kind.TupleType and core.Len(node:Elements()) == 0 then
+                links.resolvedType = target
+            else
+                links.resolvedType = self:createDeferredTypeReference(target, node, nil --[[mapper]], nil --[[alias]])
+            end
+        else
+            local elementTypes
+            if node.kind == Kind.ArrayType then
+                elementTypes = { self:getTypeFromTypeNode(node:AsArrayTypeNode().elementType) }
+            else
+                elementTypes = core.Map(node:Elements(), function(e) return self:getTypeFromTypeNode(e) end)
+            end
+            if target.objectFlags & ObjectFlags.Tuple ~= 0 then
+                links.resolvedType = self:createNormalizedTupleTypeEx(target, elementTypes, checker.ObjectFlagsFromTypeNode)
+            else
+                links.resolvedType = self:createTypeReferenceEx(target, elementTypes, checker.ObjectFlagsFromTypeNode)
+            end
+        end
+    end
+    return links.resolvedType
+end
+
+function Checker:isVariadicTupleElement(node)
+    return self:getTupleElementFlags(node) & ElementFlags.Variadic ~= 0
+end
+
+function Checker:getArrayOrTupleTargetType(node)
+    local readonly = self:isReadonlyTypeOperator(node.parent)
+    local elementType = self:getArrayElementTypeNode(node)
+    if elementType ~= nil then
+        if readonly then
+            return self.globalReadonlyArrayType
+        end
+        return self.globalArrayType
+    end
+    return self:getTupleTargetType(core.Map(node:Elements(), function(e) return self:getTupleElementInfo(e) end), readonly)
+end
+
+function Checker:isReadonlyTypeOperator(node)
+    return ast.IsTypeOperatorNode(node) and node:AsTypeOperatorNode().operator == Kind.ReadonlyKeyword
+end
+
+function Checker:getTypeFromNamedTupleTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        if node:AsNamedTupleMember().dotDotDotToken ~= nil then
+            links.resolvedType = self:getTypeFromRestTypeNode(node)
+        else
+            links.resolvedType = self:addOptionalityEx(self:getTypeFromTypeNode(node:Type()), true --[[isProperty]], node:QuestionToken() ~= nil)
+        end
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromRestTypeNode(node)
+    local typeNode = node:Type()
+    local elementTypeNode = self:getArrayElementTypeNode(typeNode)
+    if elementTypeNode ~= nil then
+        typeNode = elementTypeNode
+    end
+    return self:getTypeFromTypeNode(typeNode)
+end
+
+function Checker:getArrayElementTypeNode(node)
+    if node.kind == Kind.ParenthesizedType then
+        return self:getArrayElementTypeNode(node:Type())
+    elseif node.kind == Kind.TupleType then
+        if core.Len(node:Elements()) == 1 then
+            node = node:Elements()[1]
+            if node.kind == Kind.RestType then
+                return self:getArrayElementTypeNode(node:Type())
+            end
+            if node.kind == Kind.NamedTupleMember and node:AsNamedTupleMember().dotDotDotToken ~= nil then
+                return self:getArrayElementTypeNode(node:Type())
+            end
+        end
+    elseif node.kind == Kind.ArrayType then
+        return node:AsArrayTypeNode().elementType
+    end
+    return nil
+end
+
+function Checker:getTypeFromOptionalTypeNode(node)
+    return self:addOptionalityEx(self:getTypeFromTypeNode(node:Type()), true --[[isProperty]], true --[[isOptional]])
+end
+
+function Checker:getTypeFromUnionTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local alias = self:getAliasForTypeNode(node)
+        links.resolvedType = self:getUnionTypeEx(core.Map(node:AsUnionTypeNode().types.nodes, function(n) return self:getTypeFromTypeNode(n) end), UnionReduction.Literal, alias, nil --[[origin]])
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromIntersectionTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local alias = self:getAliasForTypeNode(node)
+        local types = core.Map(node:AsIntersectionTypeNode().types.nodes, function(n) return self:getTypeFromTypeNode(n) end)
+        -- We perform no supertype reduction for X & {} or {} & X, where X is one of string, number, bigint,
+        -- or a pattern literal template type. This enables union types like "a" | "b" | string & {} or
+        -- "aa" | "ab" | `a${string}` which preserve the literal types for purposes of statement completion.
+        local noSupertypeReduction = false
+        if core.Len(types) == 2 then
+            local emptyIndex = indexOf(types, self.emptyTypeLiteralType)
+            if emptyIndex >= 0 then
+                local t = types[1 - emptyIndex + 1]
+                noSupertypeReduction = t.flags & (TypeFlags.String | TypeFlags.Number | TypeFlags.BigInt) ~= 0 or t.flags & TypeFlags.TemplateLiteral ~= 0 and self:isPatternLiteralType(t)
+            end
+        end
+        links.resolvedType = self:getIntersectionTypeEx(types, core.IfElse(noSupertypeReduction, IntersectionFlags.NoSupertypeReduction, 0), alias)
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromTemplateTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local spans = node:AsTemplateLiteralTypeNode().templateSpans
+        local texts = {}
+        local types = {}
+        texts[1] = node:AsTemplateLiteralTypeNode().head:Text()
+        for i, span in ipairs(spans.nodes or {}) do
+            texts[i + 1] = span:AsTemplateLiteralTypeSpan().literal:Text()
+            types[i] = self:getTypeFromTypeNode(span:Type())
+        end
+        links.resolvedType = self:getTemplateLiteralType(texts, types)
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromMappedTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local t = self:newObjectType(ObjectFlags.Mapped, node:Symbol())
+        t:AsMappedType().declaration = node:AsMappedTypeNode()
+        t.alias = self:getAliasForTypeNode(node)
+        links.resolvedType = t
+        -- Eagerly resolve the constraint type which forces an error if the constraint type circularly
+        -- references itself through one or more type aliases.
+        self:getConstraintTypeFromMappedType(t)
+    end
+    return links.resolvedType
+end
+
+function Checker:getTypeFromConditionalTypeNode(node)
+    local links = self.typeNodeLinks:Get(node)
+    if links.resolvedType == nil then
+        local checkType = self:getTypeFromTypeNode(node:AsConditionalTypeNode().checkType)
+        local alias = self:getAliasForTypeNode(node)
+        local allOuterTypeParameters = self:getOuterTypeParameters(node, true --[[includeThisTypes]])
+        local outerTypeParameters
+        if alias ~= nil and core.Len(alias.typeArguments) ~= 0 then
+            outerTypeParameters = allOuterTypeParameters
+        else
+            outerTypeParameters = core.Filter(allOuterTypeParameters, function(tp) return self:isTypeParameterPossiblyReferenced(tp, node) end)
+        end
+        local root = checker.ConditionalRoot_new({
+            node = node:AsConditionalTypeNode(),
+            checkType = checkType,
+            extendsType = self:getTypeFromTypeNode(node:AsConditionalTypeNode().extendsType),
+            isDistributive = checkType.flags & TypeFlags.TypeParameter ~= 0,
+            inferTypeParameters = self:getInferTypeParameters(node),
+            outerTypeParameters = outerTypeParameters,
+            instantiations = nil,
+            alias = alias,
+        })
+        links.resolvedType = self:getConditionalType(root, nil --[[mapper]], false --[[forConstraint]], nil)
+        if outerTypeParameters ~= nil then
+            root.instantiations = {}
+            root.instantiations[checker.getConditionalTypeKey(outerTypeParameters, nil --[[alias]], false --[[forConstraint]])] = links.resolvedType
+        end
+    end
+    return links.resolvedType
+end
+
+function Checker:getConditionalType(root, mapper, forConstraint, alias)
+    local result = nil
+    local extraTypes = nil
+    local tailCount = 0
+    -- We loop here for an immediately nested conditional type in the false position, effectively treating
+    -- types of the form 'A extends B ? X : C extends D ? Y : E extends F ? Z : ...' as a single construct for
+    -- purposes of resolution. We also loop here when resolution of a conditional type ends in resolution of
+    -- another (or, through recursion, possibly the same) conditional type. In the potentially tail-recursive
+    -- cases we increment the tail recursion counter and stop after 1000 iterations.
+    while true do
+        if tailCount == 1000 then
+            self:error(self.currentNode, diagnostics.Type_instantiation_is_excessively_deep_and_possibly_infinite)
+            return self.errorType
+        end
+        local checkType = self:instantiateType(self:getActualTypeVariable(root.checkType), mapper)
+        local extendsType = self:instantiateType(root.extendsType, mapper)
+        if checkType == self.errorType or extendsType == self.errorType then
+            return self.errorType
+        end
+        if checkType == self.wildcardType or extendsType == self.wildcardType then
+            return self.wildcardType
+        end
+        local checkTypeNode = ast.SkipTypeParentheses(root.node.checkType)
+        local extendsTypeNode = ast.SkipTypeParentheses(root.node.extendsType)
+        -- When the check and extends types are simple tuple types of the same arity, we defer resolution of the
+        -- conditional type when any tuple elements are generic. This is such that non-distributable conditional
+        -- types can be written `[X] extends [Y] ? ...` and be deferred similarly to `X extends Y ? ...`.
+        local checkTuples = self:isSimpleTupleType(checkTypeNode) and self:isSimpleTupleType(extendsTypeNode) and core.Len(checkTypeNode:Elements()) == core.Len(extendsTypeNode:Elements())
+        local checkTypeDeferred = self:isDeferredType(checkType, checkTuples)
+        local combinedMapper = nil
+        if core.Len(root.inferTypeParameters) ~= 0 then
+            -- When we're looking at making an inference for an infer type, when we get its constraint, it'll automagically be
+            -- instantiated with the context, so it doesn't need the mapper for the inference context - however the constraint
+            -- may refer to another _root_, _uncloned_ `infer` type parameter [1], or to something mapped by `mapper` [2].
+            -- [1] Eg, if we have `Foo<T, U extends T>` and `Foo<number, infer B>` - `B` is constrained to `T`, which, in turn, has been instantiated
+            -- as `number`
+            -- Conversely, if we have `Foo<infer A, infer B>`, `B` is still constrained to `T` and `T` is instantiated as `A`
+            -- [2] Eg, if we have `Foo<T, U extends T>` and `Foo<Q, infer B>` where `Q` is mapped by `mapper` into `number` - `B` is constrained to `T`
+            -- which is in turn instantiated as `Q`, which is in turn instantiated as `number`.
+            -- So we need to:
+            --    * combine `context.nonFixingMapper` with `mapper` so their constraints can be instantiated in the context of `mapper` (otherwise they'd only get inference context information)
+            --    * incorporate all of the component mappers into the combined mapper for the true and false members
+            -- This means we have two mappers that need applying:
+            --    * The original `mapper` used to create this conditional
+            --    * The mapper that maps the infer type parameter to its inference result (`context.mapper`)
+            local context = self:newInferenceContext(root.inferTypeParameters, nil --[[signature]], checker.InferenceFlags.None, nil)
+            if mapper ~= nil then
+                context.nonFixingMapper = self:combineTypeMappers(context.nonFixingMapper, mapper)
+            end
+            if not checkTypeDeferred then
+                -- We don't want inferences from constraints as they may cause us to eagerly resolve the
+                -- conditional type instead of deferring resolution. Also, we always want strict function
+                -- types rules (i.e. proper contravariance) for inferences.
+                self:inferTypes(context.inferences, checkType, extendsType, checker.InferencePriority.NoConstraints | checker.InferencePriority.AlwaysStrict, false)
+            end
+            -- It's possible for 'infer T' type parameters to be given uninstantiated constraints when the
+            -- those type parameters are used in type references (see getInferredTypeParameterConstraint). For
+            -- that reason we need context.mapper to be first in the combined mapper. See #42636 for examples.
+            if mapper ~= nil then
+                combinedMapper = self:combineTypeMappers(context.mapper, mapper)
+            else
+                combinedMapper = context.mapper
+            end
+        end
+        -- Instantiate the extends type including inferences for 'infer T' type parameters
+        local inferredExtendsType
+        if combinedMapper ~= nil then
+            inferredExtendsType = self:instantiateType(root.extendsType, combinedMapper)
+        else
+            inferredExtendsType = extendsType
+        end
+        -- We attempt to resolve the conditional type only when the check and extends types are non-generic
+        if not checkTypeDeferred and not self:isDeferredType(inferredExtendsType, checkTuples) then
+            -- Return falseType for a definitely false extends check. We check an instantiations of the two
+            -- types with type parameters mapped to the wildcard type, the most permissive instantiations
+            -- possible (the wildcard type is assignable to and from all types). If those are not related,
+            -- then no instantiations will be and we can just return the false branch type.
+            if inferredExtendsType.flags & TypeFlags.AnyOrUnknown == 0 and (checkType.flags & TypeFlags.Any ~= 0 or not self:isTypeAssignableTo(self:getPermissiveInstantiation(checkType), self:getPermissiveInstantiation(inferredExtendsType))) then
+                -- Return union of trueType and falseType for 'any' since it matches anything. Furthermore, for a
+                -- distributive conditional type applied to the constraint of a type variable, include trueType if
+                -- there are possible values of the check type that are also possible values of the extends type.
+                -- We use a reverse assignability check as it is less expensive than the comparable relationship
+                -- and avoids false positives of a non-empty intersection check.
+                if checkType.flags & TypeFlags.Any ~= 0 or forConstraint and inferredExtendsType.flags & TypeFlags.Never == 0 and checker.someType(self:getPermissiveInstantiation(inferredExtendsType), function(t)
+                    return self:isTypeAssignableTo(t, self:getPermissiveInstantiation(checkType))
+                end) then
+                    extraTypes = core.Append(extraTypes, self:instantiateType(self:getTypeFromTypeNode(root.node.trueType), core.OrElse(combinedMapper, mapper)))
+                end
+                -- If falseType is an immediately nested conditional type that isn't distributive or has an
+                -- identical checkType, switch to that type and loop.
+                local falseType = self:getTypeFromTypeNode(root.node.falseType)
+                if falseType.flags & TypeFlags.Conditional ~= 0 then
+                    local newRoot = falseType:AsConditionalType().root
+                    if newRoot.node.parent == root.node:AsNode() and (not newRoot.isDistributive or newRoot.checkType == root.checkType) then
+                        root = newRoot
+                        goto continue
+                    end
+                    local tailRoot, tailRootMapper = self:getTailRecursionRoot(falseType, mapper)
+                    if tailRoot ~= nil then
+                        root = tailRoot
+                        mapper = tailRootMapper
+                        alias = nil
+                        if tailRoot.alias ~= nil then
+                            tailCount = tailCount + 1
+                        end
+                        goto continue
+                    end
+                end
+                result = self:instantiateType(falseType, mapper)
+                break
+            end
+            -- Return trueType for a definitely true extends check. We check instantiations of the two
+            -- types with type parameters mapped to their restrictive form, i.e. a form of the type parameter
+            -- that has no constraint. This ensures that, for example, the type
+            --   type Foo<T extends { x: any }> = T extends { x: string } ? string : number
+            -- doesn't immediately resolve to 'string' instead of being deferred.
+            if inferredExtendsType.flags & TypeFlags.AnyOrUnknown ~= 0 or self:isTypeAssignableTo(self:getRestrictiveInstantiation(checkType), self:getRestrictiveInstantiation(inferredExtendsType)) then
+                local trueType = self:getTypeFromTypeNode(root.node.trueType)
+                local trueMapper = core.OrElse(combinedMapper, mapper)
+                local tailRoot, tailRootMapper = self:getTailRecursionRoot(trueType, trueMapper)
+                if tailRoot ~= nil then
+                    root = tailRoot
+                    mapper = tailRootMapper
+                    alias = nil
+                    if tailRoot.alias ~= nil then
+                        tailCount = tailCount + 1
+                    end
+                    goto continue
+                end
+                result = self:instantiateType(trueType, trueMapper)
+                break
+            end
+        end
+        -- Return a deferred type for a check that is neither definitely true nor definitely false
+        result = self:newConditionalType(root, mapper, combinedMapper)
+        if alias ~= nil then
+            result.alias = alias
+        else
+            result.alias = self:instantiateTypeAlias(root.alias, mapper)
+        end
+        do
+            break
+        end
+        ::continue::
+    end
+    if extraTypes ~= nil then
+        return self:getUnionType(core.Append(extraTypes, result))
+    end
+    return result
+end
+
+-- We tail-recurse for generic conditional types that (a) have not already been evaluated and cached, and
+-- (b) are non distributive, have a check type that is unaffected by instantiation, or have a non-union check
+-- type. Note that recursion is possible only through aliased conditional types, so we only increment the tail
+-- recursion counter for those.
+function Checker:getTailRecursionRoot(newType, newMapper)
+    if newType.flags & TypeFlags.Conditional ~= 0 and newMapper ~= nil then
+        local newRoot = newType:AsConditionalType().root
+        if core.Len(newRoot.outerTypeParameters) ~= 0 then
+            local typeParamMapper = self:combineTypeMappers(newType:AsConditionalType().mapper, newMapper)
+            local typeArguments = core.Map(newRoot.outerTypeParameters, function(t) return typeParamMapper:Map(t) end)
+            local newRootMapper = checker.newTypeMapper(newRoot.outerTypeParameters, typeArguments)
+            local newCheckType = nil
+            if newRoot.isDistributive then
+                newCheckType = newRootMapper:Map(newRoot.checkType)
+            end
+            if newCheckType == nil or newCheckType == newRoot.checkType or newCheckType.flags & (TypeFlags.Union | TypeFlags.Never) == 0 then
+                return newRoot, newRootMapper
+            end
+        end
+    end
+    return nil, nil
+end
+
+function Checker:isSimpleTupleType(node)
+    return ast.IsTupleTypeNode(node) and core.Len(node:Elements()) > 0 and not core.Some(node:Elements(), function(e)
+        return ast.IsOptionalTypeNode(e) or ast.IsRestTypeNode(e) or ast.IsNamedTupleMember(e) and (e:QuestionToken() ~= nil or e:AsNamedTupleMember().dotDotDotToken ~= nil)
+    end)
+end
+
+function Checker:isDeferredType(t, checkTuples)
+    return self:isGenericType(t) or checkTuples and checker.isTupleType(t) and core.Some(self:getElementTypes(t), function(e) return self:isGenericType(e) end)
+end
+
+function Checker:getPermissiveInstantiation(t)
+    if t.flags & (TypeFlags.Primitive | TypeFlags.AnyOrUnknown | TypeFlags.Never) ~= 0 then
+        return t
+    end
+    local key = checker.CachedTypeKey(CachedTypeKind.PermissiveInstantiation, t.id)
+    local cached = self.cachedTypes[key]
+    if cached ~= nil then
+        return cached
+    end
+    local result = self:instantiateType(t, self.permissiveMapper)
+    self.cachedTypes[key] = result
+    return result
+end
+
+function Checker:getRestrictiveInstantiation(t)
+    if t.flags & (TypeFlags.Primitive | TypeFlags.AnyOrUnknown | TypeFlags.Never) ~= 0 then
+        return t
+    end
+    local key = checker.CachedTypeKey(CachedTypeKind.RestrictiveInstantiation, t.id)
+    local cached = self.cachedTypes[key]
+    if cached ~= nil then
+        return cached
+    end
+    local result = self:instantiateType(t, self.restrictiveMapper)
+    self.cachedTypes[key] = result
+    -- We set the following so we don't attempt to set the restrictive instance of a restrictive instance
+    -- which is redundant - we'll produce new type identities, but all type params have already been mapped.
+    -- This also gives us a way to detect restrictive instances upon comparisons and _disable_ the "distributeive constraint"
+    -- assignability check for them, which is distinctly unsafe, as once you have a restrctive instance, all the type parameters
+    -- are constrained to `unknown` and produce tons of false positives/negatives!
+    self.cachedTypes[checker.CachedTypeKey(CachedTypeKind.RestrictiveInstantiation, result.id)] = result
+    return result
+end
+
+function Checker:getRestrictiveTypeParameter(t)
+    if t:AsTypeParameter().constraint == nil and self:getConstraintDeclaration(t) == nil or t:AsTypeParameter().constraint == self.noConstraintType then
+        return t
+    end
+    local key = checker.CachedTypeKey(CachedTypeKind.RestrictiveTypeParameter, t.id)
+    local cached = self.cachedTypes[key]
+    if cached ~= nil then
+        return cached
+    end
+    local result = self:newTypeParameter(t.symbol)
+    result:AsTypeParameter().constraint = self.noConstraintType
+    self.cachedTypes[key] = result
+    return result
+end
+
+function Checker:restrictiveMapperWorker(t)
+    if t.flags & TypeFlags.TypeParameter ~= 0 then
+        return self:getRestrictiveTypeParameter(t)
+    end
+    return t
+end
+
+function Checker:permissiveMapperWorker(t)
+    if t.flags & TypeFlags.TypeParameter ~= 0 then
+        return self.wildcardType
+    end
+    return t
 end
