@@ -524,6 +524,7 @@ local function runCaseInProcess(entry)
         -- A failure outside any configuration (e.g. reading or parsing the test file).
         local id = prefix .. base
         local status = string.find(tostring(err), TIMEOUT_MARKER, 1, true) and "timeout" or "crash"
+        writeFile(baseline.localRoot() .. "/" .. id .. ".crash.txt", tostring(err) .. "\n")
         for kind in pairs(opts.kinds) do
             results[#results + 1] = { id = id, kind = kind, status = status, detail = tostring(err), messages = { tostring(err) } }
         end
