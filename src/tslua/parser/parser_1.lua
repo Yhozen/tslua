@@ -255,7 +255,7 @@ end
 
 function parser.ParseIsolatedEntityName(text)
     local p = parser.getParser()
-    p:initializeState({ fileName = "", path = "", externalModuleIndicatorOptions = { jsx = false, force = false } }, text, ScriptKind.JS)
+    p:initializeState(ast.NewSourceFileParseOptions("", "", nil), text, ScriptKind.JS)
     p:nextToken()
     local entityName = p:parseEntityName(true, false, nil)
     if p.token == Kind.EndOfFile and #p.diagnostics == 0 then
