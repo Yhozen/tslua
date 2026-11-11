@@ -121,14 +121,14 @@ function compiler.unpackArgs(args)
     return table.unpack(args, 1, args.n or #args)
 end
 
--- Go fmt.Fprint(w, ...) / fmt.Fprintln(w, ...) on an io.Writer (a table with :Write(s)).
+-- Go fmt.Fprint(w, ...) / fmt.Fprintln(w, ...) on an io.Writer (a table with :WriteString(s)).
 function compiler.fprint(w, ...)
     local parts = table.pack(...)
     local buf = {}
     for i = 1, parts.n do
         buf[i] = tostring(parts[i])
     end
-    w:Write(table.concat(buf))
+    w:WriteString(table.concat(buf))
 end
 
 function compiler.fprintln(w, ...)
@@ -137,7 +137,7 @@ function compiler.fprintln(w, ...)
     for i = 1, parts.n do
         buf[i] = tostring(parts[i])
     end
-    w:Write(table.concat(buf, " ") .. "\n")
+    w:WriteString(table.concat(buf, " ") .. "\n")
 end
 
 -- Stable merge sort with a Go-style comparator (cmp(a, b) < 0 means a sorts first). Used where Go

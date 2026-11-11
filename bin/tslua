@@ -1,0 +1,136 @@
+#!/usr/bin/env lua
+-- tslua: the `tsc` command line. Port of cmd/tsgo/main.go and cmd/tsgo/sys.go
+-- (the --lsp and --api modes are out of scope).
+
+local scriptDir = (arg and arg[0] or ""):match("^(.*)/[^/]*$") or "."
+local root = scriptDir .. "/.."
+package.path = root .. "/src/?.lua;" .. root .. "/src/?/init.lua;" .. package.path
+
+local bundled = require("tslua.bundled")
+local execute = require("tslua.execute")
+local tsc = require("tslua.execute.tsc")
+local tspath = require("tslua.tspath")
+local osvfs = require("tslua.vfs.osvfs")
+
+-- io.Writer over a Lua file handle. tslua.diagnosticwriter calls WriteString, tslua.json calls Write.
+local fileWriter = {}
+fileWriter.__index = fileWriter
+
+local function newFileWriter(fh)
+    return setmetatable({ fh = fh }, fileWriter)
+end
+
+function fileWriter:WriteString(s)
+    self.fh:write(s)
+    return #s, nil
+end
+
+function fileWriter:Write(s)
+    self.fh:write(s)
+    return #s, nil
+end
+
+local osSys = {}
+osSys.__index = osSys
+
+-- Times are float seconds: wall clock at start plus elapsed processor time.
+local startWall = os.time()
+local startClock = os.clock()
+
+function osSys:SinceStart()
+    return os.clock() - self.start
+end
+
+function osSys:Now()
+    return startWall + (os.clock() - startClock)
+end
+
+function osSys:FS()
+    return self.fs
+end
+
+function osSys:DefaultLibraryPath()
+    return self.defaultLibraryPath
+end
+
+function osSys:GetCurrentDirectory()
+    return self.cwd
+end
+
+function osSys:Writer()
+    return self.writer
+end
+
+function osSys:ErrorWriter()
+    return self.errorWriter
+end
+
+local isTTY = nil
+function osSys:WriteOutputIsTTY()
+    if isTTY == nil then
+        local ok = os.execute("test -t 1")
+        isTTY = ok == true or ok == 0
+    end
+    return isTTY
+end
+
+local terminalWidth = nil
+function osSys:GetWidthOfTerminal()
+    if terminalWidth == nil then
+        terminalWidth = 0
+        if self:WriteOutputIsTTY() then
+            local p = io.popen("stty size 2>/dev/null < /dev/tty")
+            if p ~= nil then
+                local line = p:read("l")
+                p:close()
+                local cols = line and line:match("^%d+%s+(%d+)")
+                if cols ~= nil then
+                    terminalWidth = math.tointeger(tonumber(cols)) or 0
+                end
+            end
+        end
+    end
+    return terminalWidth
+end
+
+function osSys:GetEnvironmentVariable(name)
+    return os.getenv(name) or ""
+end
+
+function osSys:Spawn(command, dir, stderr)
+    return nil, "not implemented: Spawn"
+end
+
+local function newSystem()
+    local cwd = osvfs.Getwd()
+    if cwd == nil or cwd == "" then
+        io.stderr:write("Error getting current directory\n")
+        os.exit(tsc.ExitStatus.InvalidProject_OutputsSkipped)
+    end
+
+    return setmetatable({
+        cwd = tspath.NormalizePath(cwd),
+        fs = bundled.WrapFS(osvfs.FS()),
+        defaultLibraryPath = bundled.LibPath(),
+        writer = newFileWriter(io.stdout),
+        errorWriter = newFileWriter(io.stderr),
+        start = os.clock(),
+    }, osSys)
+end
+
+local function runMain()
+    local args = {}
+    for i = 1, #arg do
+        args[i] = arg[i]
+    end
+    if #args > 0 and (args[1] == "--lsp" or args[1] == "--api") then
+        io.stderr:write("tslua: " .. args[1] .. " is not supported\n")
+        return tsc.ExitStatus.NotImplemented
+    end
+    local result = execute.CommandLine(nil, newSystem(), args, nil)
+    return result.status
+end
+
+local status = runMain()
+io.stdout:flush()
+os.exit(status)
