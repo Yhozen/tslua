@@ -250,3 +250,73 @@ function core.zeroLike(v)
     end
     return nil
 end
+
+-- Go slices.SortStableFunc(xs, cmp): stable in-place sort, cmp(a, b) returns an int.
+function core.SortStableFunc(xs, cmp)
+    local n = core.Len(xs)
+    if n < 2 then
+        return
+    end
+    -- insertion sort for short runs, then bottom-up merges
+    local run = 12
+    for lo = 1, n, run do
+        local hi = math.min(lo + run - 1, n)
+        for i = lo + 1, hi do
+            local v = xs[i]
+            local j = i - 1
+            while j >= lo and cmp(xs[j], v) > 0 do
+                xs[j + 1] = xs[j]
+                j = j - 1
+            end
+            xs[j + 1] = v
+        end
+    end
+    local width = run
+    local tmp = {}
+    while width < n do
+        for lo = 1, n, 2 * width do
+            local mid = lo + width - 1
+            if mid < n then
+                local hi = math.min(lo + 2 * width - 1, n)
+                for k = lo, mid do
+                    tmp[k] = xs[k]
+                end
+                local i, j, k = lo, mid + 1, lo
+                while i <= mid and j <= hi do
+                    if cmp(xs[j], tmp[i]) < 0 then
+                        xs[k] = xs[j]
+                        j = j + 1
+                    else
+                        xs[k] = tmp[i]
+                        i = i + 1
+                    end
+                    k = k + 1
+                end
+                while i <= mid do
+                    xs[k] = tmp[i]
+                    i = i + 1
+                    k = k + 1
+                end
+            end
+        end
+        width = width * 2
+    end
+end
+
+-- Go slices.SortFunc. Go's pdqsort is not stable; this port sorts stably, which yields the same
+-- result whenever cmp is a total order without ties (the deterministic cases).
+function core.SortFunc(xs, cmp)
+    core.SortStableFunc(xs, cmp)
+end
+
+-- Go slices.Sort for strings/numbers.
+function core.Sort(xs)
+    core.SortStableFunc(xs, function(a, b)
+        if a < b then
+            return -1
+        elseif a > b then
+            return 1
+        end
+        return 0
+    end)
+end

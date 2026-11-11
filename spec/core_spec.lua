@@ -209,3 +209,19 @@ describe("core.go", function()
         assert.are.same({ 2, 1 }, order)
     end)
 end)
+
+describe("core.SortStableFunc", function()
+    it("sorts stably", function()
+        local xs = {}
+        for i = 1, 200 do
+            xs[i] = { k = (i * 7919) % 13, i = i }
+        end
+        core.SortStableFunc(xs, function(a, b) return a.k - b.k end)
+        for i = 2, #xs do
+            assert.is_true(xs[i - 1].k < xs[i].k or (xs[i - 1].k == xs[i].k and xs[i - 1].i < xs[i].i))
+        end
+        local ys = { "b", "a", "c" }
+        core.Sort(ys)
+        assert.are.same({ "a", "b", "c" }, ys)
+    end)
+end)
