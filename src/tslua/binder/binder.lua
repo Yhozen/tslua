@@ -414,7 +414,7 @@ function Binder:declareSymbolAndAddToSymbolTable(node, symbolFlags, symbolExclud
 end
 
 function Binder:newFlowNode(flags)
-    return { flags = flags, node = nil, antecedent = nil, antecedents = nil }
+    return ast.NewFlowNode(flags)
 end
 
 function Binder:newFlowNodeEx(flags, node, antecedent)
@@ -729,7 +729,7 @@ function Binder:bindSourceFileIfExternalModule()
         self:bindSourceFileAsExternalModule()
         -- Create symbol equivalent for the module.exports = {}
         local originalSymbol = self.file.symbol
-        self:declareSymbol(ast.GetExports(self.file.symbol), self.file.symbol, self.file, SymbolFlags.Property, SymbolFlags.All)
+        self:declareSymbol(ast.GetSymbolTable(self.file.symbol, "exports"), self.file.symbol, self.file, SymbolFlags.Property, SymbolFlags.All)
         self.file.symbol = originalSymbol
     end
 end
@@ -802,10 +802,7 @@ function Binder:bindNamespaceExportDeclaration(node)
     elseif not node.parent.isDeclarationFile then
         self:errorOnNode(node, diagnostics.Global_module_exports_may_only_appear_in_declaration_files)
     else
-        if self.file.globalExports == nil then
-            self.file.globalExports = ast.NewSymbolTable()
-        end
-        self:declareSymbol(self.file.globalExports, self.file.symbol, node, SymbolFlags.Alias, SymbolFlags.AliasExcludes)
+        self:declareSymbol(ast.GetSymbolTable(self.file, "globalExports"), self.file.symbol, node, SymbolFlags.Alias, SymbolFlags.AliasExcludes)
     end
 end
 
