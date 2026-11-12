@@ -329,7 +329,7 @@ function checker.getAccessStack(ref)
 end
 
 function checker.isClassInstanceSide(c, t)
-    return t.symbol ~= nil and t.symbol.flags & SymbolFlags.Class ~= 0 and (t == c:getDeclaredTypeOfClassOrInterface(t.symbol) or (t.flags & TypeFlags.Object ~= 0 and t.objectFlags & ObjectFlags.IsClassInstanceClone ~= 0))
+    return t.symbol ~= nil and t.symbol.flags & SymbolFlags.Class ~= 0 and (t == c:getDeclaredTypeOfClassOrInterface(t.symbol) or (t.flags & TypeFlags.Object ~= 0 and t.objectFlags & checker.ObjectFlagsIsClassInstanceClone ~= 0))
 end
 
 function NodeBuilderImpl:createElidedInformationPlaceholder()
@@ -2866,7 +2866,7 @@ function NodeBuilderImpl:createAnonymousTypeNodeEx(t, forceClassExpansion, force
     local typeId = t.id
     local symbol = t.symbol
     if symbol ~= nil then
-        local isInstantiationExpressionType = t.objectFlags & ObjectFlags.InstantiationExpressionType ~= 0
+        local isInstantiationExpressionType = t.objectFlags & checker.ObjectFlagsInstantiationExpressionType ~= 0
         if isInstantiationExpressionType then
             local instantiationExpressionType = t:AsInstantiationExpressionType()
             local existing = instantiationExpressionType.node
@@ -3262,7 +3262,16 @@ function NodeBuilderImpl:visitAndTransformType(t, transform)
     local result = transform(self, t)
     local addedLength = self.ctx.approximateLength - startLength
     if canUseCache and not self.ctx.reportedDiagnostic and not self.ctx.encounteredError then
-        local links = self.links:Get(self.ctx.enclosingDeclaration)
+        -- Go's links store accepts a nil key (enclosingDeclaration may be nil here); Lua tables cannot.
+        local links
+        if self.ctx.enclosingDeclaration ~= nil then
+            links = self.links:Get(self.ctx.enclosingDeclaration)
+        else
+            if self.nilKeyLinks == nil then
+                self.nilKeyLinks = checker.NodeBuilderLinks_new()
+            end
+            links = self.nilKeyLinks
+        end
         if links.serializedTypes == nil then
             links.serializedTypes = {}
         end
