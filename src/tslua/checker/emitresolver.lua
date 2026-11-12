@@ -1184,7 +1184,7 @@ function EmitResolver:GetTypeReferenceSerializationKind(typeName, location)
     isTypeOnly = isTypeOnly or (typeSymbol ~= nil and c:getTypeOnlyAliasDeclarationEx(typeSymbol, SymbolFlags.Type) ~= nil)
 
     if resolvedValueSymbol ~= nil and resolvedValueSymbol == resolvedTypeSymbol then
-        local globalPromiseSymbol = c:getGlobalPromiseConstructorSymbol()
+        local globalPromiseSymbol = c.getGlobalPromiseConstructorSymbol()
         if globalPromiseSymbol ~= nil and resolvedValueSymbol == globalPromiseSymbol then
             return printer.TypeReferenceSerializationKindPromise
         end
