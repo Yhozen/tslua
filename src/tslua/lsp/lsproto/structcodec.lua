@@ -614,8 +614,10 @@ local function decodeArrayInto(dec, t, n)
         return nil, err
     end
     if n ~= nil then
-        if #arr ~= n then
-            return nil, "json: cannot unmarshal JSON array into Go " .. t.s .. ": too many or too few elements"
+        if #arr < n then
+            return nil, "json: cannot unmarshal JSON array into Go " .. t.s .. ": too few array elements"
+        elseif #arr > n then
+            return nil, "json: cannot unmarshal JSON array into Go " .. t.s .. ": too many array elements"
         end
     end
     return arr, nil
@@ -808,7 +810,7 @@ function decode(dec, t)
         local b = t.base
         local kind = dec:PeekKind()
         if b == "any" then
-            return json.UnmarshalDecode(dec)
+            return lsproto.decodeAny(dec)
         end
         if kind == "n" then
             local _, err = dec:ReadToken()
@@ -888,6 +890,68 @@ function decode(dec, t)
 end
 
 lsproto.decode = decode
+
+-- Decodes a value into `any`: objects become tables with the json.Object metatable (so that an
+-- empty object marshals back as {}), arrays Lua arrays (null elements json.Null), numbers floats.
+-- Null object members are dropped (Lua tables cannot hold nil).
+function lsproto.decodeAny(dec)
+    local kind = dec:PeekKind()
+    if kind == "{" then
+        dec:ReadToken()
+        local obj = json.NewObject({})
+        local seen = {}
+        while dec:PeekKind() ~= "}" do
+            local name, err = readName(dec)
+            if err ~= nil then
+                return nil, err
+            end
+            if seen[name] then
+                return nil, "jsontext: duplicate object member name " .. json.QuoteString(name)
+            end
+            seen[name] = true
+            local v
+            v, err = lsproto.decodeAny(dec)
+            if err ~= nil then
+                return nil, err
+            end
+            obj[name] = v
+        end
+        local _, err = dec:ReadToken()
+        if err ~= nil then
+            return nil, err
+        end
+        return obj, nil
+    elseif kind == "[" then
+        dec:ReadToken()
+        local arr = {}
+        while dec:PeekKind() ~= "]" do
+            if dec:PeekKind() == 0 then
+                return nil, "jsontext: unexpected EOF"
+            end
+            local v, err = lsproto.decodeAny(dec)
+            if err ~= nil then
+                return nil, err
+            end
+            if v == nil then
+                v = json.Null
+            end
+            arr[#arr + 1] = v
+        end
+        local _, err = dec:ReadToken()
+        if err ~= nil then
+            return nil, err
+        end
+        return arr, nil
+    end
+    local tok, err = dec:ReadToken()
+    if err ~= nil then
+        return nil, err
+    end
+    if tok.kind == "}" or tok.kind == "]" then
+        return nil, "jsontext: invalid character " .. jsonrpc.goQuote(tok.kind) .. " at start of value"
+    end
+    return tok.value, nil
+end
 
 -- json.UnmarshalDecode into a new value of the given Go type (Lua-only API). Returns (value, err).
 function lsproto.UnmarshalDecodeAs(goType, dec)
