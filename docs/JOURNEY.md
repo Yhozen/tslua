@@ -60,6 +60,14 @@ passing), content mappers, and the language server (astnav, format, lsproto/LSP,
 system, language service split across five agents, fourslash harness with 3,795 converted
 tests, API server).
 
+- tsc scenario runner (`bin/tslua-tsctest`): **483/504** upstream command-line scenarios
+  byte-identical (tsbuild 192/192, tscWatch 42/42, tsbuildWatch 65/65, tsc 184/205); the rest
+  are showConfig, localization and generateTrace, now being brought into scope. Scenarios were
+  extracted by running the upstream Go tests with a patched runner that dumps each evaluated
+  scenario (they are Go code, not data) — another case of letting Go produce the Lua inputs.
+- LSP: protocol types generated from the same metaModel upstream uses; JSON codec matched a Go
+  oracle on ~50k random/mutated messages; `bin/tslua --lsp --stdio` serves requests.
+
 ## Learnings
 
 - **Write the conventions first.** The biggest multiplier was `docs/PORTING.md` + `docs/AST.md`
