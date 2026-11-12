@@ -11,8 +11,24 @@ local core = require("tslua.core")
 -- concrete source positions assigned to it and all descendants.
 -- Returns text, positioned.
 function printer.PrintAndPositionNode(factory, node, sourceFile, newLine, indentSize, emitContext)
-    -- Depends on NewChangeTrackerWriter (changetrackerwriter.go, language service only; not ported).
-    error("not implemented: PrintAndPositionNode")
+    local writer = printer.NewChangeTrackerWriter(newLine, indentSize)
+    printer.NewPrinter(
+        {
+            newLine = core.GetNewLineKind(newLine),
+            neverAsciiEscape = true,
+            preserveSourceNewlines = true,
+            terminateUnterminatedLiterals = true,
+        },
+        writer:GetPrintHandlers(),
+        emitContext
+    ):Write(node, sourceFile, writer, nil)
+
+    local text = writer:String()
+    if newLine ~= "" and string.sub(text, -#newLine) == newLine then
+        text = string.sub(text, 1, #text - #newLine)
+    end
+    local positioned = writer:AssignPositionsToNode(node, factory)
+    return text, positioned
 end
 
 -- CreateSyntheticSourceFile wraps a positioned node in a synthetic source file

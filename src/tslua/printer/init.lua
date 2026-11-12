@@ -4,6 +4,7 @@ for k, v in pairs(require("tslua.printer.consts_generated")) do
     printer[k] = v
 end
 require("tslua.printer.luahelpers")
+require("tslua.printer.changetrackerwriter")
 require("tslua.printer.emitcontext")
 require("tslua.printer.emitflags")
 require("tslua.printer.emithost")
