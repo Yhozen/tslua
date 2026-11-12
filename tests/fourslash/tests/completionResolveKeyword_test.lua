@@ -20,7 +20,7 @@ function P.TestCompletionResolveKeyword(t)
                 itemDefaults = { commitCharacters = {} },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "abstract",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,

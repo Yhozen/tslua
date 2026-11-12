@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -29,12 +30,12 @@ let sixthCase: Foo["qu/*case_6*/"]]=]
             f:VerifyCompletions(t, "case_5", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "bar" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "bar" }) } },
             }))
             f:VerifyCompletions(t, "case_6", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "qux" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "qux" }) } },
             }))
         end)
     end)

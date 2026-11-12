@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -48,19 +49,19 @@ class C2 extends Base {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersPlus({
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenMethod",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenProperty",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
                     }),
                 },
             }))
@@ -69,20 +70,20 @@ class C2 extends Base {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersPlus({
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenMethod",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenProperty",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "test", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "test", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
                     }),
                 },
             }))
@@ -91,26 +92,26 @@ class C2 extends Base {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenMethod",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenProperty",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "apply", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "arguments", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "bind", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "call", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "caller", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "length", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "toString", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "apply", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "arguments", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "bind", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "call", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "caller", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "length", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "toString", sortText = ls.SortText.LocationPriority }),
                     },
                 },
             }))

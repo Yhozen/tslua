@@ -41,7 +41,7 @@ function P.TestCompletionListAfterStringLiteral1(t)
                         "toLocaleUpperCase",
                         "trim",
                         "length",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "substr",
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
                             tags = { lsproto.CompletionItemTag.Deprecated },

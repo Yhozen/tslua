@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -46,9 +47,9 @@ createMachine<GreetingEvent>({
                 items = { exact = { "ALOHA", "ALOHAx", "LUNCH_TIME", "MORNING" } },
             }))
             f:VerifyNonSuggestionDiagnostics(t, {
-                zero.lsp_lsproto_Diagnostic({
-                    code = zero.lsp_lsproto_IntegerOrString({ integer = 2322 }),
-                    message = zero.lsp_lsproto_StringOrMarkupContent({
+                lsproto.Diagnostic({
+                    code = lsproto.IntegerOrString({ integer = 2322 }),
+                    message = lsproto.StringOrMarkupContent({
                         string = [[
 Type 'RaiseActionObject<{ type: "ALOHAx"; }>' is not assignable to type 'RaiseActionObject<GreetingEvent>'.
   Type '{ type: "ALOHAx"; }' is not assignable to type 'GreetingEvent'.

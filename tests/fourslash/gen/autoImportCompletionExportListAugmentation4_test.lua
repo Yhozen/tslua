@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -50,12 +51,12 @@ class PingCommand extends CommandAlias {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "container",
                             insertText = "get container(): Container {\n}",
                             filterText = "container",
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },

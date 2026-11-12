@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -39,7 +40,7 @@ function f2() {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "f", detail = "function f(): void" }) },
+                    includes = { lsproto.CompletionItem({ label = "f", detail = "function f(): void" }) },
                     excludes = { "n", "I" },
                 },
             }))
@@ -48,9 +49,9 @@ function f2() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "f2", detail = "function f2(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "n2", detail = "namespace n2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "I2", detail = "class I2" }),
+                        lsproto.CompletionItem({ label = "f2", detail = "function f2(): void" }),
+                        lsproto.CompletionItem({ label = "n2", detail = "namespace n2" }),
+                        lsproto.CompletionItem({ label = "I2", detail = "class I2" }),
                     },
                 },
             }))
@@ -59,8 +60,8 @@ function f2() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "f2", detail = "function f2(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "n2", detail = "namespace n2" }),
+                        lsproto.CompletionItem({ label = "f2", detail = "function f2(): void" }),
+                        lsproto.CompletionItem({ label = "n2", detail = "namespace n2" }),
                     },
                     excludes = { "I2" },
                 },
@@ -69,7 +70,7 @@ function f2() {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "f2", detail = "function f2(): void" }) },
+                    includes = { lsproto.CompletionItem({ label = "f2", detail = "function f2(): void" }) },
                     excludes = { "n2", "I2" },
                 },
             }))

@@ -30,7 +30,7 @@ foo(1)./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "toExponential", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "toExponential", kind = lsproto.CompletionItemKind.Method }),
                     },
                 },
             }))

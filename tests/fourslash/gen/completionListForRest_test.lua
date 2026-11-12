@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,8 +29,8 @@ rest./*1*/x;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "millenial", detail = "(property) Gen.millenial: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "parent", detail = "(property) Gen.parent: Gen" }),
+                        lsproto.CompletionItem({ label = "millenial", detail = "(property) Gen.millenial: string" }),
+                        lsproto.CompletionItem({ label = "parent", detail = "(property) Gen.parent: Gen" }),
                     },
                 },
             }))

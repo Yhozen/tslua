@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -31,10 +32,10 @@ function g(this: Restricted) {this./*4*/}]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "f", detail = "(method) C1.f(this: this): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "g", detail = "(method) C1.g(this: Restricted): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "m", detail = "(property) C1.m: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "n", detail = "(property) C1.n: number" }),
+                        lsproto.CompletionItem({ label = "f", detail = "(method) C1.f(this: this): void" }),
+                        lsproto.CompletionItem({ label = "g", detail = "(method) C1.g(this: Restricted): void" }),
+                        lsproto.CompletionItem({ label = "m", detail = "(property) C1.m: number" }),
+                        lsproto.CompletionItem({ label = "n", detail = "(property) C1.n: number" }),
                     },
                 },
             }))
@@ -42,9 +43,7 @@ function g(this: Restricted) {this./*4*/}]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "n", detail = "(property) Restricted.n: number" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "n", detail = "(property) Restricted.n: number" }) },
                 },
             }))
             f:VerifyCompletions(t, "3", nil)

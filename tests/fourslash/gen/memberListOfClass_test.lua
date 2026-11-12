@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,8 +29,8 @@ f./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "pubMeth", detail = "(method) C1.pubMeth(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "pubProp", detail = "(property) C1.pubProp: number" }),
+                        lsproto.CompletionItem({ label = "pubMeth", detail = "(method) C1.pubMeth(): void" }),
+                        lsproto.CompletionItem({ label = "pubProp", detail = "(property) C1.pubProp: number" }),
                     },
                 },
             }))

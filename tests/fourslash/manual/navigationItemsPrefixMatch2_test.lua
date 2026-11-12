@@ -38,19 +38,19 @@ interface [|OriginI|] {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "origin",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "origin1",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[6]:LSLocation(),
                             containerName = "OriginI",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "originality",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[1]:LSLocation(),
                             containerName = "Point",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "OriginI",
                             kind = lsproto.SymbolKind.Interface,
                             location = f:Ranges()[5]:LSLocation(),
@@ -60,25 +60,25 @@ interface [|OriginI|] {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "distance",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceFarFarAway",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[3]:LSLocation(),
                             containerName = "Point",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceFarFarAwayLocal",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[4]:LSLocation(),
                             containerName = "distanceFarFarAway",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceFromOrig",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[2]:LSLocation(),
                             containerName = "Point",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "_distance",
                             kind = lsproto.SymbolKind.Method,
                             location = f:Ranges()[7]:LSLocation(),

@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -38,9 +39,9 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c" }),
+                        lsproto.CompletionItem({ label = "a" }),
+                        lsproto.CompletionItem({ label = "b" }),
+                        lsproto.CompletionItem({ label = "c" }),
                     },
                 },
             }))
@@ -49,9 +50,9 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c" }),
+                        lsproto.CompletionItem({ label = "a" }),
+                        lsproto.CompletionItem({ label = "b" }),
+                        lsproto.CompletionItem({ label = "c" }),
                     },
                 },
             }))
@@ -60,9 +61,9 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c" }),
+                        lsproto.CompletionItem({ label = "a" }),
+                        lsproto.CompletionItem({ label = "b" }),
+                        lsproto.CompletionItem({ label = "c" }),
                     },
                 },
             }))
@@ -71,9 +72,9 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c" }),
+                        lsproto.CompletionItem({ label = "a" }),
+                        lsproto.CompletionItem({ label = "b" }),
+                        lsproto.CompletionItem({ label = "c" }),
                     },
                 },
             }))
@@ -82,9 +83,9 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c" }),
+                        lsproto.CompletionItem({ label = "a" }),
+                        lsproto.CompletionItem({ label = "b" }),
+                        lsproto.CompletionItem({ label = "c" }),
                     },
                 },
             }))
@@ -92,30 +93,21 @@ const b: Foo[(("[|/*8*/|]"))];]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "a" }), lsproto.CompletionItem({ label = "b" }) },
                 },
             }))
             f:VerifyCompletions(t, "7", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "a" }), lsproto.CompletionItem({ label = "b" }) },
                 },
             }))
             f:VerifyCompletions(t, "8", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "a" }), lsproto.CompletionItem({ label = "b" }) },
                 },
             }))
         end)

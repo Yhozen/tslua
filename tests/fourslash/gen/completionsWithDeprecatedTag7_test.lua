@@ -34,7 +34,7 @@ const i: I = {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
                             sortText = ls.DeprecateSortText(ls.SortText.MemberDeclaredBySpreadAssignment),
                             kind = lsproto.CompletionItemKind.Field,

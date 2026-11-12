@@ -40,14 +40,14 @@ declare const f: F;
 switch (f) {
     case/*3*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case 1: ...",
                             insertText = "case 1:$1\ncase E.A:$2\ncase E.B:$3",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -61,7 +61,7 @@ switch (f) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case E.A: ...",
                             insertText = "case E.A:$1\ncase E.B:$2\ncase E.C:$3",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -75,7 +75,7 @@ switch (f) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case F.D: ...",
                             insertText = "case F.D:$1\ncase F.E:$2\ncase F.F:$3",
                             sortText = ls.SortText.GlobalsOrKeywords,

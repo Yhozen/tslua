@@ -21,7 +21,7 @@ function P.TestCompletionsRecommended_equals(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Enu",
                             detail = "enum Enu",
                             kind = lsproto.CompletionItemKind.Enum,

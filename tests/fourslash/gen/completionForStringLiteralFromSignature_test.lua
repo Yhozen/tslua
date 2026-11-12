@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -23,11 +24,9 @@ f("[|/**/|]");]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "x", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "x", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },

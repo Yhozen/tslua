@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -46,9 +47,9 @@ const b = new MyClass2/*2*/();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "MyClass",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "mylib" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "mylib" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),
@@ -59,7 +60,7 @@ const b = new MyClass2/*2*/();]]
                 name = "MyClass",
                 source = "mylib",
                 description = "Add import from \"mylib\"",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix(),
+                autoImportFix = lsproto.AutoImportFix({}),
                 newFileContent = [[
 import { MyClass } from "mylib";
 

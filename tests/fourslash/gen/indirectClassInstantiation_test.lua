@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -35,13 +36,13 @@ inst2.blah/*b*/;]]
                 items = {
                     exact = {
                         "property",
-                        zero.lsp_lsproto_CompletionItem({ label = "blah", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "class2", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "constructor", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "inst2", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "instance", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "TestObj", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "blah", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "class2", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "constructor", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "inst2", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "instance", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "TestObj", sortText = ls.SortText.JavascriptIdentifiers }),
                     },
                 },
             }))

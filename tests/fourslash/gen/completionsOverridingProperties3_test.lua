@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -20,12 +21,12 @@ interface I {
 class C implements I {
     public pr/**/: string | number;
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "prop" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "prop" }) } },
                 userPreferences = zero.ls_lsutil_UserPreferences({ includeCompletionsWithClassMemberSnippets = core.Tristate.TSTrue }),
             }))
         end)

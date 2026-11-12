@@ -32,13 +32,13 @@ const foo = 0;
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             insertText = "{foo}",
                             detail = "const foo: 0",
                             kind = lsproto.CompletionItemKind.Variable,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "{foo}", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "{foo}", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },

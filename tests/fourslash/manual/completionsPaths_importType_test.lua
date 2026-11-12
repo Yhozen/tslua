@@ -31,12 +31,12 @@ type B = import(".//*2*/");
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "package",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "package",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "package", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "package", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },
@@ -47,7 +47,7 @@ type B = import(".//*2*/");
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "package", kind = lsproto.CompletionItemKind.Folder, detail = "package" }),
+                        lsproto.CompletionItem({ label = "package", kind = lsproto.CompletionItemKind.Folder, detail = "package" }),
                     },
                 },
             }))
@@ -56,13 +56,13 @@ type B = import(".//*2*/");
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "node_modules",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "node_modules",
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "ns", kind = lsproto.CompletionItemKind.File, detail = "ns.ts" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "user", kind = lsproto.CompletionItemKind.File, detail = "user.js" }),
+                        lsproto.CompletionItem({ label = "ns", kind = lsproto.CompletionItemKind.File, detail = "ns.ts" }),
+                        lsproto.CompletionItem({ label = "user", kind = lsproto.CompletionItemKind.File, detail = "user.js" }),
                     },
                 },
             }))

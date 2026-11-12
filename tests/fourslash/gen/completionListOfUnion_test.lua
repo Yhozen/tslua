@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -25,18 +26,16 @@ f({ /*f*/ });]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", detail = "(property) a: string | number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "(property) b: number | boolean" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c", detail = "(property) c: string" }),
+                        lsproto.CompletionItem({ label = "a", detail = "(property) a: string | number" }),
+                        lsproto.CompletionItem({ label = "b", detail = "(property) b: number | boolean" }),
+                        lsproto.CompletionItem({ label = "c", detail = "(property) c: string" }),
                     },
                 },
             }))
             f:VerifyCompletions(t, "f", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "a", detail = "(property) I.a: number" }) },
-                },
+                items = { includes = { lsproto.CompletionItem({ label = "a", detail = "(property) I.a: number" }) } },
             }))
         end)
     end)

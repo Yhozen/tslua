@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -38,8 +39,8 @@ function makePoint(x: number): {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "(property) b: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "x", detail = "(property) x: number" }),
+                        lsproto.CompletionItem({ label = "b", detail = "(property) b: number" }),
+                        lsproto.CompletionItem({ label = "x", detail = "(property) x: number" }),
                     },
                 },
             }))

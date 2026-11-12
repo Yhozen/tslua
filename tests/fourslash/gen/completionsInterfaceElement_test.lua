@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -31,7 +32,7 @@ interface EndOfFile { f; /*e*/]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "readonly", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "readonly", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

@@ -43,7 +43,7 @@ let opt4 = <Opt wrong /*5*/ />;]]
                     exact = {
                         "propString",
                         "propx",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "optional?",
                             insertText = "optional",
                             filterText = "optional",
@@ -60,13 +60,13 @@ let opt4 = <Opt wrong /*5*/ />;]]
                     exact = {
                         "propString",
                         "propx",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "optional?",
                             filterText = "optional",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.OptionalMember,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "optional",
                                     insert = f:Ranges()[1].lsRange,
                                     replace = f:Ranges()[1].lsRange,
@@ -82,7 +82,7 @@ let opt4 = <Opt wrong /*5*/ />;]]
                 items = {
                     exact = {
                         "propString",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "optional?",
                             insertText = "optional",
                             filterText = "optional",

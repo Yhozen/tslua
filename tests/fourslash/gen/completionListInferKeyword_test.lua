@@ -25,7 +25,7 @@ type Bar<T> = T extends { a: (x: in/**/) => void }
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "infer",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,

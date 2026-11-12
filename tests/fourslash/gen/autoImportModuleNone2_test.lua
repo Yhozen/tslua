@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,9 +29,9 @@ export const x: number;
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "dep" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "dep" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),

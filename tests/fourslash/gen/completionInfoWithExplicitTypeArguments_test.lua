@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -26,10 +27,7 @@ g<I>("[|/*g*/|]");]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "x" }), lsproto.CompletionItem({ label = "y" }) },
                 },
             }))
             f:VerifyCompletions(t, "g", zero.fourslash_CompletionsExpectedList({
@@ -37,17 +35,13 @@ g<I>("[|/*g*/|]");]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "x", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "x", range = f:Ranges()[1].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "y",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "y", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "y", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },

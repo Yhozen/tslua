@@ -21,23 +21,23 @@ const foo = 0;
 export = foo;
 // @Filename: /importExportEquals.ts
 [|import f/**/|]]=]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             insertText = "import foo$1 from \"./mod\";",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./mod" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./mod" }) }),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "import foo$1 from \"./mod\";", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "import foo$1 from \"./mod\";", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

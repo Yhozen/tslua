@@ -35,7 +35,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#only-with-custom-conditions",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#only-with-custom-conditions.js",

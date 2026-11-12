@@ -38,7 +38,7 @@ alpha.f(new /*c1*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Name",
                             detail = "namespace Name",
                             kind = lsproto.CompletionItemKind.Module,
@@ -52,9 +52,9 @@ alpha.f(new /*c1*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Name",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./a" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./a" }) }),
                             detail = "namespace Name",
                             kind = lsproto.CompletionItemKind.Module,
                             additionalTextEdits = fourslash.AnyTextEdits,
@@ -69,7 +69,7 @@ alpha.f(new /*c1*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "alpha",
                             detail = "import alpha",
                             kind = lsproto.CompletionItemKind.Variable,

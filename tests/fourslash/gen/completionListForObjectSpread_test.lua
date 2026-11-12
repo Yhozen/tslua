@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -39,8 +40,8 @@ spreadUndefined./*4*/a;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", detail = "(property) a: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "(property) b: string" }),
+                        lsproto.CompletionItem({ label = "a", detail = "(property) a: number" }),
+                        lsproto.CompletionItem({ label = "b", detail = "(property) b: string" }),
                     },
                 },
             }))
@@ -49,18 +50,16 @@ spreadUndefined./*4*/a;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", detail = "(property) a: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "(property) b: boolean" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c", detail = "(property) c: number" }),
+                        lsproto.CompletionItem({ label = "a", detail = "(property) a: number" }),
+                        lsproto.CompletionItem({ label = "b", detail = "(property) b: boolean" }),
+                        lsproto.CompletionItem({ label = "c", detail = "(property) c: number" }),
                     },
                 },
             }))
             f:VerifyCompletions(t, { "3", "4" }, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "a", detail = "(property) a: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "a", detail = "(property) a: number" }) } },
             }))
         end)
     end)

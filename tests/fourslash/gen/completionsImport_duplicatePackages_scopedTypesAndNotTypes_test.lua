@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -46,19 +47,15 @@ import "react";
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionGlobalsPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "render",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "@scope/react-dom" }),
-                            }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "@scope/react-dom" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "useState",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "@scope/react" }),
-                            }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "@scope/react" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),

@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -32,7 +33,7 @@ export declare class Derived extends Cls {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method",
                             insertText = "method(param: import(\"./doesntexist.js\").Foo);",
                             filterText = "method",

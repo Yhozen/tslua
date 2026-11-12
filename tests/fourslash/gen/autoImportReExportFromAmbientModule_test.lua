@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -38,15 +39,15 @@ access/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "accessSync",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "fs" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "fs" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "accessSync",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "fs-extra" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "fs-extra" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),
@@ -58,7 +59,7 @@ access/**/]]
                 source = "fs-extra",
                 description = "Add import from \"fs-extra\"",
                 newFileContent = "import { accessSync } from \"fs-extra\";\n\naccess",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "fs-extra" }),
+                autoImportFix = lsproto.AutoImportFix({ moduleSpecifier = "fs-extra" }),
             }))
         end)
     end)

@@ -35,7 +35,7 @@ o["[|/*prop*/|]"];]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "other", detail = "other.ts", kind = lsproto.CompletionItemKind.File }),
+                        lsproto.CompletionItem({ label = "other", detail = "other.ts", kind = lsproto.CompletionItemKind.File }),
                     },
                 },
             }))
@@ -44,13 +44,11 @@ o["[|/*prop*/|]"];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
                             detail = "a",
                             kind = lsproto.CompletionItemKind.Constant,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },
@@ -60,27 +58,23 @@ o["[|/*prop*/|]"];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "m",
                             detail = "(method) I.m(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Method doc" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Method doc" }),
                             }),
                             kind = lsproto.CompletionItemKind.Method,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "m", range = f:Ranges()[2].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "m", range = f:Ranges()[2].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
                             detail = "(property) I.x: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Prop doc" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Prop doc" }),
                             }),
                             kind = lsproto.CompletionItemKind.Field,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "x", range = f:Ranges()[2].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "x", range = f:Ranges()[2].lsRange }) }),
                         }),
                     },
                 },

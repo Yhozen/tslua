@@ -21,7 +21,7 @@ function P.TestCompletionsJsdocTag(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "@property",
                             detail = "@property",
                             kind = lsproto.CompletionItemKind.Keyword,

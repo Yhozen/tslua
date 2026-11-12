@@ -36,9 +36,9 @@ import {} from "foo/dir//*1*/";
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.File, detail = "a.ts" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", kind = lsproto.CompletionItemKind.File, detail = "b.ts" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "dir", kind = lsproto.CompletionItemKind.Folder, detail = "dir" }),
+                        lsproto.CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.File, detail = "a.ts" }),
+                        lsproto.CompletionItem({ label = "b", kind = lsproto.CompletionItemKind.File, detail = "b.ts" }),
+                        lsproto.CompletionItem({ label = "dir", kind = lsproto.CompletionItemKind.Folder, detail = "dir" }),
                     },
                 },
             }))
@@ -47,7 +47,7 @@ import {} from "foo/dir//*1*/";
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.File, detail = "x.ts" }),
+                        lsproto.CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.File, detail = "x.ts" }),
                     },
                 },
             }))

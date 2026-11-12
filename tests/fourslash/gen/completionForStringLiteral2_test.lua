@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -30,22 +31,18 @@ p["[|/*3*/|]"];]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "bar", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "bar", range = f:Ranges()[1].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "foo", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "foo", range = f:Ranges()[1].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "some other name",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "some other name", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "some other name", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },
@@ -61,11 +58,9 @@ p["[|/*3*/|]"];]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a", range = f:Ranges()[2].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a", range = f:Ranges()[2].lsRange }) }),
                         }),
                     },
                 },

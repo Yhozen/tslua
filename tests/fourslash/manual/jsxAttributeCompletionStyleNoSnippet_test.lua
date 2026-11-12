@@ -6,6 +6,7 @@ local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
 local lsutil = require("tslua.ls.lsutil")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -41,26 +42,26 @@ declare namespace JSX {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_a" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_b" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_c" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_d" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_e" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_f" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_g" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prop_a" }),
+                        lsproto.CompletionItem({ label = "prop_b" }),
+                        lsproto.CompletionItem({ label = "prop_c" }),
+                        lsproto.CompletionItem({ label = "prop_d" }),
+                        lsproto.CompletionItem({ label = "prop_e" }),
+                        lsproto.CompletionItem({ label = "prop_f" }),
+                        lsproto.CompletionItem({ label = "prop_g" }),
+                        lsproto.CompletionItem({
                             label = "prop_h?",
                             textEdit = util.InsertReplaceTextEdit("prop_h", f:Ranges()[1].lsRange),
                             filterText = "prop_h",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_i?",
                             textEdit = util.InsertReplaceTextEdit("prop_i", f:Ranges()[1].lsRange),
                             filterText = "prop_i",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_j?",
                             textEdit = util.InsertReplaceTextEdit("prop_j", f:Ranges()[1].lsRange),
                             filterText = "prop_j",

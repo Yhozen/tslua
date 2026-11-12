@@ -61,7 +61,7 @@ function baz(x = 0) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "link", kind = lsproto.CompletionItemKind.Keyword, detail = "link" }),
+                        lsproto.CompletionItem({ label = "link", kind = lsproto.CompletionItemKind.Keyword, detail = "link" }),
                         "param",
                         "returns",
                         "param {*} x ",

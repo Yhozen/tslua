@@ -30,14 +30,14 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "?.bar",
                             filterText = ".bar",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "?.bar", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "?.bar", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },
@@ -48,7 +48,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,

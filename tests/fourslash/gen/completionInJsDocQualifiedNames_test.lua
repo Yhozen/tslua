@@ -29,11 +29,11 @@ const x = 0;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "T",
                             detail = "type T = number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "tee" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "tee" }),
                             }),
                             kind = lsproto.CompletionItemKind.Class,
                         }),

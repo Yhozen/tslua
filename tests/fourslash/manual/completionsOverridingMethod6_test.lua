@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -48,21 +49,21 @@ class f extends Base {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method",
                             insertText = "public abstract method(): void;",
                             filterText = "method",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             insertText = "public abstract prop: number;",
                             filterText = "prop",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -73,21 +74,21 @@ class f extends Base {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method",
                             textEdit = util.InsertReplaceTextEdit("public override method(): void {\n}", f:Ranges()[1].lsRange),
                             filterText = "method",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             textEdit = util.InsertReplaceTextEdit("public override prop: number;", f:Ranges()[1].lsRange),
                             filterText = "prop",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -98,21 +99,21 @@ class f extends Base {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method",
                             insertText = "override method(): void {\n}",
                             filterText = "method",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             insertText = "protected override prop: number;",
                             filterText = "prop",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -123,13 +124,13 @@ class f extends Base {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             insertText = "protected prop: number;",
                             filterText = "prop",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                     excludes = { "method" },

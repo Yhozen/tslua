@@ -41,7 +41,16 @@ func (g *gen) funcBody(list []ast.Stmt) {
 			ret = "return "
 		}
 		call := ds.Call
+		isRecover := false
 		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && g.isPkgFunc(sel, "testutil", "RecoverAndFail") {
+			isRecover = true
+		}
+		if g.deferStack != "" && !isRecover {
+			fn := g.deferredFunc(call)
+			g.line("%s[#%s + 1] = %s", g.deferStack, g.deferStack, fn)
+			continue
+		}
+		if isRecover {
 			args := g.args(call)
 			g.line("%s%s.RecoverAndFail(%s, function()", ret, g.require("tslua.testutil", "testutil"), strings.Join(args, ", "))
 		} else {
@@ -94,6 +103,47 @@ func (g *gen) deferredFunc(call *ast.CallExpr) string {
 		return "function() " + fn + "(" + strings.Join(args, ", ") + ") end"
 	}
 	return "function() " + g.callString(call, args) + " end"
+}
+
+// withDeferStack converts a function body that has defers in nested blocks: deferred calls are
+// pushed on a stack that gort.WithDefers runs (LIFO) when the body returns or raises.
+func (g *gen) withDeferStack(body []ast.Stmt) bool {
+	if !hasNestedDefer(body) {
+		return false
+	}
+	saved := g.deferStack
+	g.deferStack = g.newTmp("defers")
+	ret := ""
+	if g.hasResults {
+		ret = "return "
+	}
+	g.line("local %s = {}", g.deferStack)
+	g.line("%s%s.WithDefers(%s, function()", ret, g.gort(), g.deferStack)
+	g.ind++
+	g.funcBody(body)
+	g.ind--
+	g.line("end)")
+	g.deferStack = saved
+	return true
+}
+
+func hasNestedDefer(body []ast.Stmt) bool {
+	found := false
+	for _, s := range body {
+		if _, ok := s.(*ast.DeferStmt); ok {
+			continue
+		}
+		ast.Inspect(s, func(n ast.Node) bool {
+			switch n.(type) {
+			case *ast.FuncLit:
+				return false
+			case *ast.DeferStmt:
+				found = true
+			}
+			return !found
+		})
+	}
+	return found
 }
 
 // stmts converts a nested block. A defer in a nested block wraps the rest of that block (Go runs it
@@ -231,7 +281,7 @@ func (g *gen) declStmt(d *ast.GenDecl) {
 				if len(vs.Values) == len(vs.Names) {
 					t = g.info.Defs[vs.Names[i]].Type()
 				}
-				vals = append(vals, g.exprAs(v, t))
+				vals = append(vals, g.copyIfStruct(v, g.exprAs(v, t)))
 			}
 			g.line("local %s = %s", strings.Join(names, ", "), strings.Join(vals, ", "))
 		}
@@ -267,7 +317,7 @@ func (g *gen) assign(s *ast.AssignStmt) {
 	if len(s.Lhs) == len(s.Rhs) {
 		var vals []string
 		for i, r := range s.Rhs {
-			vals = append(vals, g.exprAs(r, g.info.TypeOf(s.Lhs[i])))
+			vals = append(vals, g.copyIfStruct(r, g.exprAs(r, g.info.TypeOf(s.Lhs[i]))))
 		}
 		g.assignTo(s, strings.Join(vals, ", "))
 		return
@@ -383,7 +433,6 @@ func (g *gen) ifStmt(s *ast.IfStmt, isElse bool) {
 			g.ind--
 		} else {
 			g.ifStmt(e, true)
-			return
 		}
 	case *ast.BlockStmt:
 		g.line("else")
@@ -391,13 +440,9 @@ func (g *gen) ifStmt(s *ast.IfStmt, isElse bool) {
 		g.stmts(e.List)
 		g.ind--
 	}
-	if !isElse || s.Else == nil || true {
-		if !isElse {
-			g.line("end")
-		}
-	}
-	if isElse {
-		return
+	// the first if of an if/elseif chain closes it
+	if !isElse {
+		g.line("end")
 	}
 }
 
@@ -812,9 +857,40 @@ func (g *gen) typeCheck(x string, t types.Type, at ast.Node) string {
 			}
 		}
 	case *types.Slice:
+		if _, isIface := u.Elem().Underlying().(*types.Interface); !isIface {
+			return g.gort() + ".IsSlice(" + x + ", function(e) return " + g.typeCheck("e", u.Elem(), at) + " end)"
+		}
 		return g.gort() + ".IsSlice(" + x + ")"
 	case *types.Map:
 		return g.gort() + ".IsMap(" + x + ")"
 	}
 	return g.fail(at, "type switch case %s", t)
+}
+
+// copyIfStruct gives Go's copy semantics to assignments of addressable struct values (Lua tables
+// are references): a shallow copy keeping the metatable.
+func (g *gen) copyIfStruct(e ast.Expr, s string) string {
+	t := g.info.TypeOf(e)
+	if t == nil {
+		return s
+	}
+	if _, ok := t.Underlying().(*types.Struct); !ok {
+		return s
+	}
+	switch x := ast.Unparen(e).(type) {
+	case *ast.Ident:
+		if _, isVar := g.info.Uses[x].(*types.Var); !isVar {
+			return s
+		}
+	case *ast.SelectorExpr:
+		if sel := g.info.Selections[x]; sel == nil || sel.Kind() != types.FieldVal {
+			if _, isVar := g.info.Uses[x.Sel].(*types.Var); !isVar {
+				return s
+			}
+		}
+	case *ast.IndexExpr, *ast.StarExpr:
+	default:
+		return s
+	}
+	return g.gort() + ".CloneStruct(" + s + ")"
 }

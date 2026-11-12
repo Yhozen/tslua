@@ -25,7 +25,7 @@ def/*1*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "default",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,

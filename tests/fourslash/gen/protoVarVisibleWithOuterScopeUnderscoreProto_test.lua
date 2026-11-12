@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -26,8 +27,8 @@ function foo() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(local var) __proto__: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "___proto__", detail = "var ___proto__: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(local var) __proto__: string" }),
+                        lsproto.CompletionItem({ label = "___proto__", detail = "var ___proto__: number" }),
                     },
                 },
             }))

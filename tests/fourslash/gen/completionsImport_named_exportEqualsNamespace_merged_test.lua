@@ -34,9 +34,9 @@ fo/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "n" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "n" }) }),
                             detail = "const N.foo: number",
                             kind = lsproto.CompletionItemKind.Variable,
                             additionalTextEdits = fourslash.AnyTextEdits,

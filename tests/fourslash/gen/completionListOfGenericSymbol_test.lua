@@ -21,22 +21,22 @@ function P.TestCompletionListOfGenericSymbol(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "length",
                             detail = "(property) Array<number>.length: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "Gets or sets the length of the array. This is a number one higher than the highest index in the array.",
                                 }),
                             }),
                             kind = lsproto.CompletionItemKind.Field,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "toString",
                             detail = "(method) Array<number>.toString(): string",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "Returns a string representation of an array.",
                                 }),

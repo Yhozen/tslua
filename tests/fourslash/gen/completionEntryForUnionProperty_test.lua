@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -33,8 +34,8 @@ x./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "commonFunction", detail = "(method) commonFunction(): number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "commonProperty", detail = "(property) commonProperty: string | number" }),
+                        lsproto.CompletionItem({ label = "commonFunction", detail = "(method) commonFunction(): number" }),
+                        lsproto.CompletionItem({ label = "commonProperty", detail = "(property) commonProperty: string | number" }),
                     },
                 },
             }))

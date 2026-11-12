@@ -37,12 +37,12 @@ export const [|myValueB|]: string = "hello";
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "myValue",
                     includes = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "myValueA",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "myValueB",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[2]:LSLocation(),

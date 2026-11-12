@@ -33,7 +33,7 @@ var x = class myClass <TypeParam> {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "TypeParam",
                             detail = "(type parameter) TypeParam in myClass<TypeParam>",
                             kind = lsproto.CompletionItemKind.Property,

@@ -81,7 +81,7 @@ class Foo8 {
                 },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
@@ -95,7 +95,7 @@ class Foo8 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
@@ -112,7 +112,7 @@ class Foo8 {
                 },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
@@ -128,7 +128,7 @@ class Foo8 {
                 },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
@@ -141,13 +141,13 @@ class Foo8 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.SuggestedClassMembers,
                             filterText = "bar",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "this.#bar",
                                     insert = f:Ranges()[4].lsRange,
                                     replace = f:Ranges()[4].lsRange,
@@ -162,7 +162,7 @@ class Foo8 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.SuggestedClassMembers,
@@ -177,12 +177,12 @@ class Foo8 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.SuggestedClassMembers,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "this.#bar",
                                     insert = f:Ranges()[5].lsRange,
                                     replace = f:Ranges()[5].lsRange,
@@ -197,12 +197,12 @@ class Foo8 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#bar",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.SuggestedClassMembers,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "this.#bar",
                                     insert = f:Ranges()[6].lsRange,
                                     replace = f:Ranges()[6].lsRange,

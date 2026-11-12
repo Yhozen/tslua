@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -29,9 +30,7 @@ function fromBar() {}]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "from", sortText = ls.SortText.GlobalsOrKeywords }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "from", sortText = ls.SortText.GlobalsOrKeywords }) },
                 },
             }))
         end)

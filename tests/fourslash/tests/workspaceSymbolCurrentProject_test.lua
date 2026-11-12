@@ -37,12 +37,12 @@ export function [|fromB|]() {}
                     pattern = "from",
                     preferences = allOpenProjects,
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "fromA",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[1]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "fromB",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[2]:LSLocation(),
@@ -53,7 +53,7 @@ export function [|fromB|]() {}
                     pattern = "from",
                     preferences = currentProject,
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "fromA",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[1]:LSLocation(),

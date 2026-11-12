@@ -22,7 +22,7 @@ export declare function Component(): void;
 // @Filename: /home/src/workspaces/project/index.ts
 [|import Com/**/|]
 // @link: /home/src/workspaces/project/node_modules/.pnpm/@types+react@17.0.7/node_modules/@types/react -> /home/src/workspaces/project/node_modules/@types/react]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:MarkTestAsStradaServer()
             f:GoToMarker(t, "")
@@ -31,19 +31,19 @@ export declare function Component(): void;
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Component",
                             insertText = "import { Component$1 } from \"react\";",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "react" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "react" }) }),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({
                                     newText = "import { Component$1 } from \"react\";",
                                     range = f:Ranges()[1].lsRange,
                                 }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

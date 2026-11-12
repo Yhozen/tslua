@@ -39,14 +39,14 @@ if (true) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a bc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "[\"a bc\"]",
                             filterText = ".a bc",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[\"a bc\"]", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "[\"a bc\"]", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },
@@ -57,14 +57,14 @@ if (true) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a bc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "[\"a bc\"]",
                             filterText = ".a bc",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[\"a bc\"]", range = f:Ranges()[2].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "[\"a bc\"]", range = f:Ranges()[2].lsRange }),
                             }),
                         }),
                     },
@@ -75,14 +75,14 @@ if (true) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a bc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "?.[\"a bc\"]",
                             filterText = ".a bc",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[3].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[3].lsRange }),
                             }),
                         }),
                     },
@@ -93,14 +93,14 @@ if (true) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a bc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "?.[\"a bc\"]",
                             filterText = ".a bc",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[4].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[4].lsRange }),
                             }),
                         }),
                     },
@@ -111,14 +111,14 @@ if (true) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a bc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "?.[\"a bc\"]",
                             filterText = "?.a bc",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[5].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "?.[\"a bc\"]", range = f:Ranges()[5].lsRange }),
                             }),
                         }),
                     },

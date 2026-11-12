@@ -3,6 +3,7 @@
 local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -31,7 +32,7 @@ acb/*2*/;]]
             f:VerifyApplyCodeActionFromCompletion(t, "2", zero.fourslash_ApplyCodeActionFromCompletionOptions({
                 name = "abc",
                 source = "./a",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./a" }),
+                autoImportFix = lsproto.AutoImportFix({ moduleSpecifier = "./a" }),
                 description = "Add import from \"./a\"",
                 newFileContent = "import { abc } from \"./a\";\n\nacb;",
             }))

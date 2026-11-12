@@ -30,9 +30,7 @@ fakeTest(() => {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "foo", kind = lsproto.CompletionItemKind.Field }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "foo", kind = lsproto.CompletionItemKind.Field }) },
                 },
             }))
         end)

@@ -45,9 +45,9 @@ switch (u) {
 switch (u) {
     case E./*8*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
-            local exhaustiveCaseCompletion = zero.lsp_lsproto_CompletionItem({
+            local exhaustiveCaseCompletion = lsproto.CompletionItem({
                 label = "case E.A: ...",
                 insertText = "case E.A:$1\ncase E.B:$2\ncase E.C:$3",
                 sortText = ls.SortText.GlobalsOrKeywords,
@@ -73,10 +73,10 @@ switch (u) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case E.A: ...",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "case E.A:$1\ncase E.B:$2\ncase E.C:$3",
                                     insert = f:Ranges()[1].lsRange,
                                     replace = f:Ranges()[1].lsRange,

@@ -52,14 +52,14 @@ let opt = <MainButton wrong /*6*/ />;]]
                     exact = {
                         "goTo",
                         "onClick",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "children?",
                             insertText = "children",
                             filterText = "children",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className",
                             filterText = "className",
@@ -76,7 +76,7 @@ let opt = <MainButton wrong /*6*/ />;]]
                     exact = {
                         "goTo",
                         "onClick",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className",
                             filterText = "className",
@@ -91,14 +91,14 @@ let opt = <MainButton wrong /*6*/ />;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "children?",
                             insertText = "children",
                             filterText = "children",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className",
                             filterText = "className",

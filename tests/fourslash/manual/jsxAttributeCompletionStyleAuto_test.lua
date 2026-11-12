@@ -36,61 +36,61 @@ declare namespace JSX {
 }
 
 <foo [|prop_/**/|] />]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_a" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prop_a" }),
+                        lsproto.CompletionItem({
                             label = "prop_b",
                             textEdit = util.InsertReplaceTextEdit("prop_b=\"$1\"", f:Ranges()[1].lsRange),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_c",
                             textEdit = util.InsertReplaceTextEdit("prop_c={$1}", f:Ranges()[1].lsRange),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_d",
                             textEdit = util.InsertReplaceTextEdit("prop_d={$1}", f:Ranges()[1].lsRange),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_e",
                             textEdit = util.InsertReplaceTextEdit("prop_e=\"$1\"", f:Ranges()[1].lsRange),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop_f" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prop_f" }),
+                        lsproto.CompletionItem({
                             label = "prop_g",
                             textEdit = util.InsertReplaceTextEdit("prop_g={$1}", f:Ranges()[1].lsRange),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_h?",
                             textEdit = util.InsertReplaceTextEdit("prop_h=\"$1\"", f:Ranges()[1].lsRange),
                             filterText = "prop_h",
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_i?",
                             textEdit = util.InsertReplaceTextEdit("prop_i", f:Ranges()[1].lsRange),
                             filterText = "prop_i",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_j?",
                             textEdit = util.InsertReplaceTextEdit("prop_j={$1}", f:Ranges()[1].lsRange),
                             filterText = "prop_j",
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop_string_literal_union?",
                             textEdit = util.InsertReplaceTextEdit("prop_string_literal_union=\"$1\"", f:Ranges()[1].lsRange),
                             filterText = "prop_string_literal_union",

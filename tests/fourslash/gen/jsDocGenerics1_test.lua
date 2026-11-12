@@ -40,9 +40,7 @@ x[0].a./*3*/]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }) },
                 },
             }))
         end)

@@ -42,7 +42,7 @@ fooba/*5*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Foo",
                             kind = lsproto.CompletionItemKind.Interface,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
@@ -56,7 +56,7 @@ fooba/*5*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
                             kind = lsproto.CompletionItemKind.Method,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
@@ -70,7 +70,7 @@ fooba/*5*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
@@ -84,7 +84,7 @@ fooba/*5*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foobar",
                             kind = lsproto.CompletionItemKind.Function,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
@@ -98,7 +98,7 @@ fooba/*5*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foobar",
                             kind = lsproto.CompletionItemKind.Variable,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),

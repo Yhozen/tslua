@@ -52,18 +52,18 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b",
                             detail = "var b: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             detail = "function foo(): number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo's comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo's comment" }),
                             }),
                         }),
                     },
@@ -77,11 +77,11 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "m1",
                             detail = "namespace m1",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Namespace comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Namespace comment" }),
                             }),
                         }),
                     },
@@ -92,25 +92,25 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b",
                             detail = "var m1.b: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "fooExport",
                             detail = "function m1.fooExport(): number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "exported function" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "exported function" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "m2",
                             detail = "namespace m1.m2",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "m2 comments" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "m2 comments" }),
                             }),
                         }),
                     },
@@ -125,18 +125,18 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c",
                             detail = "constructor m1.m2.c(): m1.m2.c",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "class comment;" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "class comment;" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i",
                             detail = "var m1.m2.i: m1.m2.c",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i" }),
                             }),
                         }),
                     },
@@ -149,11 +149,11 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "extMod",
                             detail = "import extMod = require(\"./commentsExternalModules_file0\")",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is on import declaration" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is on import declaration" }),
                             }),
                         }),
                     },
@@ -164,11 +164,11 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "m1",
                             detail = "namespace extMod.m1",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Namespace comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Namespace comment" }),
                             }),
                         }),
                     },
@@ -179,25 +179,25 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b",
                             detail = "var extMod.m1.b: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "b's comment" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "fooExport",
                             detail = "function extMod.m1.fooExport(): number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "exported function" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "exported function" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "m2",
                             detail = "namespace extMod.m1.m2",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "m2 comments" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "m2 comments" }),
                             }),
                         }),
                     },
@@ -212,18 +212,18 @@ var new/*14*/Var = new extMod.m1.m2./*15*/c();]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c",
                             detail = "constructor extMod.m1.m2.c(): extMod.m1.m2.c",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "class comment;" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "class comment;" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i",
                             detail = "var extMod.m1.m2.i: extMod.m1.m2.c",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i" }),
                             }),
                         }),
                     },

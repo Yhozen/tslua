@@ -23,7 +23,7 @@ function P.TestCompletionListAtEndOfWordInArrowFunction03(t)
                 items = {
                     includes = {
                         "defaultIsAnInvalidParameterName",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "default",
                             detail = "default",
                             kind = lsproto.CompletionItemKind.Keyword,

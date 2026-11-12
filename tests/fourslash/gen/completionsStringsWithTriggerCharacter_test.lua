@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -40,17 +41,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a/b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a/b", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a/b", range = f:Ranges()[1].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b/a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b/a", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b/a", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },
@@ -60,17 +57,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a@b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a@b", range = f:Ranges()[2].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a@b", range = f:Ranges()[2].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b@a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b@a", range = f:Ranges()[2].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b@a", range = f:Ranges()[2].lsRange }) }),
                         }),
                     },
                 },
@@ -80,17 +73,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a.b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a.b", range = f:Ranges()[3].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a.b", range = f:Ranges()[3].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b.a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b.a", range = f:Ranges()[3].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b.a", range = f:Ranges()[3].lsRange }) }),
                         }),
                     },
                 },
@@ -100,17 +89,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a'b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a'b", range = f:Ranges()[4].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a'b", range = f:Ranges()[4].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b'a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b'a", range = f:Ranges()[4].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b'a", range = f:Ranges()[4].lsRange }) }),
                         }),
                     },
                 },
@@ -120,17 +105,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a`b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a`b", range = f:Ranges()[5].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a`b", range = f:Ranges()[5].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b`a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b`a", range = f:Ranges()[5].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b`a", range = f:Ranges()[5].lsRange }) }),
                         }),
                     },
                 },
@@ -140,16 +121,16 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a\"b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a\"b", range = f:Ranges()[6].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "a\"b", range = f:Ranges()[6].lsRange }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b\"a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b\"a", range = f:Ranges()[6].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "b\"a", range = f:Ranges()[6].lsRange }),
                             }),
                         }),
                     },
@@ -160,17 +141,13 @@ const g: G = '[|a</*7*/|]';]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a<b",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "a<b", range = f:Ranges()[7].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "a<b", range = f:Ranges()[7].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b<a",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "b<a", range = f:Ranges()[7].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "b<a", range = f:Ranges()[7].lsRange }) }),
                         }),
                     },
                 },

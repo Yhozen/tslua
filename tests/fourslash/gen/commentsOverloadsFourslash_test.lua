@@ -285,20 +285,20 @@ foo(null);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "function f1(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is signature 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is signature 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "f2", detail = "function f2(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "f3", detail = "function f3(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "f2", detail = "function f2(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({ label = "f3", detail = "function f3(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({
                             label = "f4",
                             detail = "function f4(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "this is signature 4 - with number parameter",
                                 }),
@@ -312,22 +312,22 @@ foo(null);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_i",
                             detail = "var i1_i: i1\nnew (b: number) => any (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "new 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "new 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i", detail = "var i2_i: i2\nnew (a: string) => any (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i2_i", detail = "var i2_i: i2\nnew (a: string) => any (+1 overload)" }),
+                        lsproto.CompletionItem({
                             label = "i3_i",
                             detail = "var i3_i: i3\nnew (a: string) => any (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "new 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "new 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i4_i", detail = "var i4_i: i4\nnew (a: string) => any (+1 overload)" }),
+                        lsproto.CompletionItem({ label = "i4_i", detail = "var i4_i: i4\nnew (a: string) => any (+1 overload)" }),
                     },
                     excludes = { "i1", "i2", "i3", "i4" },
                 },
@@ -350,20 +350,20 @@ foo(null);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             detail = "(method) i1.foo(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "foo2", detail = "(method) i1.foo2(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "foo3", detail = "(method) i1.foo3(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "foo2", detail = "(method) i1.foo2(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({ label = "foo3", detail = "(method) i1.foo3(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({
                             label = "foo4",
                             detail = "(method) i1.foo4(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo4 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "foo4 1" }),
                             }),
                         }),
                     },
@@ -434,27 +434,27 @@ foo(null);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "prop1", detail = "(method) c.prop1(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prop1", detail = "(method) c.prop1(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({
                             label = "prop2",
                             detail = "(method) c.prop2(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop2 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop2 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prop3", detail = "(method) c.prop3(a: number): number (+1 overload)" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prop3", detail = "(method) c.prop3(a: number): number (+1 overload)" }),
+                        lsproto.CompletionItem({
                             label = "prop4",
                             detail = "(method) c.prop4(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop4 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop4 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop5",
                             detail = "(method) c.prop5(a: number): number (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop5 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "prop5 1" }),
                             }),
                         }),
                     },
@@ -525,35 +525,35 @@ foo(null);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "c", detail = "class c" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c1", detail = "class c1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2", detail = "class c2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c3", detail = "class c3" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c4", detail = "class c4" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c5", detail = "class c5" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c_i", detail = "var c_i: c" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c1_i_1", detail = "var c1_i_1: c1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_i_1", detail = "var c2_i_1: c2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c3_i_1", detail = "var c3_i_1: c3" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c4_i_1", detail = "var c4_i_1: c4" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c5_i_1", detail = "var c5_i_1: c5" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c1_i_2", detail = "var c1_i_2: c1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_i_2", detail = "var c2_i_2: c2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c3_i_2", detail = "var c3_i_2: c3" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c4_i_2", detail = "var c4_i_2: c4" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c5_i_2", detail = "var c5_i_2: c5" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "c", detail = "class c" }),
+                        lsproto.CompletionItem({ label = "c1", detail = "class c1" }),
+                        lsproto.CompletionItem({ label = "c2", detail = "class c2" }),
+                        lsproto.CompletionItem({ label = "c3", detail = "class c3" }),
+                        lsproto.CompletionItem({ label = "c4", detail = "class c4" }),
+                        lsproto.CompletionItem({ label = "c5", detail = "class c5" }),
+                        lsproto.CompletionItem({ label = "c_i", detail = "var c_i: c" }),
+                        lsproto.CompletionItem({ label = "c1_i_1", detail = "var c1_i_1: c1" }),
+                        lsproto.CompletionItem({ label = "c2_i_1", detail = "var c2_i_1: c2" }),
+                        lsproto.CompletionItem({ label = "c3_i_1", detail = "var c3_i_1: c3" }),
+                        lsproto.CompletionItem({ label = "c4_i_1", detail = "var c4_i_1: c4" }),
+                        lsproto.CompletionItem({ label = "c5_i_1", detail = "var c5_i_1: c5" }),
+                        lsproto.CompletionItem({ label = "c1_i_2", detail = "var c1_i_2: c1" }),
+                        lsproto.CompletionItem({ label = "c2_i_2", detail = "var c2_i_2: c2" }),
+                        lsproto.CompletionItem({ label = "c3_i_2", detail = "var c3_i_2: c3" }),
+                        lsproto.CompletionItem({ label = "c4_i_2", detail = "var c4_i_2: c4" }),
+                        lsproto.CompletionItem({ label = "c5_i_2", detail = "var c5_i_2: c5" }),
+                        lsproto.CompletionItem({
                             label = "multiOverload",
                             detail = "function multiOverload(a: number): string (+2 overloads)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is multiOverload F1 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is multiOverload F1 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "ambientF1",
                             detail = "function ambientF1(a: number): string (+2 overloads)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is ambient F1 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "This is ambient F1 1" }),
                             }),
                         }),
                     },

@@ -32,7 +32,7 @@ foo({
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "world?",
                             insertText = "world",
                             filterText = "world",

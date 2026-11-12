@@ -32,7 +32,7 @@ bar(a, a == '' ? /*3*/ : /*4*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
                     },
                 },
             }))
@@ -41,7 +41,7 @@ bar(a, a == '' ? /*3*/ : /*4*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
                     },
                 },
             }))
@@ -50,7 +50,7 @@ bar(a, a == '' ? /*3*/ : /*4*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
                     },
                 },
             }))
@@ -59,7 +59,7 @@ bar(a, a == '' ? /*3*/ : /*4*/);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Enum, preselect = true }),
                     },
                 },
             }))

@@ -520,7 +520,12 @@ func (g *gen) funcLit(e *ast.FuncLit) string {
 	g.loopStack = nil
 	g.results, g.hasResults = g.namedResults(e.Type), sig.Results().Len() > 0
 	g.sigStack = append(g.sigStack, sig)
-	g.funcBody(e.Body.List)
+	savedDefer := g.deferStack
+	g.deferStack = ""
+	if !g.withDeferStack(e.Body.List) {
+		g.funcBody(e.Body.List)
+	}
+	g.deferStack = savedDefer
 	g.sigStack = g.sigStack[:len(g.sigStack)-1]
 	g.loopStack = saved
 	g.results, g.hasResults = savedRes, savedHas

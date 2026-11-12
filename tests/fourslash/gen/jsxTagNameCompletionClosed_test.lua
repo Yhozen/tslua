@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local lsutil = require("tslua.ls.lsutil")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -52,15 +53,13 @@ function fn6() {
         <Foo.Foo.F/*6*/ />
     </Foo>
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "const Foo: NestedInterface" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "Foo", detail = "const Foo: NestedInterface" }) },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
             }))
@@ -68,9 +67,7 @@ function fn6() {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "const Foo: NestedInterface" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "Foo", detail = "const Foo: NestedInterface" }) },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
             }))
@@ -79,7 +76,7 @@ function fn6() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
+                        lsproto.CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
@@ -89,7 +86,7 @@ function fn6() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
+                        lsproto.CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
@@ -99,7 +96,7 @@ function fn6() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
+                        lsproto.CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
@@ -109,7 +106,7 @@ function fn6() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
+                        lsproto.CompletionItem({ label = "Foo", detail = "(property) NestedInterface.Foo: NestedInterface" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),

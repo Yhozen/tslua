@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -30,23 +31,23 @@ import { IBar } from "./b";
 const obj: IBar = {
     /*a*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ labelDetailsSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ labelDetailsSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "a", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "foo"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             insertText = "foo(f) {\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "foo")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "(f)" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "(f)" }),
                         }),
                     },
                 },

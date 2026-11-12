@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -29,10 +30,10 @@ namespace M {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "A", detail = "(enum member) E.A = 0" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "B", detail = "(enum member) E.B = 1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "C", detail = "(enum member) E.C = 0" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "D", detail = "(enum member) E.D = 1" }),
+                        lsproto.CompletionItem({ label = "A", detail = "(enum member) E.A = 0" }),
+                        lsproto.CompletionItem({ label = "B", detail = "(enum member) E.B = 1" }),
+                        lsproto.CompletionItem({ label = "C", detail = "(enum member) E.C = 0" }),
+                        lsproto.CompletionItem({ label = "D", detail = "(enum member) E.D = 1" }),
                     },
                 },
             }))

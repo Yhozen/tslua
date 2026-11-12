@@ -23,7 +23,7 @@ function foo() {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "c",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "c",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
@@ -33,7 +33,7 @@ function foo() {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "d",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "d",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[2]:LSLocation(),

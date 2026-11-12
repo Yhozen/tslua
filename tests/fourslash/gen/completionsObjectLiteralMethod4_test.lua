@@ -25,7 +25,7 @@ const obj: IFoo = {
     /*1*/
 }]]
         local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({
-            completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true, labelDetailsSupport = true }),
+            completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true, labelDetailsSupport = true }),
         }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
@@ -33,17 +33,17 @@ const obj: IFoo = {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "bar"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "bar",
                             insertText = "bar() {\n    $0\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "bar")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "()" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "()" }),
                         }),
                     },
                 },

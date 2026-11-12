@@ -37,17 +37,17 @@ import {} from "#foo/_dir//*3*/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_a/suffix",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "_a/suffix.ts",
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_b/suffix",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "_b/suffix.ts",
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "_dir", kind = lsproto.CompletionItemKind.Folder, detail = "_dir" }),
+                        lsproto.CompletionItem({ label = "_dir", kind = lsproto.CompletionItemKind.Folder, detail = "_dir" }),
                     },
                 },
             }))
@@ -57,28 +57,28 @@ import {} from "#foo/_dir//*3*/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_a/suffix",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "_a/suffix.ts",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ range = f:Ranges()[1].lsRange, newText = "_a/suffix" }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ range = f:Ranges()[1].lsRange, newText = "_a/suffix" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_b/suffix",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "_b/suffix.ts",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ range = f:Ranges()[1].lsRange, newText = "_b/suffix" }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ range = f:Ranges()[1].lsRange, newText = "_b/suffix" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_dir",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "_dir",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ range = f:Ranges()[1].lsRange, newText = "_dir" }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ range = f:Ranges()[1].lsRange, newText = "_dir" }),
                             }),
                         }),
                     },
@@ -89,7 +89,7 @@ import {} from "#foo/_dir//*3*/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x/suffix", kind = lsproto.CompletionItemKind.File, detail = "x/suffix.ts" }),
+                        lsproto.CompletionItem({ label = "x/suffix", kind = lsproto.CompletionItemKind.File, detail = "x/suffix.ts" }),
                     },
                 },
             }))

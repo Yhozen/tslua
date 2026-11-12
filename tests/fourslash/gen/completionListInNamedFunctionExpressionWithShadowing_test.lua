@@ -29,7 +29,7 @@ var y = function () {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             detail = "function foo(): void",
                             kind = lsproto.CompletionItemKind.Function,
@@ -42,7 +42,7 @@ var y = function () {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             detail = "(local function) foo(): void",
                             kind = lsproto.CompletionItemKind.Function,

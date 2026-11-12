@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -30,7 +31,7 @@ import { /**/ } from "foo";]]
                 items = {
                     exact = {
                         "Static",
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

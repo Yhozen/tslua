@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -40,9 +41,9 @@ Person.getNa/**/ = 10;]]
                     exact = util.CompletionFunctionMembersWithPrototypePlus({
                         "getName",
                         "getNa",
-                        zero.lsp_lsproto_CompletionItem({ label = "Person", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "name", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "age", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "Person", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "name", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "age", sortText = ls.SortText.JavascriptIdentifiers }),
                     }),
                 },
             }))

@@ -81,14 +81,14 @@ switch (z) {
     case H.C:
     /*6*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case E.B: ...",
                             insertText = "case E.B:$1",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -102,7 +102,7 @@ switch (z) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case \"2\": ...",
                             insertText = "case \"2\":$1",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -116,7 +116,7 @@ switch (z) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case F.A: ...",
                             insertText = "case F.A:$1\ncase F.B:$2",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -130,7 +130,7 @@ switch (z) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case G.C: ...",
                             insertText = "case G.C:$1\ncase G.D:$2\ncase G.E:$3\ncase G.DorE:$4",
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -144,7 +144,7 @@ switch (z) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "case G.D: ...",
                             insertText = "case G.D:$1\ncase G.E:$2\ncase G.DorE:$3",
                             sortText = ls.SortText.GlobalsOrKeywords,

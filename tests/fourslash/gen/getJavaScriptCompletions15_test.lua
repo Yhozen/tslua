@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -47,11 +48,11 @@ v.x.V./*4*/;]]
                 items = {
                     exact = {
                         "V",
-                        zero.lsp_lsproto_CompletionItem({ label = "ref1", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "ref2", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "require", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "v", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "x", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "ref1", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "ref2", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "require", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "v", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "x", sortText = ls.SortText.JavascriptIdentifiers }),
                     },
                 },
             }))

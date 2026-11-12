@@ -34,27 +34,23 @@ x[|./**/|]]=]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "0",
                             insertText = "[0]",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "The first label" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "The first label" }),
                             }),
                             detail = "(property) 0: number (lbl1)",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[0]", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "[0]", range = f:Ranges()[1].lsRange }) }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "1",
                             insertText = "[1]",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "The second label" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "The second label" }),
                             }),
                             detail = "(property) 1: number (lbl2)",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[1]", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "[1]", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },

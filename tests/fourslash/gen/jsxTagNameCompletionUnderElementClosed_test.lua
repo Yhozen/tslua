@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local lsutil = require("tslua.ls.lsutil")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -36,14 +37,14 @@ function fn3() {
         <butto/*3*/ style="" />
     </>;
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
+                        lsproto.CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
@@ -53,7 +54,7 @@ function fn3() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
+                        lsproto.CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),
@@ -63,7 +64,7 @@ function fn3() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
+                        lsproto.CompletionItem({ label = "button", detail = "(property) JSX.IntrinsicElements.button: any" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ jsxAttributeCompletionStyle = lsutil.JsxAttributeCompletionStyle.Braces }),

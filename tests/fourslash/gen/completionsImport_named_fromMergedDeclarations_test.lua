@@ -33,9 +33,9 @@ declare module "m" {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "m" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "m" }) }),
                             detail = "class M\ninterface M",
                             kind = lsproto.CompletionItemKind.Class,
                             additionalTextEdits = fourslash.AnyTextEdits,

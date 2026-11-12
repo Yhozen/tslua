@@ -240,36 +240,36 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_p1",
                             detail = "(property) i1.i1_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_f1",
                             detail = "(method) i1.i1_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_l1",
                             detail = "(property) i1.i1_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_p1", detail = "(property) i1.i1_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_f1", detail = "(method) i1.i1_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_l1", detail = "(property) i1.i1_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p1", detail = "(property) i1.p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "f1", detail = "(method) i1.f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "l1", detail = "(property) i1.l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) i1.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) i1.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l1", detail = "(property) i1.nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "i1_nc_p1", detail = "(property) i1.i1_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i1_nc_f1", detail = "(method) i1.i1_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i1_nc_l1", detail = "(property) i1.i1_nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "p1", detail = "(property) i1.p1: number" }),
+                        lsproto.CompletionItem({ label = "f1", detail = "(method) i1.f1(): void" }),
+                        lsproto.CompletionItem({ label = "l1", detail = "(property) i1.l1: () => void" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) i1.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) i1.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_l1", detail = "(property) i1.nc_l1: () => void" }),
                     },
                 },
             }))
@@ -303,70 +303,70 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_p1",
                             detail = "(property) c1.i1_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_f1",
                             detail = "(method) c1.i1_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_l1",
                             detail = "(property) c1.i1_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_p1", detail = "(property) c1.i1_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_f1", detail = "(method) c1.i1_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_l1", detail = "(property) c1.i1_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i1_nc_p1", detail = "(property) c1.i1_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i1_nc_f1", detail = "(method) c1.i1_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i1_nc_l1", detail = "(property) c1.i1_nc_l1: () => void" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) c1.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) c1.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "l1",
                             detail = "(property) c1.l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "nc_p1",
                             detail = "(property) c1.nc_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "nc_f1",
                             detail = "(method) c1.nc_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "nc_l1",
                             detail = "(property) c1.nc_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c1_nc_l1" }),
                             }),
                         }),
                     },
@@ -402,36 +402,36 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_p1",
                             detail = "(property) i1.i1_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_f1",
                             detail = "(method) i1.i1_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1_l1",
                             detail = "(property) i1.i1_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i1_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_p1", detail = "(property) i1.i1_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_f1", detail = "(method) i1.i1_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_nc_l1", detail = "(property) i1.i1_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p1", detail = "(property) i1.p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "f1", detail = "(method) i1.f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "l1", detail = "(property) i1.l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) i1.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) i1.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l1", detail = "(property) i1.nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "i1_nc_p1", detail = "(property) i1.i1_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i1_nc_f1", detail = "(method) i1.i1_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i1_nc_l1", detail = "(property) i1.i1_nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "p1", detail = "(property) i1.p1: number" }),
+                        lsproto.CompletionItem({ label = "f1", detail = "(method) i1.f1(): void" }),
+                        lsproto.CompletionItem({ label = "l1", detail = "(property) i1.l1: () => void" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) i1.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) i1.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_l1", detail = "(property) i1.nc_l1: () => void" }),
                     },
                 },
             }))
@@ -464,9 +464,9 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_i", detail = "var i1_i: i1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c1", detail = "class c1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c1_i", detail = "var c1_i: c1" }),
+                        lsproto.CompletionItem({ label = "i1_i", detail = "var i1_i: i1" }),
+                        lsproto.CompletionItem({ label = "c1", detail = "class c1" }),
+                        lsproto.CompletionItem({ label = "c1_i", detail = "var c1_i: c1" }),
                     },
                     excludes = { "i1" },
                 },
@@ -476,11 +476,11 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1",
                             detail = "interface i1",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "i1 is interface with properties",
                                 }),
@@ -505,54 +505,54 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_p1",
                             detail = "(property) c2.c2_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_f1",
                             detail = "(method) c2.c2_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_prop",
                             detail = "(property) c2.c2_prop: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_prop" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_prop" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_p1", detail = "(property) c2.c2_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_f1", detail = "(method) c2.c2_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_prop", detail = "(property) c2.c2_nc_prop: number" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "c2_nc_p1", detail = "(property) c2.c2_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "c2_nc_f1", detail = "(method) c2.c2_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "c2_nc_prop", detail = "(property) c2.c2_nc_prop: number" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) c2.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) c2.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             detail = "(property) c2.prop: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 prop" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 prop" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) c2.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) c2.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_prop", detail = "(property) c2.nc_prop: number" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) c2.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) c2.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_prop", detail = "(property) c2.nc_prop: number" }),
                     },
                 },
             }))
@@ -573,54 +573,54 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_p1",
                             detail = "(property) c2.c2_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_f1",
                             detail = "(method) c2.c2_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c2_prop",
                             detail = "(property) c2.c2_prop: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_prop" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c2 c2_prop" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_p1", detail = "(property) c2.c2_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_f1", detail = "(method) c2.c2_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_nc_prop", detail = "(property) c2.c2_nc_prop: number" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "c2_nc_p1", detail = "(property) c2.c2_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "c2_nc_f1", detail = "(method) c2.c2_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "c2_nc_prop", detail = "(property) c2.c2_nc_prop: number" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) c3.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) c3.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "prop",
                             detail = "(property) c3.prop: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 prop" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "c3 prop" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) c3.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) c3.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_prop", detail = "(property) c3.nc_prop: number" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) c3.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) c3.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_prop", detail = "(property) c3.nc_prop: number" }),
                     },
                 },
             }))
@@ -657,12 +657,12 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "c2", detail = "class c2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c2_i", detail = "var c2_i: c2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c3", detail = "class c3" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c3_i", detail = "var c3_i: c3" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c4", detail = "class c4" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "c4_i", detail = "var c4_i: c4" }),
+                        lsproto.CompletionItem({ label = "c2", detail = "class c2" }),
+                        lsproto.CompletionItem({ label = "c2_i", detail = "var c2_i: c2" }),
+                        lsproto.CompletionItem({ label = "c3", detail = "class c3" }),
+                        lsproto.CompletionItem({ label = "c3_i", detail = "var c3_i: c3" }),
+                        lsproto.CompletionItem({ label = "c4", detail = "class c4" }),
+                        lsproto.CompletionItem({ label = "c4_i", detail = "var c4_i: c4" }),
                     },
                 },
             }))
@@ -671,54 +671,54 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_p1",
                             detail = "(property) i2.i2_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_f1",
                             detail = "(method) i2.i2_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_l1",
                             detail = "(property) i2.i2_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) i2.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) i2.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "l1",
                             detail = "(property) i2.l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) i2.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) i2.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l1", detail = "(property) i2.nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) i2.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) i2.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_l1", detail = "(property) i2.nc_l1: () => void" }),
                     },
                 },
             }))
@@ -753,54 +753,54 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_p1",
                             detail = "(property) i2.i2_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_f1",
                             detail = "(method) i2.i2_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_l1",
                             detail = "(property) i2.i2_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) i3.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) i3.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "l1",
                             detail = "(property) i3.l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) i3.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) i3.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l1", detail = "(property) i3.nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) i3.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) i3.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_l1", detail = "(property) i3.nc_l1: () => void" }),
                     },
                 },
             }))
@@ -833,54 +833,54 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_p1",
                             detail = "(property) i2.i2_p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_f1",
                             detail = "(method) i2.i2_f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i2_l1",
                             detail = "(property) i2.i2_l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2_l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i2_nc_p1", detail = "(property) i2.i2_nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "i2_nc_f1", detail = "(method) i2.i2_nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "i2_nc_l1", detail = "(property) i2.i2_nc_l1: () => void" }),
+                        lsproto.CompletionItem({
                             label = "p1",
                             detail = "(property) i2.p1: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 p1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 p1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f1",
                             detail = "(method) i2.f1(): void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 f1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 f1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "l1",
                             detail = "(property) i2.l1: () => void",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 l1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i2 l1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_p1", detail = "(property) i2.nc_p1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f1", detail = "(method) i2.nc_f1(): void" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l1", detail = "(property) i2.nc_l1: () => void" }),
+                        lsproto.CompletionItem({ label = "nc_p1", detail = "(property) i2.nc_p1: number" }),
+                        lsproto.CompletionItem({ label = "nc_f1", detail = "(method) i2.nc_f1(): void" }),
+                        lsproto.CompletionItem({ label = "nc_l1", detail = "(property) i2.nc_l1: () => void" }),
                     },
                 },
             }))
@@ -911,8 +911,8 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i", detail = "var i2_i: i2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i3_i", detail = "var i3_i: i3" }),
+                        lsproto.CompletionItem({ label = "i2_i", detail = "var i2_i: i2" }),
+                        lsproto.CompletionItem({ label = "i3_i", detail = "var i3_i: i3" }),
                     },
                     excludes = { "i2", "i3" },
                 },
@@ -922,8 +922,8 @@ class c6 extends c5 {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "i2", detail = "interface i2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i3", detail = "interface i3" }),
+                        lsproto.CompletionItem({ label = "i2", detail = "interface i2" }),
+                        lsproto.CompletionItem({ label = "i3", detail = "interface i3" }),
                     },
                 },
             }))

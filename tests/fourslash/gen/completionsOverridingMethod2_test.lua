@@ -27,35 +27,35 @@ interface DollarSign {
 class USD implements DollarSign {
     /*a*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "a", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "$usd",
                             insertText = "\"\\$usd\"(a: number): number {\n    $0\n}",
                             filterText = "$usd",
                             sortText = ls.SortText.LocationPriority,
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "$cad",
                             insertText = "\\$cad(b: number): number {\n    $0\n}",
                             filterText = "$cad",
                             sortText = ls.SortText.LocationPriority,
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "cla$$y",
                             insertText = "cla\\$\\$y(c: number): number {\n    $0\n}",
                             filterText = "cla$$y",
                             sortText = ls.SortText.LocationPriority,
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "isDollarAmountString",
                             insertText = [[
 isDollarAmountString(s: string): s is `\$\${number}` {

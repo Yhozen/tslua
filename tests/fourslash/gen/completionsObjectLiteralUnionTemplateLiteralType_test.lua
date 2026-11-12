@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -33,16 +34,13 @@ const obj2: UnionType = {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "key1" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "key2" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "key1" }), lsproto.CompletionItem({ label = "key2" }) },
                 },
             }))
             f:VerifyCompletions(t, "2", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = { exact = { zero.lsp_lsproto_CompletionItem({ label = "key2" }) } },
+                items = { exact = { lsproto.CompletionItem({ label = "key2" }) } },
             }))
         end)
     end)

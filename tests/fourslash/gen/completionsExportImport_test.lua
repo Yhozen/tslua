@@ -29,12 +29,12 @@ export import foo = N.foo;
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionGlobalsPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             kind = lsproto.CompletionItemKind.Variable,
                             detail = "(alias) const foo: number\nimport foo = N.foo",
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "N", kind = lsproto.CompletionItemKind.Module, detail = "namespace N" }),
+                        lsproto.CompletionItem({ label = "N", kind = lsproto.CompletionItemKind.Module, detail = "namespace N" }),
                     }, false),
                 },
             }))

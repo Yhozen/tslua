@@ -3,6 +3,7 @@
 local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,7 +29,7 @@ function c6 () { foo6(/*k*/1, /*l*/2); }]]
         gort.Defer(done, function()
             local start = f:MarkerByName(t, "c")
             local end_ = f:MarkerByName(t, "h")
-            local span = zero.lsp_lsproto_Range({ start = start.lsPosition, end_ = end_.lsPosition })
+            local span = lsproto.Range({ start = start.lsPosition, end_ = end_.lsPosition })
             f:VerifyBaselineInlayHints(t, span, zero.ls_lsutil_UserPreferences({
                 inlayHints = zero.ls_lsutil_InlayHintsPreferences({ includeInlayParameterNameHints = "literals" }),
             }))

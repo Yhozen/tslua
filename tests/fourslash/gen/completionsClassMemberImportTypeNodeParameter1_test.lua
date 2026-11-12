@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -34,7 +35,7 @@ export declare class BlenderbotSmallPreTrainedModel extends PreTrainedModel {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "_get_generation_config",
                             insertText = "_get_generation_config(param: import(\"./generation.js\").GenerationConfigType): import(\"./generation.js\").GenerationConfigType;",
                             filterText = "_get_generation_config",

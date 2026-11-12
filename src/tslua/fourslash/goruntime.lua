@@ -130,12 +130,10 @@ function M.len(x)
     return n
 end
 
--- append(s, x...) returns a new array (Go may alias; tests never rely on it).
+-- append(s, x...) appends in place to a non-nil s and returns it (the `xs = append(xs, x)` idiom;
+-- Go may alias too). A nil s starts a new array.
 function M.append(s, ...)
-    local result = {}
-    if s ~= nil then
-        table.move(s, 1, #s, 1, result)
-    end
+    local result = s or {}
     local n = #result
     for i = 1, select("#", ...) do
         result[n + i] = select(i, ...)
@@ -144,10 +142,7 @@ function M.append(s, ...)
 end
 
 function M.appendSlice(s, other)
-    local result = {}
-    if s ~= nil then
-        table.move(s, 1, #s, 1, result)
-    end
+    local result = s or {}
     if other ~= nil then
         if type(other) == "string" then
             for i = 1, #other do
@@ -178,6 +173,86 @@ function M.slice(xs, lo, hi)
         result[#result + 1] = xs[i]
     end
     return result
+end
+
+-- Go defers registered in nested blocks: body runs, then the deferred calls in reverse order,
+-- also when body raised (the error is re-raised afterwards).
+function M.WithDefers(defers, body)
+    local results = table.pack(xpcall(body, function(err)
+        if type(err) == "string" then
+            return debug.traceback(err, 2)
+        end
+        return err
+    end))
+    for i = #defers, 1, -1 do
+        defers[i]()
+    end
+    if not results[1] then
+        error(results[2], 0)
+    end
+    return table.unpack(results, 2, results.n)
+end
+
+-- Go struct value copy (shallow; keeps the metatable).
+function M.CloneStruct(v)
+    if type(v) ~= "table" then
+        return v
+    end
+    local c = {}
+    for k, x in pairs(v) do
+        c[k] = x
+    end
+    return setmetatable(c, getmetatable(v))
+end
+
+-- Type switch / type assertion helpers. IsStruct: a *T (or T) of the Lua class mod.name; when
+-- the package has no class table for the type, any table without a metatable matches.
+function M.IsStruct(v, mod, name)
+    if type(v) ~= "table" then
+        return false
+    end
+    local class = require(mod)[name]
+    local mt = getmetatable(v)
+    if type(class) == "table" and class.__index ~= nil then
+        return mt == class
+    end
+    return mt == nil and (next(v) == nil or v[1] == nil)
+end
+
+-- IsSlice: a Lua array (no metatable); elemCheck, when given, tests the first element.
+function M.IsSlice(v, elemCheck)
+    if type(v) ~= "table" or getmetatable(v) ~= nil then
+        return false
+    end
+    if next(v) ~= nil and v[1] == nil then
+        return false
+    end
+    if elemCheck ~= nil and v[1] ~= nil then
+        return elemCheck(v[1])
+    end
+    return true
+end
+
+function M.IsMap(v)
+    return type(v) == "table" and getmetatable(v) == nil
+end
+
+-- A converted test file (path relative to the repository root), loaded once: other files of
+-- the same Go test package refer to its package-level declarations through .P.
+local testFiles = {}
+
+function M.TestFile(rel)
+    local mod = testFiles[rel]
+    if mod == nil then
+        local repo = require("tslua.repo")
+        local chunk, err = loadfile(repo.TsluaRootPath() .. "/" .. rel)
+        if chunk == nil then
+            error(err, 0)
+        end
+        mod = chunk()
+        testFiles[rel] = mod
+    end
+    return mod
 end
 
 function M.NewBuilder()
@@ -417,6 +492,198 @@ function M.slices.Contains(xs, x)
         end
     end
     return false
+end
+
+-- ---------------------------------------------------------------------------
+-- gotest.tools/v3/assert
+
+M.assert = {}
+
+local function assertMessage(msgAndArgs, n)
+    if n == 0 then
+        return ""
+    end
+    if n == 1 then
+        return tostring(msgAndArgs[1])
+    end
+    return M.fmt.Sprintf(table.unpack(msgAndArgs, 1, n))
+end
+
+function M.assert.Equal(t, x, y, ...)
+    t:Helper()
+    if x ~= y then
+        local msg = assertMessage({ ... }, select("#", ...))
+        local text = "assertion failed: " .. M.fmt.Sprintf("%v", x) .. " (actual) != " .. M.fmt.Sprintf("%v", y) .. " (expected)"
+        if msg ~= "" then
+            text = text .. ": " .. msg
+        end
+        t:Fatal(text)
+    end
+end
+
+function M.assert.Assert(t, cond, ...)
+    t:Helper()
+    if not cond then
+        local msg = assertMessage({ ... }, select("#", ...))
+        t:Fatal("assertion failed" .. (msg ~= "" and (": " .. msg) or ""))
+    end
+end
+
+function M.assert.Check(t, cond, ...)
+    t:Helper()
+    if not cond then
+        local msg = assertMessage({ ... }, select("#", ...))
+        t:Error("assertion failed" .. (msg ~= "" and (": " .. msg) or ""))
+        return false
+    end
+    return true
+end
+
+function M.assert.DeepEqual(t, x, y, ...)
+    t:Helper()
+    local diff = M.cmp.Diff(x, y)
+    if diff ~= "" then
+        t:Fatal("assertion failed: \n" .. diff)
+    end
+end
+
+function M.assert.NilError(t, err, ...)
+    t:Helper()
+    if err ~= nil then
+        t:Fatal("assertion failed: error is not nil: " .. M.fmt.Sprintf("%v", err))
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- github.com/google/go-cmp/cmp (Diff with FilterPath/Ignore options on the last path step)
+
+M.cmp = {}
+
+local IgnoreOption = {}
+
+function M.cmp.Ignore()
+    return IgnoreOption
+end
+
+-- PathStep: { name = ".Field" or "[i]" or "[key]" }
+local PathStep = {}
+PathStep.__index = PathStep
+
+function PathStep:String()
+    return self.name
+end
+
+function M.cmp.Path_Last(p)
+    return p[#p] or setmetatable({ name = "" }, PathStep)
+end
+
+function M.cmp.FilterPath(filter, opt)
+    return { filter = filter, opt = opt }
+end
+
+-- Go field names of Lua fields (lowerCamel -> Go name) are not recoverable in general; the
+-- path step uses the Lua field name with its first letter upper-cased, which matches the Go
+-- name for the fields the harness filters (Kind, SortText, Data, Detail, ...).
+local function goFieldName(k)
+    if type(k) ~= "string" then
+        return k
+    end
+    return string.upper(string.sub(k, 1, 1)) .. string.sub(k, 2)
+end
+
+local function ignored(opts, path)
+    for _, o in ipairs(opts) do
+        if o.opt == IgnoreOption and o.filter(path) then
+            return true
+        end
+    end
+    return false
+end
+
+local function show(v)
+    if type(v) == "string" then
+        return quote(v)
+    end
+    if type(v) == "table" then
+        local ok, json = pcall(require, "tslua.json")
+        if ok then
+            local okm, s = pcall(json.Marshal, v)
+            if okm and type(s) == "string" then
+                return s
+            end
+        end
+    end
+    return formatValue(v, "v")
+end
+
+local function diff(x, y, opts, path, out)
+    if ignored(opts, path) then
+        return
+    end
+    if rawequal(x, y) then
+        return
+    end
+    local where = {}
+    for i, step in ipairs(path) do
+        where[i] = step.name
+    end
+    local loc = table.concat(where)
+    if type(x) ~= "table" or type(y) ~= "table" then
+        if x ~= y then
+            out[#out + 1] = "  " .. (loc == "" and "value" or loc) .. ":\n  - " .. show(x) .. "\n  + " .. show(y)
+        end
+        return
+    end
+    local keys, seen = {}, {}
+    for k in pairs(x) do
+        if not seen[k] then
+            seen[k] = true
+            keys[#keys + 1] = k
+        end
+    end
+    for k in pairs(y) do
+        if not seen[k] then
+            seen[k] = true
+            keys[#keys + 1] = k
+        end
+    end
+    table.sort(keys, function(a, b)
+        if type(a) == type(b) and (type(a) == "number" or type(a) == "string") then
+            return a < b
+        end
+        return type(a) < type(b)
+    end)
+    for _, k in ipairs(keys) do
+        local name
+        if type(k) == "number" then
+            name = "[" .. tostring(k - 1) .. "]"
+        else
+            name = "." .. tostring(goFieldName(k))
+        end
+        path[#path + 1] = setmetatable({ name = name }, PathStep)
+        diff(x[k], y[k], opts, path, out)
+        path[#path] = nil
+    end
+end
+
+-- Diff returns "" when x and y are deeply equal (ignoring the filtered paths), else a report.
+function M.cmp.Diff(x, y, ...)
+    local opts = { ... }
+    local out = {}
+    diff(x, y, opts, {}, out)
+    if #out == 0 then
+        return ""
+    end
+    return "(-actual +expected):\n" .. table.concat(out, "\n")
+end
+
+function M.cmp.Compare(a, b)
+    if a < b then
+        return -1
+    elseif a > b then
+        return 1
+    end
+    return 0
 end
 
 return M

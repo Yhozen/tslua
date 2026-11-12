@@ -37,7 +37,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "#action", kind = lsproto.CompletionItemKind.Folder, detail = "#action" }),
+                        lsproto.CompletionItem({ label = "#action", kind = lsproto.CompletionItemKind.Folder, detail = "#action" }),
                     },
                 },
             }))
@@ -47,7 +47,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "pageObjects",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "pageObjects",
@@ -61,7 +61,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "actionRenderer",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "actionRenderer.d.ts",

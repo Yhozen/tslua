@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -29,15 +30,15 @@ export = Foo;
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Foo",
                             insertText = "import Foo from \"./foo\";",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./foo" }) }),
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "import Foo from \"./foo\";", range = f:Ranges()[1].lsRange }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./foo" }) }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "import Foo from \"./foo\";", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

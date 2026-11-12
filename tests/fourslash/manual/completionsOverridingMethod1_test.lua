@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -31,7 +32,7 @@ class HSub extends HBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("override foo(a: string): void {\n}", f:Ranges()[1].lsRange),
                             filterText = "foo",

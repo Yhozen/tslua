@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,9 +29,9 @@ instance./*1*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__property", detail = "(property) MyObject.__property: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "instance", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "MyObject", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "__property", detail = "(property) MyObject.__property: number" }),
+                        lsproto.CompletionItem({ label = "instance", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "MyObject", sortText = ls.SortText.JavascriptIdentifiers }),
                     },
                 },
             }))

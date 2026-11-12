@@ -20,15 +20,15 @@ function P.TestStringCompletionDetails(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "aa",
                             kind = lsproto.CompletionItemKind.Constant,
                             detail = "aa",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({
-                                    range = zero.lsp_lsproto_Range({
-                                        start = zero.lsp_lsproto_Position({ line = 0, character = 24 }),
-                                        end_ = zero.lsp_lsproto_Position({ line = 0, character = 24 }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({
+                                    range = lsproto.Range({
+                                        start = lsproto.Position({ line = 0, character = 24 }),
+                                        end_ = lsproto.Position({ line = 0, character = 24 }),
                                     }),
                                     newText = "aa",
                                 }),

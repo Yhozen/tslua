@@ -43,16 +43,16 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "#blah.js", kind = lsproto.CompletionItemKind.File, detail = "#blah.js" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "#index.js", kind = lsproto.CompletionItemKind.File, detail = "#index.js" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "#foo", kind = lsproto.CompletionItemKind.Folder, detail = "#foo" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "#blah.js", kind = lsproto.CompletionItemKind.File, detail = "#blah.js" }),
+                        lsproto.CompletionItem({ label = "#index.js", kind = lsproto.CompletionItemKind.File, detail = "#index.js" }),
+                        lsproto.CompletionItem({ label = "#foo", kind = lsproto.CompletionItemKind.Folder, detail = "#foo" }),
+                        lsproto.CompletionItem({
                             label = "#subfolder",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "#subfolder",
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "#bar", kind = lsproto.CompletionItemKind.Folder, detail = "#bar" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "#bar", kind = lsproto.CompletionItemKind.Folder, detail = "#bar" }),
+                        lsproto.CompletionItem({
                             label = "#exact-match",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#exact-match.d.ts",
@@ -66,10 +66,10 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "blah.js", kind = lsproto.CompletionItemKind.File, detail = "blah.js" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "index.js", kind = lsproto.CompletionItemKind.File, detail = "index.js" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "foo", kind = lsproto.CompletionItemKind.Folder, detail = "foo" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "subfolder", kind = lsproto.CompletionItemKind.Folder, detail = "subfolder" }),
+                        lsproto.CompletionItem({ label = "blah.js", kind = lsproto.CompletionItemKind.File, detail = "blah.js" }),
+                        lsproto.CompletionItem({ label = "index.js", kind = lsproto.CompletionItemKind.File, detail = "index.js" }),
+                        lsproto.CompletionItem({ label = "foo", kind = lsproto.CompletionItemKind.Folder, detail = "foo" }),
+                        lsproto.CompletionItem({ label = "subfolder", kind = lsproto.CompletionItemKind.Folder, detail = "subfolder" }),
                     },
                 },
             }))
@@ -79,7 +79,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "onlyInFooFolder.js",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "onlyInFooFolder.js",

@@ -33,7 +33,7 @@ export const x = 0;
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.File, detail = "x.ts" }),
+                        lsproto.CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.File, detail = "x.ts" }),
                     },
                 },
             }))

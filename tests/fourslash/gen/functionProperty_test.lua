@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -44,19 +45,13 @@ c./*quickInfoC*/x;]]
             f:VerifyCompletions(t, "completionA", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x", detail = "(method) x(a: number): void" }),
-                    },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "x", detail = "(method) x(a: number): void" }) } },
             }))
             f:VerifyCompletions(t, { "completionB", "completionC" }, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x", detail = "(property) x: (a: number) => void" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "x", detail = "(property) x: (a: number) => void" }) },
                 },
             }))
             f:VerifyQuickInfoAt(t, "quickInfoA", "(method) x(a: number): void", "")

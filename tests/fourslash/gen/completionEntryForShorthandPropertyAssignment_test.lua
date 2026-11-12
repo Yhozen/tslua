@@ -20,9 +20,7 @@ function P.TestCompletionEntryForShorthandPropertyAssignment(t)
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "name", kind = lsproto.CompletionItemKind.Field }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "name", kind = lsproto.CompletionItemKind.Field }) },
                 },
             }))
         end)

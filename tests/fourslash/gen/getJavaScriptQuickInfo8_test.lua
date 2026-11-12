@@ -40,9 +40,7 @@ y.b/*2*/;]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }) },
                 },
             }))
             f:Backspace(t, 1)
@@ -53,7 +51,7 @@ y.b/*2*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "substring", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "substring", kind = lsproto.CompletionItemKind.Method }),
                     },
                 },
             }))

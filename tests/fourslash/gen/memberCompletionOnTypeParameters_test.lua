@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -33,8 +34,8 @@ function foo<S, T extends IFoo, U extends Object, V extends IFoo>() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x", detail = "(property) IFoo.x: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y", detail = "(property) IFoo.y: string" }),
+                        lsproto.CompletionItem({ label = "x", detail = "(property) IFoo.x: number" }),
+                        lsproto.CompletionItem({ label = "y", detail = "(property) IFoo.y: string" }),
                     },
                 },
             }))

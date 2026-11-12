@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -30,25 +31,25 @@ partialFoo({ /*1*/ });]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a_a?",
                             insertText = "a_a",
                             filterText = "a_a",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a_b?",
                             insertText = "a_b",
                             filterText = "a_b",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a_c?",
                             insertText = "a_c",
                             filterText = "a_c",
                             sortText = ls.SortText.OptionalMember,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "b_a?",
                             insertText = "b_a",
                             filterText = "b_a",

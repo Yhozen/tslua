@@ -29,7 +29,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "x",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "x",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
@@ -39,7 +39,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "z",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "z",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[2]:LSLocation(),
@@ -49,7 +49,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "instanceProp",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "instanceProp",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[3]:LSLocation(),
@@ -60,7 +60,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "staticMethod",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "staticMethod",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[4]:LSLocation(),
@@ -70,7 +70,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "staticProperty",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "staticProperty",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[5]:LSLocation(),
@@ -80,7 +80,7 @@ Cls.prototype.[|instanceMethod|] = function() {};]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "instanceMethod",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "instanceMethod",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[6]:LSLocation(),

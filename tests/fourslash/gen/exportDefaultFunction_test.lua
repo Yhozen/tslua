@@ -21,7 +21,7 @@ function P.TestExportDefaultFunction(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "func",
                             detail = "function func(): void",
                             kind = lsproto.CompletionItemKind.Function,

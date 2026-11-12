@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -35,13 +36,13 @@ abstract class Abc extends Ab {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met",
                             insertText = "met(n: string): void {\n}",
                             filterText = "met",
                             sortText = ls.SortText.LocationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met2",
                             insertText = "met2(n: number): void {\n}",
                             filterText = "met2",
@@ -56,21 +57,21 @@ abstract class Abc extends Ab {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met",
                             insertText = "abstract met(n: string): void;",
                             filterText = "met",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met2",
                             insertText = "abstract met2(n: number): void;",
                             filterText = "met2",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -81,21 +82,21 @@ abstract class Abc extends Ab {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met",
                             textEdit = util.InsertReplaceTextEdit("abstract met(n: string): void;", f:Ranges()[1].lsRange),
                             filterText = "met",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met2",
                             textEdit = util.InsertReplaceTextEdit("abstract met2(n: number): void;", f:Ranges()[1].lsRange),
                             filterText = "met2",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },

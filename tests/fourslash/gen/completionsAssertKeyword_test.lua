@@ -36,7 +36,7 @@ function P.TestCompletionsAssertKeyword(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "assert",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -49,7 +49,7 @@ function P.TestCompletionsAssertKeyword(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "assert",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -67,7 +67,7 @@ function P.TestCompletionsAssertKeyword(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "assert",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,
@@ -90,7 +90,7 @@ function P.TestCompletionsAssertKeyword(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "assert",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,

@@ -21,15 +21,13 @@ function P.TestCompletionFilterText4(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "0",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                             insertText = "[0]",
                             filterText = ".0",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[0]", range = f:Ranges()[1].lsRange }),
-                            }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({ textEdit = lsproto.TextEdit({ newText = "[0]", range = f:Ranges()[1].lsRange }) }),
                         }),
                     },
                 },

@@ -6,15 +6,18 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
 
 function P.TestCompletionsObjectLiteralMethod3(t)
-    fourslash.SkipIfFailing(t)
-    t:Parallel()
-    testutil.RecoverAndFail(t, "Panic on fourslash test", function()
-        local content = [[
+    local defers1 = {}
+    gort.WithDefers(defers1, function()
+        fourslash.SkipIfFailing(t)
+        t:Parallel()
+        testutil.RecoverAndFail(t, "Panic on fourslash test", function()
+            local content = [[
 // @newline: LF
 // @strictNullChecks: true
 // @Filename: a.ts
@@ -47,23 +50,23 @@ interface Op {
 const op: Op = {
     /*d*/
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ labelDetailsSupport = true }) }), content)
-        gort.Defer(done, function()
+            local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ labelDetailsSupport = true }) }), content)
+            defers1[#defers1 + 1] = done
             f:VerifyCompletions(t, "a", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M",
                             insertText = "M(x) {\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "(x)" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "(x)" }),
                         }),
                     },
                 },
@@ -71,81 +74,79 @@ const op: Op = {
             }))
             do
                 local f, done = fourslash.NewFourslash(t, nil, content)
-                gort.Defer(done, function()
-                    f:VerifyCompletions(t, "b", zero.fourslash_CompletionsExpectedList({
-                        isIncomplete = false,
-                        itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                        items = {
-                            includes = {
-                                zero.lsp_lsproto_CompletionItem({
-                                    label = "M",
-                                    sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M"),
-                                }),
-                            },
+                defers1[#defers1 + 1] = done
+                f:VerifyCompletions(t, "b", zero.fourslash_CompletionsExpectedList({
+                    isIncomplete = false,
+                    itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
+                    items = {
+                        includes = {
+                            lsproto.CompletionItem({
+                                label = "M",
+                                sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M"),
+                            }),
                         },
-                        userPreferences = zero.ls_lsutil_UserPreferences({ includeCompletionsWithObjectLiteralMethodSnippets = core.Tristate.TSTrue }),
-                    }))
-                end)
+                    },
+                    userPreferences = zero.ls_lsutil_UserPreferences({ includeCompletionsWithObjectLiteralMethodSnippets = core.Tristate.TSTrue }),
+                }))
             end
             do
                 local f, done = fourslash.NewFourslash(t, nil, content)
-                gort.Defer(done, function()
-                    f:VerifyCompletions(t, "c", zero.fourslash_CompletionsExpectedList({
-                        isIncomplete = false,
-                        itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                        items = {
-                            exact = {
-                                zero.lsp_lsproto_CompletionItem({
-                                    label = "M",
-                                    sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M"),
-                                }),
-                            },
+                defers1[#defers1 + 1] = done
+                f:VerifyCompletions(t, "c", zero.fourslash_CompletionsExpectedList({
+                    isIncomplete = false,
+                    itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
+                    items = {
+                        exact = {
+                            lsproto.CompletionItem({
+                                label = "M",
+                                sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "M"),
+                            }),
                         },
-                        userPreferences = zero.ls_lsutil_UserPreferences({ includeCompletionsWithObjectLiteralMethodSnippets = core.Tristate.TSTrue }),
-                    }))
-                end)
+                    },
+                    userPreferences = zero.ls_lsutil_UserPreferences({ includeCompletionsWithObjectLiteralMethodSnippets = core.Tristate.TSTrue }),
+                }))
             end
             f:VerifyCompletions(t, "d", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M?",
                             insertText = "M",
                             filterText = "M",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.OptionalMember, "M"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M?",
                             insertText = "M(x) {\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.OptionalMember, "M")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "(x)" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "(x)" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "N",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "N"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "N",
                             insertText = "N(x) {\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.LocationPriority, "N")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "(x)" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "(x)" }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "O?",
                             insertText = "O",
                             filterText = "O",
                             sortText = ls.ObjectLiteralPropertySortText(ls.SortText.OptionalMember, "O"),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "O?",
                             insertText = "O() {\n},",
                             sortText = ls.SortBelow(ls.ObjectLiteralPropertySortText(ls.SortText.OptionalMember, "O")),
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ detail = "()" }),
+                            data = lsproto.CompletionItemData({ source = "ObjectLiteralMethodSnippet/" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ detail = "()" }),
                         }),
                     },
                 },

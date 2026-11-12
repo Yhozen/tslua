@@ -28,7 +28,7 @@ p./*a*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,

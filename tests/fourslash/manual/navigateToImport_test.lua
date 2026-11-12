@@ -24,7 +24,7 @@ import {foo, bar as [|baz|]} from './library';]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "foo",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "foo",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[1]:LSLocation(),
@@ -34,7 +34,7 @@ import {foo, bar as [|baz|]} from './library';]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "bar",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "bar",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[2]:LSLocation(),
@@ -44,7 +44,7 @@ import {foo, bar as [|baz|]} from './library';]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "baz",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "baz",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[3]:LSLocation(),

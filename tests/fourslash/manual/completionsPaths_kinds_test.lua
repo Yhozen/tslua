@@ -36,8 +36,8 @@ import {} from "./[|/*1*/|]";
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "b", kind = lsproto.CompletionItemKind.File, detail = "b.ts" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "dir", kind = lsproto.CompletionItemKind.Folder, detail = "dir" }),
+                        lsproto.CompletionItem({ label = "b", kind = lsproto.CompletionItemKind.File, detail = "b.ts" }),
+                        lsproto.CompletionItem({ label = "dir", kind = lsproto.CompletionItemKind.Folder, detail = "dir" }),
                     },
                 },
             }))

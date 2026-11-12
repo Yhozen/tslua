@@ -3,6 +3,7 @@
 local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -26,7 +27,7 @@ const x: /**/]]
                 name = "I",
                 source = "./mod",
                 description = "Add import from \"./mod.js\"",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./mod.js" }),
+                autoImportFix = lsproto.AutoImportFix({ moduleSpecifier = "./mod.js" }),
                 newFileContent = "import type { I } from \"./mod.js\";\n\nconst x: ",
             }))
             f:Insert(t, "I = new C")
@@ -34,7 +35,7 @@ const x: /**/]]
                 name = "C",
                 source = "./mod",
                 description = "Update import from \"./mod.js\"",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./mod.js" }),
+                autoImportFix = lsproto.AutoImportFix({ moduleSpecifier = "./mod.js" }),
                 newFileContent = "import { C, type I } from \"./mod.js\";\n\nconst x: I = new C",
             }))
         end)

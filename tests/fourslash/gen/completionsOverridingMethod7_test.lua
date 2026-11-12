@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -32,7 +33,7 @@ abstract class Derived extends Base {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "M",
                             insertText = [[
 abstract M<T>(t: T): void;
@@ -40,7 +41,7 @@ abstract M<T>(t: T, x: number): void;]],
                             filterText = "M",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },

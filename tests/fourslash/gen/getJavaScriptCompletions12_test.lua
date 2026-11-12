@@ -44,7 +44,7 @@ var test1 = function(x) { return x./*4*/ }, test2 = function(a) { return a./*5*/
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "charCodeAt", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "charCodeAt", kind = lsproto.CompletionItemKind.Method }),
                     },
                 },
             }))
@@ -53,7 +53,7 @@ var test1 = function(x) { return x./*4*/ }, test2 = function(a) { return a./*5*/
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "toExponential", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "toExponential", kind = lsproto.CompletionItemKind.Method }),
                     },
                 },
             }))
@@ -62,7 +62,7 @@ var test1 = function(x) { return x./*4*/ }, test2 = function(a) { return a./*5*/
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "test1",
                             kind = lsproto.CompletionItemKind.Text,
                             sortText = ls.SortText.JavascriptIdentifiers,

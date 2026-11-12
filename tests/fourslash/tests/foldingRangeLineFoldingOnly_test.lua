@@ -3,6 +3,7 @@
 local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -25,11 +26,11 @@ export function use<T>(ctx: any): T | undefined {
   //
 }]]
         local ptrTrue = true
-        local capabilities = zero.lsp_lsproto_ClientCapabilities({
-            textDocument = zero.lsp_lsproto_TextDocumentClientCapabilities({
-                foldingRange = zero.lsp_lsproto_FoldingRangeClientCapabilities({
+        local capabilities = lsproto.ClientCapabilities({
+            textDocument = lsproto.TextDocumentClientCapabilities({
+                foldingRange = lsproto.FoldingRangeClientCapabilities({
                     lineFoldingOnly = ptrTrue,
-                    foldingRange = zero.lsp_lsproto_ClientFoldingRangeOptions({ collapsedText = ptrTrue }),
+                    foldingRange = lsproto.ClientFoldingRangeOptions({ collapsedText = ptrTrue }),
                 }),
             }),
         })
@@ -63,11 +64,11 @@ const z = 3;
 // #endregion
 // #endregion]]
         local ptrTrue = true
-        local capabilities = zero.lsp_lsproto_ClientCapabilities({
-            textDocument = zero.lsp_lsproto_TextDocumentClientCapabilities({
-                foldingRange = zero.lsp_lsproto_FoldingRangeClientCapabilities({
+        local capabilities = lsproto.ClientCapabilities({
+            textDocument = lsproto.TextDocumentClientCapabilities({
+                foldingRange = lsproto.FoldingRangeClientCapabilities({
                     lineFoldingOnly = ptrTrue,
-                    foldingRange = zero.lsp_lsproto_ClientFoldingRangeOptions({ collapsedText = ptrTrue }),
+                    foldingRange = lsproto.ClientFoldingRangeOptions({ collapsedText = ptrTrue }),
                 }),
             }),
         })

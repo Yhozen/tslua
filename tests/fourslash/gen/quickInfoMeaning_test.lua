@@ -44,17 +44,17 @@ const i: bar/*bar_type*/ = { x: 1, y: 2 };]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "foo",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "foo",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "foo",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[3]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "foo_module",
                             kind = lsproto.SymbolKind.Namespace,
                             location = f:Ranges()[2]:LSLocation(),
@@ -70,17 +70,17 @@ const i: bar/*bar_type*/ = { x: 1, y: 2 };]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "bar",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "bar",
                             kind = lsproto.SymbolKind.Interface,
                             location = f:Ranges()[4]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "bar",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[6]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "bar_module",
                             kind = lsproto.SymbolKind.Namespace,
                             location = f:Ranges()[5]:LSLocation(),

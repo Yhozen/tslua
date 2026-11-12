@@ -37,24 +37,24 @@ const i: I = {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "d",
                             sortText = ls.SortText.LocationPriority,
                             kind = lsproto.CompletionItemKind.Field,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "c?",
                             insertText = "c",
                             filterText = "c",
                             sortText = ls.SortText.OptionalMember,
                             kind = lsproto.CompletionItemKind.Field,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
                             sortText = ls.SortText.MemberDeclaredBySpreadAssignment,
                             kind = lsproto.CompletionItemKind.Field,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "B?",
                             insertText = "B",
                             filterText = "B",

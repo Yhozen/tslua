@@ -34,9 +34,7 @@ var x = require('./myMod');
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "y", sortText = ls.SortText.GlobalsOrKeywords }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "y", sortText = ls.SortText.GlobalsOrKeywords }) },
                     excludes = { "invisible" },
                 },
             }))
@@ -45,9 +43,7 @@ var x = require('./myMod');
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.Field }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.Field }) },
                 },
             }))
             f:Insert(t, "a.")
@@ -55,9 +51,7 @@ var x = require('./myMod');
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "toFixed", kind = lsproto.CompletionItemKind.Method }) },
                 },
             }))
         end)

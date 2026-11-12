@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -19,10 +20,7 @@ function P.TestCompletionForStringLiteral_quotePreference5(t)
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "'1'" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "'0'" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "'1'" }), lsproto.CompletionItem({ label = "'0'" }) },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ quotePreference = "single" }),
             }))

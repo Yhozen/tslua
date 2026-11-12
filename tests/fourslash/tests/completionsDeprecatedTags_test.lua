@@ -28,7 +28,7 @@ o./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
                             kind = lsproto.CompletionItemKind.Field,
                             tags = { lsproto.CompletionItemTag.Deprecated },

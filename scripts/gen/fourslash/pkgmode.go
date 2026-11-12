@@ -69,6 +69,31 @@ func (g *gen) convertPkgFile() string {
 			g.line("")
 		}
 	}
+	// classes declared in other files that this file adds methods to
+	declared := map[string]bool{}
+	for _, d := range g.file.Decls {
+		if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
+			for _, spec := range gd.Specs {
+				declared[spec.(*ast.TypeSpec).Name.Name] = true
+			}
+		}
+	}
+	for _, d := range g.file.Decls {
+		fd, ok := d.(*ast.FuncDecl)
+		if !ok || fd.Recv == nil {
+			continue
+		}
+		rt := g.info.Defs[fd.Name].Type().(*types.Signature).Recv().Type()
+		if p, ok := rt.(*types.Pointer); ok {
+			rt = p.Elem()
+		}
+		name := rt.(*types.Named).Obj().Name()
+		if _, isStruct := rt.Underlying().(*types.Struct); isStruct && !declared[name] {
+			declared[name] = true
+			g.line("local %s = %s.%s", name, tbl, name)
+			g.line("")
+		}
+	}
 	// constants
 	for _, d := range g.file.Decls {
 		gd, ok := d.(*ast.GenDecl)
@@ -148,7 +173,12 @@ func (g *gen) funcDeclSelf(name string, ft *ast.FuncType, body *ast.BlockStmt, s
 	g.funcPrologue(ft)
 	g.sigStack = append(g.sigStack, sig)
 	g.results, g.hasResults = g.namedResults(ft), sig.Results().Len() > 0
-	g.funcBody(body.List)
+	savedDefer := g.deferStack
+	g.deferStack = ""
+	if !g.withDeferStack(body.List) {
+		g.funcBody(body.List)
+	}
+	g.deferStack = savedDefer
 	g.sigStack = g.sigStack[:len(g.sigStack)-1]
 	g.ind--
 	g.line("end")

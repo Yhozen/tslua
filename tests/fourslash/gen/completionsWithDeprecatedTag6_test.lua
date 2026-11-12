@@ -27,7 +27,7 @@ Foo./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             kind = lsproto.CompletionItemKind.Variable,
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),

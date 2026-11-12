@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -35,12 +36,12 @@ import { x, y, await as await_, interface as interface_, unique, /*6*/ } from ".
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "await", insertText = "await as await_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "interface", insertText = "interface as interface_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "unique" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "x", detail = "var x: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y", detail = "var y: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "await", insertText = "await as await_" }),
+                        lsproto.CompletionItem({ label = "interface", insertText = "interface as interface_" }),
+                        lsproto.CompletionItem({ label = "unique" }),
+                        lsproto.CompletionItem({ label = "x", detail = "var x: number" }),
+                        lsproto.CompletionItem({ label = "y", detail = "var y: number" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -49,11 +50,11 @@ import { x, y, await as await_, interface as interface_, unique, /*6*/ } from ".
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "await", insertText = "await as await_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "interface", insertText = "interface as interface_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "unique" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y", detail = "var y: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "await", insertText = "await as await_" }),
+                        lsproto.CompletionItem({ label = "interface", insertText = "interface as interface_" }),
+                        lsproto.CompletionItem({ label = "unique" }),
+                        lsproto.CompletionItem({ label = "y", detail = "var y: number" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -62,10 +63,10 @@ import { x, y, await as await_, interface as interface_, unique, /*6*/ } from ".
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "await", insertText = "await as await_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "interface", insertText = "interface as interface_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "unique" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "await", insertText = "await as await_" }),
+                        lsproto.CompletionItem({ label = "interface", insertText = "interface as interface_" }),
+                        lsproto.CompletionItem({ label = "unique" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -74,9 +75,9 @@ import { x, y, await as await_, interface as interface_, unique, /*6*/ } from ".
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "interface", insertText = "interface as interface_" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "unique" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "interface", insertText = "interface as interface_" }),
+                        lsproto.CompletionItem({ label = "unique" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -85,8 +86,8 @@ import { x, y, await as await_, interface as interface_, unique, /*6*/ } from ".
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "unique" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "unique" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))

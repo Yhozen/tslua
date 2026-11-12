@@ -27,9 +27,9 @@ export const foo = 0;
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./foo" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./foo" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             kind = lsproto.CompletionItemKind.Variable,
                             sortText = ls.DeprecateSortText(ls.SortText.AutoImportSuggestions),

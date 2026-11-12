@@ -28,21 +28,17 @@ someMo/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionGlobalsPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "someModule",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./someModule" }),
-                            }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./someModule" }) }),
                             detail = "const someModule: 0",
                             kind = lsproto.CompletionItemKind.Variable,
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "someModule",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./someModule" }),
-                            }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./someModule" }) }),
                             detail = "(property) default: 1",
                             kind = lsproto.CompletionItemKind.Field,
                             additionalTextEdits = fourslash.AnyTextEdits,
@@ -54,7 +50,7 @@ someMo/**/]]
             f:VerifyApplyCodeActionFromCompletion(t, "", zero.fourslash_ApplyCodeActionFromCompletionOptions({
                 name = "someModule",
                 source = "./someModule",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix(),
+                autoImportFix = lsproto.AutoImportFix({}),
                 description = "Add import from \"./someModule\"",
                 newFileContent = "import { someModule } from \"./someModule\";\n\nsomeMo",
             }))

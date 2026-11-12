@@ -31,12 +31,12 @@ var x = <div {...y} /**/ />;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "TWO",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "ONE",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.MemberDeclaredBySpreadAssignment,

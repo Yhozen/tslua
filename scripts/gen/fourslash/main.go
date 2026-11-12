@@ -234,6 +234,7 @@ type gen struct {
 	hasResults bool
 	sigStack   []*types.Signature
 	lastReturn bool
+	deferStack string
 	isPkg      bool
 	pkgName    string
 }
@@ -519,7 +520,12 @@ func (g *gen) funcDecl(name string, ft *ast.FuncType, body *ast.BlockStmt, sig *
 	g.results, g.hasResults = g.namedResults(ft), ft.Results != nil && ft.Results.NumFields() > 0
 	g.sigStack = append(g.sigStack, sig)
 	defer func() { g.sigStack = g.sigStack[:len(g.sigStack)-1] }()
-	g.funcBody(body.List)
+	savedDefer := g.deferStack
+	g.deferStack = ""
+	if !g.withDeferStack(body.List) {
+		g.funcBody(body.List)
+	}
+	g.deferStack = savedDefer
 	g.loopStack = saved
 	g.results, g.hasResults = savedRes, savedHas
 	g.ind--

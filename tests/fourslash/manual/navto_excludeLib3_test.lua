@@ -20,7 +20,7 @@ function [|parseInt|](s: string): number {}]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "parseInt",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "parseInt",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[1]:LSLocation(),

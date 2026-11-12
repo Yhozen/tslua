@@ -34,9 +34,9 @@ conca/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "concat",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "bar/concat" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "bar/concat" }) }),
                             detail = "const concat: 0",
                             kind = lsproto.CompletionItemKind.Variable,
                             additionalTextEdits = fourslash.AnyTextEdits,

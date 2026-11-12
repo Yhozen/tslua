@@ -21,7 +21,7 @@ function P.TestExportDefaultClass(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "C", detail = "class C", kind = lsproto.CompletionItemKind.Class }),
+                        lsproto.CompletionItem({ label = "C", detail = "class C", kind = lsproto.CompletionItemKind.Class }),
                     },
                 },
             }))

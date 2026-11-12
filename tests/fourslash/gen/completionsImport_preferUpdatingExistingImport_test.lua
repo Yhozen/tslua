@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -34,10 +35,10 @@ y/**/]]
                 items = {
                     exact = util.CompletionGlobalsPlus({
                         "x",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "y",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./deep/module/why/you/want/this/path" }),
+                            data = lsproto.CompletionItemData({
+                                autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./deep/module/why/you/want/this/path" }),
                             }),
                             sortText = ls.SortText.AutoImportSuggestions,
                             additionalTextEdits = fourslash.AnyTextEdits,

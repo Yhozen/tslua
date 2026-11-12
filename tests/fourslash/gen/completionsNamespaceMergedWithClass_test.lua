@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -38,8 +39,8 @@ D./*value*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersPlus({
-                        zero.lsp_lsproto_CompletionItem({ label = "m", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "m", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
                     }),
                 },
             }))

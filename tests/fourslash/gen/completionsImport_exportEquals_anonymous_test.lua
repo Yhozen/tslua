@@ -37,9 +37,9 @@ fooB/*1*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionGlobalsPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "fooBar",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./foo-bar" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./foo-bar" }) }),
                             detail = "(property) export=: 0",
                             kind = lsproto.CompletionItemKind.Field,
                             additionalTextEdits = fourslash.AnyTextEdits,

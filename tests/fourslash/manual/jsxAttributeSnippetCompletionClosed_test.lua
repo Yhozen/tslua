@@ -84,14 +84,14 @@ function fn15() {
 function fn16() {
     return <Foo something={false} [|onC/*16*/|]="" foo />
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -108,7 +108,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -125,7 +125,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[1].lsRange),
                             filterText = "className",
@@ -142,7 +142,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[2].lsRange),
                             filterText = "className",
@@ -159,7 +159,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -176,7 +176,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[3].lsRange),
                             filterText = "className",
@@ -193,7 +193,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -210,7 +210,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[4].lsRange),
                             filterText = "className",
@@ -227,7 +227,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[5].lsRange),
                             filterText = "className",
@@ -244,7 +244,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -261,7 +261,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[6].lsRange),
                             filterText = "className",
@@ -278,7 +278,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[7].lsRange),
                             filterText = "className",
@@ -295,7 +295,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             insertText = "className={$1}",
                             filterText = "className",
@@ -312,7 +312,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "className?",
                             textEdit = util.InsertReplaceTextEdit("className={$1}", f:Ranges()[8].lsRange),
                             filterText = "className",
@@ -329,7 +329,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "onClick?",
                             textEdit = util.InsertReplaceTextEdit("onClick", f:Ranges()[9].lsRange),
                             filterText = "onClick",
@@ -345,7 +345,7 @@ function fn16() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "onClick?",
                             textEdit = util.InsertReplaceTextEdit("onClick", f:Ranges()[10].lsRange),
                             filterText = "onClick",

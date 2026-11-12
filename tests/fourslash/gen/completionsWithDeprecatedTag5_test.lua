@@ -28,8 +28,8 @@ Foo./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersPlus({
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({
                             label = "m",
                             kind = lsproto.CompletionItemKind.Method,
                             sortText = ls.DeprecateSortText(ls.SortText.LocalDeclarationPriority),

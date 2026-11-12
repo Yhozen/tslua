@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -52,10 +53,10 @@ module.exports = {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "defaults",
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./third_party/marked/src/defaults" }),
+                            data = lsproto.CompletionItemData({
+                                autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./third_party/marked/src/defaults" }),
                             }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
@@ -68,7 +69,7 @@ module.exports = {
                 name = "defaults",
                 source = "./third_party/marked/src/defaults",
                 description = "Add import from \"./third_party/marked/src/defaults\"",
-                autoImportFix = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./third_party/marked/src/defaults" }),
+                autoImportFix = lsproto.AutoImportFix({ moduleSpecifier = "./third_party/marked/src/defaults" }),
                 newFileContent = [[
 import { defaults } from "./third_party/marked/src/defaults";
 

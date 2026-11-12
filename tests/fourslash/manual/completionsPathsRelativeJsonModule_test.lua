@@ -26,7 +26,7 @@ import { } from ".//**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "test.json", kind = lsproto.CompletionItemKind.File, detail = "test.json" }),
+                        lsproto.CompletionItem({ label = "test.json", kind = lsproto.CompletionItemKind.File, detail = "test.json" }),
                     },
                 },
             }))

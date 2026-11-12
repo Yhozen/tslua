@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -43,8 +44,8 @@ namespace ObjectLiterals {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "x1", detail = "(property) MyPoint.x1: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y1", detail = "(property) MyPoint.y1: number" }),
+                        lsproto.CompletionItem({ label = "x1", detail = "(property) MyPoint.x1: number" }),
+                        lsproto.CompletionItem({ label = "y1", detail = "(property) MyPoint.y1: number" }),
                     },
                 },
             }))
@@ -52,9 +53,7 @@ namespace ObjectLiterals {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "y1", detail = "(property) MyPoint.y1: number" }),
-                    },
+                    exact = { lsproto.CompletionItem({ label = "y1", detail = "(property) MyPoint.y1: number" }) },
                 },
             }))
         end)

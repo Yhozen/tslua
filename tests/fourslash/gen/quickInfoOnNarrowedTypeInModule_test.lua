@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -55,7 +56,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: string | number" }),
+                        lsproto.CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: string | number" }),
                     },
                 },
             }))
@@ -64,7 +65,7 @@ else {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: number" }),
+                        lsproto.CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: number" }),
                     },
                 },
             }))
@@ -73,7 +74,7 @@ else {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: string" }),
+                        lsproto.CompletionItem({ label = "nonExportedStrOrNum", detail = "var nonExportedStrOrNum: string" }),
                     },
                 },
             }))
@@ -82,7 +83,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: string | number" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: string | number" }),
                     },
                 },
             }))
@@ -91,7 +92,7 @@ else {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: number" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: number" }),
                     },
                 },
             }))
@@ -100,7 +101,7 @@ else {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: string" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var exportedStrOrNum: string" }),
                     },
                 },
             }))
@@ -109,7 +110,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: string | number" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: string | number" }),
                     },
                 },
             }))
@@ -118,7 +119,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: number" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: number" }),
                     },
                 },
             }))
@@ -127,7 +128,7 @@ else {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: string" }),
+                        lsproto.CompletionItem({ label = "exportedStrOrNum", detail = "var m.exportedStrOrNum: string" }),
                     },
                 },
             }))

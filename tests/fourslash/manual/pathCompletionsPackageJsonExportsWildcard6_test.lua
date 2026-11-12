@@ -37,7 +37,7 @@ import { } from "foo//**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "blah", kind = lsproto.CompletionItemKind.File, detail = "blah.d.ts" }),
+                        lsproto.CompletionItem({ label = "blah", kind = lsproto.CompletionItemKind.File, detail = "blah.d.ts" }),
                     },
                 },
             }))

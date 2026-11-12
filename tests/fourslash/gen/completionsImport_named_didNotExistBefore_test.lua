@@ -29,19 +29,19 @@ t/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionGlobalsPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Test2",
                             detail = "(alias) function Test2(): void\nimport Test2",
                             kind = lsproto.CompletionItemKind.Variable,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "Test1",
-                            data = zero.lsp_lsproto_CompletionItemData({ autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "./a" }) }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "./a" }) }),
                             detail = "function Test1(): void",
                             kind = lsproto.CompletionItemKind.Function,
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
-                            labelDetails = zero.lsp_lsproto_CompletionItemLabelDetails({ description = "./a" }),
+                            labelDetails = lsproto.CompletionItemLabelDetails({ description = "./a" }),
                         }),
                     }, true),
                 },

@@ -52,8 +52,8 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Class }),
-                        zero.lsp_lsproto_CompletionItem({ label = "I", kind = lsproto.CompletionItemKind.Interface }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Class }),
+                        lsproto.CompletionItem({ label = "I", kind = lsproto.CompletionItemKind.Interface }),
                     },
                     excludes = {
                         "Namespace",
@@ -74,7 +74,7 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Namespace", kind = lsproto.CompletionItemKind.Module }),
+                        lsproto.CompletionItem({ label = "Namespace", kind = lsproto.CompletionItemKind.Module }),
                     },
                 },
             }))
@@ -83,7 +83,7 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "SomeType", kind = lsproto.CompletionItemKind.Interface }),
+                        lsproto.CompletionItem({ label = "SomeType", kind = lsproto.CompletionItemKind.Interface }),
                     },
                 },
             }))
@@ -92,10 +92,10 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Class }),
-                        zero.lsp_lsproto_CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.Variable }),
-                        zero.lsp_lsproto_CompletionItem({ label = "x1", kind = lsproto.CompletionItemKind.Variable }),
-                        zero.lsp_lsproto_CompletionItem({ label = "y", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "Foo", kind = lsproto.CompletionItemKind.Class }),
+                        lsproto.CompletionItem({ label = "x", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "x1", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "y", kind = lsproto.CompletionItemKind.Variable }),
                     },
                     excludes = { "I", "Namespace", "SomeType", "method1", "property1", "method3", "method4", "foo" },
                 },
@@ -106,9 +106,9 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "method3", kind = lsproto.CompletionItemKind.Method }),
-                        zero.lsp_lsproto_CompletionItem({ label = "method4", kind = lsproto.CompletionItemKind.Method }),
-                        zero.lsp_lsproto_CompletionItem({ label = "property1", kind = lsproto.CompletionItemKind.Field }),
+                        lsproto.CompletionItem({ label = "method3", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "method4", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "property1", kind = lsproto.CompletionItemKind.Field }),
                     },
                 },
             }))
@@ -117,12 +117,12 @@ var y;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersPlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method1",
                             kind = lsproto.CompletionItemKind.Method,
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
+                        lsproto.CompletionItem({ label = "prototype", sortText = ls.SortText.LocationPriority }),
                     }),
                 },
             }))

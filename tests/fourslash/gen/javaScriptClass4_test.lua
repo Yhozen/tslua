@@ -35,7 +35,7 @@ x/**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "substring", kind = lsproto.CompletionItemKind.Method }),
+                        lsproto.CompletionItem({ label = "substring", kind = lsproto.CompletionItemKind.Method }),
                     },
                 },
             }))

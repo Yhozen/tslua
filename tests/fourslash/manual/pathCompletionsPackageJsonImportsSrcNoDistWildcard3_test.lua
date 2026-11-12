@@ -49,17 +49,17 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#component-blah",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#component-blah.ts",
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#component-index",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#component-index.ts",
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#component-subfolder",
                             kind = lsproto.CompletionItemKind.Folder,
                             detail = "#component-subfolder",
@@ -73,7 +73,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "one", kind = lsproto.CompletionItemKind.File, detail = "one.ts" }),
+                        lsproto.CompletionItem({ label = "one", kind = lsproto.CompletionItemKind.File, detail = "one.ts" }),
                     },
                 },
             }))

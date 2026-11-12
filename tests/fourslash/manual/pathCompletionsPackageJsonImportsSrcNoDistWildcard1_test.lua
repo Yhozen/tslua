@@ -56,9 +56,9 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "#blah", kind = lsproto.CompletionItemKind.File, detail = "#blah.ts" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "#index", kind = lsproto.CompletionItemKind.File, detail = "#index.ts" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "#blah", kind = lsproto.CompletionItemKind.File, detail = "#blah.ts" }),
+                        lsproto.CompletionItem({ label = "#index", kind = lsproto.CompletionItemKind.File, detail = "#index.ts" }),
+                        lsproto.CompletionItem({
                             label = "#arguments",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#arguments.d.ts",

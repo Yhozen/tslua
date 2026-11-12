@@ -142,12 +142,12 @@ import {} from "./[|/*unloadedPath*/Un|]";
                     itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                     items = {
                         includes = {
-                            zero.lsp_lsproto_CompletionItem({
+                            lsproto.CompletionItem({
                                 label = label,
                                 detail = label,
                                 kind = lsproto.CompletionItemKind.File,
-                                textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                    textEdit = zero.lsp_lsproto_TextEdit({ newText = label, range = f:Ranges()[rangeIndex + 1].lsRange }),
+                                textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                    textEdit = lsproto.TextEdit({ newText = label, range = f:Ranges()[rangeIndex + 1].lsRange }),
                                 }),
                             }),
                         },

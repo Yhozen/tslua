@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -31,9 +32,9 @@ const b: B = {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "'A'" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "'B'" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "'C'" }),
+                        lsproto.CompletionItem({ label = "'A'" }),
+                        lsproto.CompletionItem({ label = "'B'" }),
+                        lsproto.CompletionItem({ label = "'C'" }),
                     },
                 },
                 userPreferences = zero.ls_lsutil_UserPreferences({ quotePreference = "single" }),

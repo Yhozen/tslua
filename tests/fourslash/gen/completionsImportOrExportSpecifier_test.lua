@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -54,11 +55,11 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\" as __some_type" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\" as __some_type2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\" as __some_value" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\" as __some_type" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\" as __some_type2" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\" as __some_value" }),
                         "foo",
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -67,11 +68,11 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -85,10 +86,10 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -102,11 +103,11 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -115,11 +116,11 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -133,10 +134,10 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "type", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                 },
             }))
@@ -145,9 +146,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\" as __some_type" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\" as __some_type2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\" as __some_value" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\" as __some_type" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\" as __some_type2" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\" as __some_value" }),
                         "foo",
                     },
                 },
@@ -157,9 +158,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
                     },
                 },
@@ -174,9 +175,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                     },
                 },
             }))
@@ -185,9 +186,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
                     },
                 },
@@ -197,9 +198,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                         "foo",
                     },
                 },
@@ -214,9 +215,9 @@ export { type foo, type /*typeExport3*/ } from "./exports";]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
+                        lsproto.CompletionItem({ label = "__some type", insertText = "\"__some type\"" }),
+                        lsproto.CompletionItem({ label = "__some type2", insertText = "\"__some type2\"" }),
+                        lsproto.CompletionItem({ label = "__some value", insertText = "\"__some value\"" }),
                     },
                 },
             }))

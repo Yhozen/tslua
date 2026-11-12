@@ -25,13 +25,13 @@ x./*a*/;
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a?",
                             insertText = "a",
                             filterText = "a",
                             kind = lsproto.CompletionItemKind.Field,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "method?",
                             insertText = "method",
                             filterText = "method",

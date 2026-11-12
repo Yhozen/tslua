@@ -36,7 +36,7 @@ import { Component } from "./utils.js";
 export class MyComponent extends Component {
     [|render/**/|]
 }]]
-        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = zero.lsp_lsproto_ClientCompletionItemOptions({ snippetSupport = true }) }), content)
+        local f, done = fourslash.NewFourslash(t, fourslash.GetDefaultCapabilitiesWithOptions({ completionItem = lsproto.ClientCompletionItemOptions({ snippetSupport = true }) }), content)
         gort.Defer(done, function()
             f:GoToMarker(t, "")
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
@@ -44,14 +44,14 @@ export class MyComponent extends Component {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "render",
                             textEdit = util.InsertReplaceTextEdit("render(): Element {\n    $0\n}", f:Ranges()[1].lsRange),
                             filterText = "render",
                             sortText = ls.SortText.LocationPriority,
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -65,14 +65,14 @@ export class MyComponent extends Component {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "render",
                             textEdit = util.InsertReplaceTextEdit("render(): Element {\n    $0\n}", f:Ranges()[1].lsRange),
                             filterText = "render",
                             sortText = ls.SortText.LocationPriority,
                             insertTextFormat = lsproto.InsertTextFormat.Snippet,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },

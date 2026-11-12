@@ -97,30 +97,30 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = util.CompletionFunctionMembersWithPrototypePlus({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "x",
                             detail = "(property) i2.x: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is x" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is x" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             detail = "(property) i2.foo: (b: number) => string",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is foo" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is foo" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_x", detail = "(property) i2.nc_x: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_foo", detail = "(property) i2.nc_foo: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "nc_x", detail = "(property) i2.nc_x: number" }),
+                        lsproto.CompletionItem({ label = "nc_foo", detail = "(property) i2.nc_foo: (b: number) => string" }),
+                        lsproto.CompletionItem({
                             label = "fnfoo",
                             detail = "(method) i2.fnfoo(b: number): string",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is fnfoo" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is fnfoo" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_fnfoo", detail = "(method) i2.nc_fnfoo(b: number): string" }),
+                        lsproto.CompletionItem({ label = "nc_fnfoo", detail = "(method) i2.nc_fnfoo(b: number): string" }),
                     }),
                 },
             }))
@@ -169,29 +169,29 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "i1_i", detail = "var i1_i: i1" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "i1_i", detail = "var i1_i: i1" }),
+                        lsproto.CompletionItem({
                             label = "nc_i1_i",
                             detail = "var nc_i1_i: nc_i1",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i", detail = "var i2_i: i2" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_x", detail = "var i2_i_x: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_foo", detail = "var i2_i_foo: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_foo_r", detail = "var i2_i_foo_r: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_i2_si", detail = "var i2_i_i2_si: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_i2_ii", detail = "var i2_i_i2_ii: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_n", detail = "var i2_i_n: any" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_nc_x", detail = "var i2_i_nc_x: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_nc_foo", detail = "var i2_i_nc_foo: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_nc_foo_r", detail = "var i2_i_nc_foo_r: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_r", detail = "var i2_i_r: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_fnfoo", detail = "var i2_i_fnfoo: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_fnfoo_r", detail = "var i2_i_fnfoo_r: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_nc_fnfoo", detail = "var i2_i_nc_fnfoo: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "i2_i_nc_fnfoo_r", detail = "var i2_i_nc_fnfoo_r: string" }),
+                        lsproto.CompletionItem({ label = "i2_i", detail = "var i2_i: i2" }),
+                        lsproto.CompletionItem({ label = "i2_i_x", detail = "var i2_i_x: number" }),
+                        lsproto.CompletionItem({ label = "i2_i_foo", detail = "var i2_i_foo: (b: number) => string" }),
+                        lsproto.CompletionItem({ label = "i2_i_foo_r", detail = "var i2_i_foo_r: string" }),
+                        lsproto.CompletionItem({ label = "i2_i_i2_si", detail = "var i2_i_i2_si: number" }),
+                        lsproto.CompletionItem({ label = "i2_i_i2_ii", detail = "var i2_i_i2_ii: number" }),
+                        lsproto.CompletionItem({ label = "i2_i_n", detail = "var i2_i_n: any" }),
+                        lsproto.CompletionItem({ label = "i2_i_nc_x", detail = "var i2_i_nc_x: number" }),
+                        lsproto.CompletionItem({ label = "i2_i_nc_foo", detail = "var i2_i_nc_foo: (b: number) => string" }),
+                        lsproto.CompletionItem({ label = "i2_i_nc_foo_r", detail = "var i2_i_nc_foo_r: string" }),
+                        lsproto.CompletionItem({ label = "i2_i_r", detail = "var i2_i_r: number" }),
+                        lsproto.CompletionItem({ label = "i2_i_fnfoo", detail = "var i2_i_fnfoo: (b: number) => string" }),
+                        lsproto.CompletionItem({ label = "i2_i_fnfoo_r", detail = "var i2_i_fnfoo_r: string" }),
+                        lsproto.CompletionItem({ label = "i2_i_nc_fnfoo", detail = "var i2_i_nc_fnfoo: (b: number) => string" }),
+                        lsproto.CompletionItem({ label = "i2_i_nc_fnfoo_r", detail = "var i2_i_nc_fnfoo_r: string" }),
                     },
                     excludes = { "i1", "nc_i1", "i2" },
                 },
@@ -201,19 +201,19 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "i1",
                             detail = "interface i1",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is interface 1" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "this is interface 1" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_i1", detail = "interface nc_i1" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "nc_i1", detail = "interface nc_i1" }),
+                        lsproto.CompletionItem({
                             label = "i2",
                             detail = "interface i2",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "this is interface 2 with members",
                                 }),
@@ -227,11 +227,11 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "a",
                             detail = "(parameter) a: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3_i a" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3_i a" }),
                             }),
                         }),
                     },
@@ -242,7 +242,7 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "i3_i", detail = "var i3_i: i3" }) },
+                    includes = { lsproto.CompletionItem({ label = "i3_i", detail = "var i3_i: i3" }) },
                     excludes = { "i3" },
                 },
             }))
@@ -253,28 +253,28 @@ i3_i.nc/*45q*/_l(/*45*/10);]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f",
                             detail = "(method) i3.f(a: number): string",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Function i3 f" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Function i3 f" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "l",
                             detail = "(property) i3.l: (b: number) => string",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 l" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "i3 l" }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_f", detail = "(method) i3.nc_f(a: number): string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_l", detail = "(property) i3.nc_l: (b: number) => string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "nc_x", detail = "(property) i3.nc_x: number" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "nc_f", detail = "(method) i3.nc_f(a: number): string" }),
+                        lsproto.CompletionItem({ label = "nc_l", detail = "(property) i3.nc_l: (b: number) => string" }),
+                        lsproto.CompletionItem({ label = "nc_x", detail = "(property) i3.nc_x: number" }),
+                        lsproto.CompletionItem({
                             label = "x",
                             detail = "(property) i3.x: number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Comment i3 x" }),
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({ kind = lsproto.MarkupKind.Markdown, value = "Comment i3 x" }),
                             }),
                         }),
                     },

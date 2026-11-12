@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -32,7 +33,7 @@ file2Identifier2./*2*/]]
                     includes = {
                         "file2Identifier1",
                         "file2Identifier2",
-                        zero.lsp_lsproto_CompletionItem({ label = "file1Identifier", sortText = ls.SortText.GlobalsOrKeywords }),
+                        lsproto.CompletionItem({ label = "file1Identifier", sortText = ls.SortText.GlobalsOrKeywords }),
                     },
                     excludes = { "FooProp" },
                 },
@@ -42,8 +43,8 @@ file2Identifier2./*2*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "file2Identifier1", sortText = ls.SortText.JavascriptIdentifiers }),
-                        zero.lsp_lsproto_CompletionItem({ label = "file2Identifier2", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "file2Identifier1", sortText = ls.SortText.JavascriptIdentifiers }),
+                        lsproto.CompletionItem({ label = "file2Identifier2", sortText = ls.SortText.JavascriptIdentifiers }),
                     },
                     excludes = { "file1Identifier", "FooProp" },
                 },

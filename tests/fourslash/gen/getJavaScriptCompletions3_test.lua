@@ -25,9 +25,7 @@ v./**/]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "concat", kind = lsproto.CompletionItemKind.Method }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "concat", kind = lsproto.CompletionItemKind.Method }) },
                 },
             }))
         end)

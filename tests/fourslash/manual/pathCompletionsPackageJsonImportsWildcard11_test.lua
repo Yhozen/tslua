@@ -34,7 +34,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "#card.js", kind = lsproto.CompletionItemKind.File, detail = "#card.js" }),
+                        lsproto.CompletionItem({ label = "#card.js", kind = lsproto.CompletionItemKind.File, detail = "#card.js" }),
                     },
                 },
             }))

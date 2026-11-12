@@ -5,6 +5,11 @@
 -- Lua class of the type as metatable when the Go type has methods.
 local M = {}
 
+-- A Lua constructor <Type>_new(init) of the package takes precedence.
+local function ctor(mod, name)
+    return require(mod)[name .. "_new"]
+end
+
 local function mt(v, mod, name)
     local class = require(mod)[name]
     if type(class) == "table" and getmetatable(v) == nil then
@@ -14,6 +19,10 @@ local function mt(v, mod, name)
 end
 
 function M.fourslash_ApplyCodeActionFromCompletionOptions(v)
+    local new = ctor("tslua.fourslash", "ApplyCodeActionFromCompletionOptions")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.name == nil then v.name = "" end
     if v.source == nil then v.source = "" end
@@ -22,6 +31,10 @@ function M.fourslash_ApplyCodeActionFromCompletionOptions(v)
 end
 
 function M.fourslash_CompletionsExpectedCodeAction(v)
+    local new = ctor("tslua.fourslash", "CompletionsExpectedCodeAction")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.name == nil then v.name = "" end
     if v.source == nil then v.source = "" end
@@ -31,12 +44,20 @@ function M.fourslash_CompletionsExpectedCodeAction(v)
 end
 
 function M.fourslash_CompletionsExpectedList(v)
+    local new = ctor("tslua.fourslash", "CompletionsExpectedList")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.isIncomplete == nil then v.isIncomplete = false end
     return v
 end
 
 function M.fourslash_FoldingRangeLineExpected(v)
+    local new = ctor("tslua.fourslash", "FoldingRangeLineExpected")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.startLine == nil then v.startLine = 0 end
     if v.endLine == nil then v.endLine = 0 end
@@ -44,12 +65,20 @@ function M.fourslash_FoldingRangeLineExpected(v)
 end
 
 function M.fourslash_FourslashOptions(v)
+    local new = ctor("tslua.fourslash", "FourslashOptions")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.runExternalCode == nil then v.runExternalCode = false end
     return v
 end
 
 function M.fourslash_SemanticToken(v)
+    local new = ctor("tslua.fourslash", "SemanticToken")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.type == nil then v.type = "" end
     if v.text == nil then v.text = "" end
@@ -57,6 +86,10 @@ function M.fourslash_SemanticToken(v)
 end
 
 function M.fourslash_VerifyCodeFixAllOptions(v)
+    local new = ctor("tslua.fourslash", "VerifyCodeFixAllOptions")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.fixID == nil then v.fixID = "" end
     if v.newFileContent == nil then v.newFileContent = "" end
@@ -64,6 +97,10 @@ function M.fourslash_VerifyCodeFixAllOptions(v)
 end
 
 function M.fourslash_VerifyCodeFixOptions(v)
+    local new = ctor("tslua.fourslash", "VerifyCodeFixOptions")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.description == nil then v.description = "" end
     if v.newFileContent == nil then v.newFileContent = "" end
@@ -74,6 +111,10 @@ function M.fourslash_VerifyCodeFixOptions(v)
 end
 
 function M.fourslash_VerifySignatureHelpOptions(v)
+    local new = ctor("tslua.fourslash", "VerifySignatureHelpOptions")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.text == nil then v.text = "" end
     if v.docComment == nil then v.docComment = "" end
@@ -89,12 +130,20 @@ function M.fourslash_VerifySignatureHelpOptions(v)
 end
 
 function M.fourslash_VerifyWorkspaceSymbolCase(v)
+    local new = ctor("tslua.fourslash", "VerifyWorkspaceSymbolCase")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.pattern == nil then v.pattern = "" end
     return v
 end
 
 function M.ls_lsutil_CodeLensUserPreferences(v)
+    local new = ctor("tslua.ls.lsutil", "CodeLensUserPreferences")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.referencesCodeLensEnabled == nil then v.referencesCodeLensEnabled = 0 end
     if v.implementationsCodeLensEnabled == nil then v.implementationsCodeLensEnabled = 0 end
@@ -105,6 +154,10 @@ function M.ls_lsutil_CodeLensUserPreferences(v)
 end
 
 function M.ls_lsutil_FormatCodeSettings(v)
+    local new = ctor("tslua.ls.lsutil", "FormatCodeSettings")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.baseIndentSize == nil then v.baseIndentSize = 0 end
     if v.indentSize == nil then v.indentSize = 0 end
@@ -137,6 +190,10 @@ function M.ls_lsutil_FormatCodeSettings(v)
 end
 
 function M.ls_lsutil_InlayHintsPreferences(v)
+    local new = ctor("tslua.ls.lsutil", "InlayHintsPreferences")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.includeInlayParameterNameHints == nil then v.includeInlayParameterNameHints = "" end
     if v.includeInlayParameterNameHintsWhenArgumentMatchesName == nil then v.includeInlayParameterNameHintsWhenArgumentMatchesName = 0 end
@@ -150,6 +207,10 @@ function M.ls_lsutil_InlayHintsPreferences(v)
 end
 
 function M.ls_lsutil_UserPreferences(v)
+    local new = ctor("tslua.ls.lsutil", "UserPreferences")
+    if new ~= nil then
+        return new(v or {})
+    end
     v = v or {}
     if v.formatCodeSettings == nil then v.formatCodeSettings = M.ls_lsutil_FormatCodeSettings() end
     if v.quotePreference == nil then v.quotePreference = "" end
@@ -196,157 +257,6 @@ function M.ls_lsutil_UserPreferences(v)
     if v.automaticTypeAcquisitionEnabled == nil then v.automaticTypeAcquisitionEnabled = 0 end
     if v.customConfigFileName == nil then v.customConfigFileName = "" end
     return mt(v, "tslua.ls.lsutil", "UserPreferences")
-end
-
-function M.lsp_lsproto_AutoImportFix(v)
-    v = v or {}
-    if v.kind == nil then v.kind = 0 end
-    if v.name == nil then v.name = "" end
-    if v.importKind == nil then v.importKind = 0 end
-    if v.useRequire == nil then v.useRequire = false end
-    if v.addAsTypeOnly == nil then v.addAsTypeOnly = 0 end
-    if v.moduleSpecifier == nil then v.moduleSpecifier = "" end
-    if v.importIndex == nil then v.importIndex = 0 end
-    if v.namespacePrefix == nil then v.namespacePrefix = "" end
-    return mt(v, "tslua.lsp.lsproto", "AutoImportFix")
-end
-
-function M.lsp_lsproto_ClientCapabilities(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "ClientCapabilities")
-end
-
-function M.lsp_lsproto_ClientCompletionItemOptions(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "ClientCompletionItemOptions")
-end
-
-function M.lsp_lsproto_ClientFoldingRangeOptions(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "ClientFoldingRangeOptions")
-end
-
-function M.lsp_lsproto_CompletionItem(v)
-    v = v or {}
-    if v.label == nil then v.label = "" end
-    return mt(v, "tslua.lsp.lsproto", "CompletionItem")
-end
-
-function M.lsp_lsproto_CompletionItemData(v)
-    v = v or {}
-    if v.fileName == nil then v.fileName = "" end
-    if v.position == nil then v.position = 0 end
-    if v.source == nil then v.source = "" end
-    if v.name == nil then v.name = "" end
-    if v.isImportStatementCompletion == nil then v.isImportStatementCompletion = false end
-    return mt(v, "tslua.lsp.lsproto", "CompletionItemData")
-end
-
-function M.lsp_lsproto_CompletionItemLabelDetails(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "CompletionItemLabelDetails")
-end
-
-function M.lsp_lsproto_Diagnostic(v)
-    v = v or {}
-    if v.range == nil then v.range = M.lsp_lsproto_Range() end
-    if v.message == nil then v.message = M.lsp_lsproto_StringOrMarkupContent() end
-    return mt(v, "tslua.lsp.lsproto", "Diagnostic")
-end
-
-function M.lsp_lsproto_FileRename(v)
-    v = v or {}
-    if v.oldUri == nil then v.oldUri = "" end
-    if v.newUri == nil then v.newUri = "" end
-    return mt(v, "tslua.lsp.lsproto", "FileRename")
-end
-
-function M.lsp_lsproto_FoldingRangeClientCapabilities(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "FoldingRangeClientCapabilities")
-end
-
-function M.lsp_lsproto_InsertReplaceEdit(v)
-    v = v or {}
-    if v.newText == nil then v.newText = "" end
-    if v.insert == nil then v.insert = M.lsp_lsproto_Range() end
-    if v.replace == nil then v.replace = M.lsp_lsproto_Range() end
-    return mt(v, "tslua.lsp.lsproto", "InsertReplaceEdit")
-end
-
-function M.lsp_lsproto_IntegerOrString(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "IntegerOrString")
-end
-
-function M.lsp_lsproto_Location(v)
-    v = v or {}
-    if v.uri == nil then v.uri = "" end
-    if v.range == nil then v.range = M.lsp_lsproto_Range() end
-    return mt(v, "tslua.lsp.lsproto", "Location")
-end
-
-function M.lsp_lsproto_MarkupContent(v)
-    v = v or {}
-    if v.kind == nil then v.kind = "" end
-    if v.value == nil then v.value = "" end
-    return mt(v, "tslua.lsp.lsproto", "MarkupContent")
-end
-
-function M.lsp_lsproto_Position(v)
-    v = v or {}
-    if v.line == nil then v.line = 0 end
-    if v.character == nil then v.character = 0 end
-    return mt(v, "tslua.lsp.lsproto", "Position")
-end
-
-function M.lsp_lsproto_Range(v)
-    v = v or {}
-    if v.start == nil then v.start = M.lsp_lsproto_Position() end
-    if v.end_ == nil then v.end_ = M.lsp_lsproto_Position() end
-    return mt(v, "tslua.lsp.lsproto", "Range")
-end
-
-function M.lsp_lsproto_SignatureHelpContext(v)
-    v = v or {}
-    if v.triggerKind == nil then v.triggerKind = 0 end
-    if v.isRetrigger == nil then v.isRetrigger = false end
-    return mt(v, "tslua.lsp.lsproto", "SignatureHelpContext")
-end
-
-function M.lsp_lsproto_StringOrMarkupContent(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "StringOrMarkupContent")
-end
-
-function M.lsp_lsproto_SymbolInformation(v)
-    v = v or {}
-    if v.name == nil then v.name = "" end
-    if v.kind == nil then v.kind = 0 end
-    if v.location == nil then v.location = M.lsp_lsproto_Location() end
-    return mt(v, "tslua.lsp.lsproto", "SymbolInformation")
-end
-
-function M.lsp_lsproto_TextDocumentClientCapabilities(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "TextDocumentClientCapabilities")
-end
-
-function M.lsp_lsproto_TextEdit(v)
-    v = v or {}
-    if v.range == nil then v.range = M.lsp_lsproto_Range() end
-    if v.newText == nil then v.newText = "" end
-    return mt(v, "tslua.lsp.lsproto", "TextEdit")
-end
-
-function M.lsp_lsproto_TextEditOrInsertReplaceEdit(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "TextEditOrInsertReplaceEdit")
-end
-
-function M.lsp_lsproto_WorkspaceEditClientCapabilities(v)
-    v = v or {}
-    return mt(v, "tslua.lsp.lsproto", "WorkspaceEditClientCapabilities")
 end
 
 return M

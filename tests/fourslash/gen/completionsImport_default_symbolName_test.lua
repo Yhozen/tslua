@@ -35,12 +35,10 @@ R/*0*/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "RangeParser",
                             kind = lsproto.CompletionItemKind.Function,
-                            data = zero.lsp_lsproto_CompletionItemData({
-                                autoImport = zero.lsp_lsproto_AutoImportFix({ moduleSpecifier = "range-parser" }),
-                            }),
+                            data = lsproto.CompletionItemData({ autoImport = lsproto.AutoImportFix({ moduleSpecifier = "range-parser" }) }),
                             additionalTextEdits = fourslash.AnyTextEdits,
                             sortText = ls.SortText.AutoImportSuggestions,
                             detail = "namespace RangeParser\nfunction RangeParser(): string",

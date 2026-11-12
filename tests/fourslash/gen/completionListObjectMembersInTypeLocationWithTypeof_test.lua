@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -26,7 +27,7 @@ type B = Parameters<typeof obj./*2*/>]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "getCompletions", detail = "(method) getCompletions(): void" }),
+                        lsproto.CompletionItem({ label = "getCompletions", detail = "(method) getCompletions(): void" }),
                     },
                 },
             }))
@@ -34,9 +35,7 @@ type B = Parameters<typeof obj./*2*/>]]
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "dance", detail = "(property) dance: () => {}" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "dance", detail = "(property) dance: () => {}" }) },
                 },
             }))
         end)

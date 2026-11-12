@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -26,18 +27,18 @@ function P.TestTripleSlashRefPathCompletionHiddenFile(t)
             f:VerifyCompletions(t, { "0", "2", "3" }, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
-                items = { exact = { zero.lsp_lsproto_CompletionItem({ label = "f.ts", detail = "f.ts" }) } },
+                items = { exact = { lsproto.CompletionItem({ label = "f.ts", detail = "f.ts" }) } },
             }))
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "f.ts",
                             detail = "f.ts",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "f.ts", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "f.ts", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },

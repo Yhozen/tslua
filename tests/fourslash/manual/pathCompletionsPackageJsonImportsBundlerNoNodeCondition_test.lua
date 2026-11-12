@@ -37,7 +37,7 @@ import { } from "/**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "#for-everywhere",
                             kind = lsproto.CompletionItemKind.File,
                             detail = "#for-everywhere.js",

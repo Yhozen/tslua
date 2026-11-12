@@ -22,12 +22,12 @@ function P.TestCodeCompletionEscaping(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "__foo",
                             kind = lsproto.CompletionItemKind.Text,
                             sortText = ls.SortText.JavascriptIdentifiers,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "___foo",
                             kind = lsproto.CompletionItemKind.Text,
                             sortText = ls.SortText.JavascriptIdentifiers,

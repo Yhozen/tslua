@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,7 +29,7 @@ function foo() {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "a", detail = "const a: 10" }) },
+                    includes = { lsproto.CompletionItem({ label = "a", detail = "const a: 10" }) },
                     excludes = { "b" },
                 },
             }))
@@ -36,7 +37,7 @@ function foo() {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = { zero.lsp_lsproto_CompletionItem({ label = "a", detail = "const a: 10" }) },
+                    includes = { lsproto.CompletionItem({ label = "a", detail = "const a: 10" }) },
                     excludes = { "b" },
                 },
             }))
@@ -45,8 +46,8 @@ function foo() {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", detail = "const a: 10" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "const b: 20" }),
+                        lsproto.CompletionItem({ label = "a", detail = "const a: 10" }),
+                        lsproto.CompletionItem({ label = "b", detail = "const b: 20" }),
                     },
                 },
             }))
@@ -55,8 +56,8 @@ function foo() {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", detail = "const a: 10" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "b", detail = "const b: 20" }),
+                        lsproto.CompletionItem({ label = "a", detail = "const a: 10" }),
+                        lsproto.CompletionItem({ label = "b", detail = "const b: 20" }),
                     },
                 },
             }))

@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -58,8 +59,8 @@ var o6: {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -67,17 +68,15 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
             f:VerifyCompletions(t, "2", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -85,17 +84,15 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
             f:VerifyCompletions(t, "3", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) \"__proto__\": number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) \"__proto__\": number" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -103,17 +100,15 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
             f:VerifyCompletions(t, "4", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) \"__proto__\": number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) \"__proto__\": number" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -121,18 +116,16 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
             f:VerifyCompletions(t, "5", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
+                        lsproto.CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -142,8 +135,8 @@ var o6: {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -151,18 +144,16 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
             f:VerifyCompletions(t, "6", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
+                        lsproto.CompletionItem({ label = "___proto__", detail = "(property) ___proto__: string" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -172,8 +163,8 @@ var o6: {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     unsorted = {
-                        zero.lsp_lsproto_CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }),
+                        lsproto.CompletionItem({ label = "__proto__", detail = "(property) __proto__: number" }),
+                        lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }),
                     },
                 },
             }))
@@ -181,9 +172,7 @@ var o6: {
             f:VerifyCompletions(t, nil, zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "p", detail = "(property) p: number" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "p", detail = "(property) p: number" }) } },
             }))
         end)
     end)

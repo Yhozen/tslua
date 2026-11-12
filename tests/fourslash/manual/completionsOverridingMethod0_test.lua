@@ -6,6 +6,7 @@ local core = require("tslua.core")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -113,7 +114,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(param1: string, param2: boolean): Promise<void> {\n}", f:Ranges()[1].lsRange),
                             filterText = "foo",
@@ -128,7 +129,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(a: string, b: string): string {\n}", f:Ranges()[2].lsRange),
                             filterText = "foo",
@@ -143,7 +144,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(a: string): string {\n}", f:Ranges()[3].lsRange),
                             filterText = "foo",
@@ -158,7 +159,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(a: string): string {\n}", f:Ranges()[4].lsRange),
                             filterText = "foo",
@@ -173,7 +174,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(a: string): string {\n}", f:Ranges()[5].lsRange),
                             filterText = "foo",
@@ -188,7 +189,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit("foo(a: string): string {\n}", f:Ranges()[6].lsRange),
                             filterText = "foo",
@@ -203,7 +204,7 @@ class ISub extends IBase {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             textEdit = util.InsertReplaceTextEdit([[
 foo(a: string): string;
@@ -228,13 +229,13 @@ foo(a: unknown, b?: unknown): string {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met",
                             insertText = "static met(n: number): number {\n}",
                             filterText = "met",
                             sortText = ls.SortText.LocationPriority,
                             additionalTextEdits = fourslash.AnyTextEdits,
-                            data = zero.lsp_lsproto_CompletionItemData({ source = "ClassMemberSnippet/" }),
+                            data = lsproto.CompletionItemData({ source = "ClassMemberSnippet/" }),
                         }),
                     },
                 },
@@ -245,13 +246,13 @@ foo(a: unknown, b?: unknown): string {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "met",
                             insertText = "met<T>(t: T): T {\n}",
                             filterText = "met",
                             sortText = ls.SortText.LocationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "metcons",
                             insertText = "metcons<T extends string | number>(t: T): T {\n}",
                             filterText = "metcons",

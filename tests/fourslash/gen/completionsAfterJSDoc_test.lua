@@ -22,7 +22,7 @@ function P.TestCompletionsAfterJSDoc(t)
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "readonly",
                             kind = lsproto.CompletionItemKind.Keyword,
                             sortText = ls.SortText.GlobalsOrKeywords,

@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,14 +29,14 @@ class Address {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "city", detail = "(property) Address.city: string" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "method" }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "city", detail = "(property) Address.city: string" }),
+                        lsproto.CompletionItem({ label = "method" }),
+                        lsproto.CompletionItem({
                             label = "postal code",
                             insertText = "[\"postal code\"]",
                             detail = "(property) Address[\"postal code\"]: string",
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                textEdit = zero.lsp_lsproto_TextEdit({ newText = "[\"postal code\"]", range = f:Ranges()[1].lsRange }),
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                textEdit = lsproto.TextEdit({ newText = "[\"postal code\"]", range = f:Ranges()[1].lsRange }),
                             }),
                         }),
                     },

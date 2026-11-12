@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -23,13 +24,13 @@ import { Test } from ".//**/"]]
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "test.jsx", detail = "test.jsx" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "test.jsx", detail = "test.jsx" }) } },
                 userPreferences = zero.ls_lsutil_UserPreferences({ importModuleSpecifierEnding = "js" }),
             }))
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "test", detail = "test.jsx" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "test", detail = "test.jsx" }) } },
                 userPreferences = zero.ls_lsutil_UserPreferences({ importModuleSpecifierEnding = "index" }),
             }))
         end)

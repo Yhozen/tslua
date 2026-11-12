@@ -35,7 +35,7 @@ import { } from "repo//**/";]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "card.tsx", kind = lsproto.CompletionItemKind.File, detail = "card.tsx" }),
+                        lsproto.CompletionItem({ label = "card.tsx", kind = lsproto.CompletionItemKind.File, detail = "card.tsx" }),
                     },
                 },
             }))

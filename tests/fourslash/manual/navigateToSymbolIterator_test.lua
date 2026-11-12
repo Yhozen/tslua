@@ -18,7 +18,7 @@ function P.TestNavigateToSymbolIterator(t)
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "iterator",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "iterator",
                             kind = lsproto.SymbolKind.Method,
                             location = f:Ranges()[1]:LSLocation(),

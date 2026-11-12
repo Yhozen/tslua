@@ -29,8 +29,8 @@ mod./**/]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.Field }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "a", kind = lsproto.CompletionItemKind.Field }),
+                        lsproto.CompletionItem({
                             label = "mod",
                             kind = lsproto.CompletionItemKind.Text,
                             sortText = ls.SortText.JavascriptIdentifiers,

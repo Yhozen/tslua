@@ -5,6 +5,7 @@ local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
 local ls = require("tslua.ls")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -45,17 +46,17 @@ class C1 extends Base {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "privateMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "privateProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({ label = "privateMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "privateProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenMethod",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "protectedOverriddenProperty",
                             sortText = ls.SortText.LocalDeclarationPriority,
                         }),
@@ -67,12 +68,12 @@ class C1 extends Base {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "privateMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "privateProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
-                        zero.lsp_lsproto_CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "privateMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "privateProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "protectedMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "protectedProperty", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicMethod", sortText = ls.SortText.LocalDeclarationPriority }),
+                        lsproto.CompletionItem({ label = "publicProperty", sortText = ls.SortText.LocalDeclarationPriority }),
                     },
                     excludes = { "protectedOverriddenMethod", "protectedOverriddenProperty" },
                 },

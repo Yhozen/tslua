@@ -24,19 +24,19 @@ class Test {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "search",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "search1",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[1]:LSLocation(),
                             containerName = "Test",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "search2",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[2]:LSLocation(),
                             containerName = "Test",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "search3",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[3]:LSLocation(),

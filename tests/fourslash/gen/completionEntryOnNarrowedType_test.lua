@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -29,7 +30,7 @@ function foo(strOrNum: string | number) {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: string | number" }),
+                        lsproto.CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: string | number" }),
                     },
                 },
             }))
@@ -37,18 +38,14 @@ function foo(strOrNum: string | number) {
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: number" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: number" }) },
                 },
             }))
             f:VerifyCompletions(t, "3", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: string" }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "strOrNum", detail = "(parameter) strOrNum: string" }) },
                 },
             }))
         end)

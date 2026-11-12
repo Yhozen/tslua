@@ -26,9 +26,7 @@ function /*fn*/foo(/*x*/x) {}
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
-                    includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "param", kind = lsproto.CompletionItemKind.Keyword }),
-                    },
+                    includes = { lsproto.CompletionItem({ label = "param", kind = lsproto.CompletionItemKind.Keyword }) },
                 },
             }))
         end)

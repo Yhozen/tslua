@@ -21,12 +21,12 @@ function [|y|](x: string): string { return x; }]]
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "x",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "y",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[2]:LSLocation(),

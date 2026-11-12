@@ -50,7 +50,10 @@ func (g *gen) compositeLit(e *ast.CompositeLit, _ types.Type) string {
 	}
 	switch u := t.Underlying().(type) {
 	case *types.Struct:
-		if u.NumFields() == 0 {
+		if _, isNamed := t.(*types.Named); u.NumFields() == 0 && !isNamed {
+			if g.isPkg {
+				return g.pkgName + ".Ignored"
+			}
 			return g.require("tslua.fourslash", "fourslash") + ".Ignored"
 		}
 		g.ind++
@@ -192,6 +195,14 @@ func (g *gen) structLit(t types.Type, st *types.Struct, entries []fieldEntry, at
 	for _, e := range entries {
 		parts = append(parts, e.key+" = "+e.value)
 	}
+	if named, ok := isExternalNamed(t, g.pkg.Types); ok && named.Obj().Pkg().Path() == modulePrefix+"lsp/lsproto" {
+		// lsproto structs and unions: the class call fills zero values and sets the metatable
+		alias := g.pkgAlias(named.Obj().Pkg())
+		if st.NumFields() == 0 {
+			return alias + "." + named.Obj().Name()
+		}
+		return alias + "." + named.Obj().Name() + "(" + g.table(parts) + ")"
+	}
 	if named, ok := t.(*types.Named); ok && g.isPkg && named.Obj().Pkg() == g.pkg.Types && hasMethods(named) {
 		defer func() {}()
 		return "setmetatable(" + g.table(g.fillZero(st, parts, entries, at)) + ", " + g.pkgName + "." + named.Obj().Name() + ")"
@@ -291,6 +302,10 @@ func writeZeroModule() {
 	b.WriteString("-- (numbers, strings, bools, nested value structs; embedded structs are flattened) and sets the\n")
 	b.WriteString("-- Lua class of the type as metatable when the Go type has methods.\n")
 	b.WriteString("local M = {}\n\n")
+	b.WriteString("-- A Lua constructor <Type>_new(init) of the package takes precedence.\n")
+	b.WriteString("local function ctor(mod, name)\n")
+	b.WriteString("    return require(mod)[name .. \"_new\"]\n")
+	b.WriteString("end\n\n")
 	b.WriteString("local function mt(v, mod, name)\n")
 	b.WriteString("    local class = require(mod)[name]\n")
 	b.WriteString("    if type(class) == \"table\" and getmetatable(v) == nil then\n")
@@ -302,6 +317,9 @@ func writeZeroModule() {
 		n := zeroTypes[k]
 		st := n.Underlying().(*types.Struct)
 		fmt.Fprintf(&b, "\nfunction M.%s(v)\n", k)
+		mod, _ := luaModule(n.Obj().Pkg().Path())
+		fmt.Fprintf(&b, "    local new = ctor(%q, %q)\n", mod, n.Obj().Name())
+		b.WriteString("    if new ~= nil then\n        return new(v or {})\n    end\n")
 		b.WriteString("    v = v or {}\n")
 		var fill func(st *types.Struct)
 		fill = func(st *types.Struct) {
@@ -329,7 +347,6 @@ func writeZeroModule() {
 		}
 		fill(st)
 		if hasMethods(n) {
-			mod, _ := luaModule(n.Obj().Pkg().Path())
 			fmt.Fprintf(&b, "    return mt(v, %q, %q)\n", mod, n.Obj().Name())
 		} else {
 			b.WriteString("    return v\n")

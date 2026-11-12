@@ -32,7 +32,7 @@ class B implements A {
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     exact = gort.appendSlice({
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "def",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.LocationPriority,

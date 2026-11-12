@@ -27,13 +27,13 @@ declare function f(options: { abc?: number, xyz?: string }): void;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "abc?",
                             filterText = "abc",
                             kind = lsproto.CompletionItemKind.Field,
                             sortText = ls.SortText.OptionalMember,
-                            textEdit = zero.lsp_lsproto_TextEditOrInsertReplaceEdit({
-                                insertReplaceEdit = zero.lsp_lsproto_InsertReplaceEdit({
+                            textEdit = lsproto.TextEditOrInsertReplaceEdit({
+                                insertReplaceEdit = lsproto.InsertReplaceEdit({
                                     newText = "abc",
                                     insert = f:Ranges()[1].lsRange,
                                     replace = f:Ranges()[1].lsRange,

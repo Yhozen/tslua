@@ -24,8 +24,8 @@ const y2: 0 | "one" | 1n = 'one'/*2*/;]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "0", kind = lsproto.CompletionItemKind.Constant, detail = "0" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "\"one\"", kind = lsproto.CompletionItemKind.Constant, detail = "\"one\"" }),
+                        lsproto.CompletionItem({ label = "0", kind = lsproto.CompletionItemKind.Constant, detail = "0" }),
+                        lsproto.CompletionItem({ label = "\"one\"", kind = lsproto.CompletionItemKind.Constant, detail = "\"one\"" }),
                     },
                 },
             }))
@@ -34,9 +34,9 @@ const y2: 0 | "one" | 1n = 'one'/*2*/;]]
                 itemDefaults = { commitCharacters = {}, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "0", kind = lsproto.CompletionItemKind.Constant, detail = "0" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "\"one\"", kind = lsproto.CompletionItemKind.Constant, detail = "\"one\"" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "1n", kind = lsproto.CompletionItemKind.Constant, detail = "1n" }),
+                        lsproto.CompletionItem({ label = "0", kind = lsproto.CompletionItemKind.Constant, detail = "0" }),
+                        lsproto.CompletionItem({ label = "\"one\"", kind = lsproto.CompletionItemKind.Constant, detail = "\"one\"" }),
+                        lsproto.CompletionItem({ label = "1n", kind = lsproto.CompletionItemKind.Constant, detail = "1n" }),
                     },
                 },
             }))

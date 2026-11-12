@@ -38,31 +38,31 @@ x.anotherProperty./*2*/;]]
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "toLocaleString",
                             detail = "(method) toLocaleString(): string (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "Returns a date converted to a string using the current locale.",
                                 }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "toString",
                             detail = "(method) toString(): string (+1 overload)",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "Returns a string representation of a string.",
                                 }),
                             }),
                         }),
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "valueOf",
                             detail = "(method) valueOf(): string | number",
-                            documentation = zero.lsp_lsproto_StringOrMarkupContent({
-                                markupContent = zero.lsp_lsproto_MarkupContent({
+                            documentation = lsproto.StringOrMarkupContent({
+                                markupContent = lsproto.MarkupContent({
                                     kind = lsproto.MarkupKind.Markdown,
                                     value = "Returns the primitive value of the specified object.",
                                 }),
@@ -74,7 +74,7 @@ x.anotherProperty./*2*/;]]
             f:VerifyCompletions(t, "2", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = { includes = { zero.lsp_lsproto_CompletionItem({ label = "foo" }) } },
+                items = { includes = { lsproto.CompletionItem({ label = "foo" }) } },
             }))
         end)
     end)

@@ -21,7 +21,7 @@ function P.TestCompletionEntryForConst(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "c", detail = "const c: \"s\"", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "c", detail = "const c: \"s\"", kind = lsproto.CompletionItemKind.Variable }),
                     },
                 },
             }))
@@ -30,7 +30,7 @@ function P.TestCompletionEntryForConst(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "d", detail = "const d: 1", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "d", detail = "const d: 1", kind = lsproto.CompletionItemKind.Variable }),
                     },
                 },
             }))
@@ -39,7 +39,7 @@ function P.TestCompletionEntryForConst(t)
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({ label = "e", detail = "const e: 1", kind = lsproto.CompletionItemKind.Variable }),
+                        lsproto.CompletionItem({ label = "e", detail = "const e: 1", kind = lsproto.CompletionItemKind.Variable }),
                     },
                 },
             }))

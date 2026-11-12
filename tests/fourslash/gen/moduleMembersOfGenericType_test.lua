@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -22,9 +23,7 @@ var r = M./**/;]]
             f:VerifyCompletions(t, "", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = { zero.lsp_lsproto_CompletionItem({ label = "x", detail = "var M.x: <T>(x: T) => T" }) },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "x", detail = "var M.x: <T>(x: T) => T" }) } },
             }))
         end)
     end)

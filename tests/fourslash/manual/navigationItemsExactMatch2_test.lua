@@ -34,13 +34,13 @@ function [|distance2|](distanceParam1): void {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "point",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "Point",
                             kind = lsproto.SymbolKind.Class,
                             location = f:Ranges()[1]:LSLocation(),
                             containerName = "Shapes",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "point",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[6]:LSLocation(),
@@ -50,30 +50,30 @@ function [|distance2|](distanceParam1): void {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "distance",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distance1",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[4]:LSLocation(),
                             containerName = "Point",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distance2",
                             kind = lsproto.SymbolKind.Function,
                             location = f:Ranges()[7]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceFromA",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[3]:LSLocation(),
                             containerName = "Point",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceLocal",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[5]:LSLocation(),
                             containerName = "distance1",
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "distanceLocal1",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[8]:LSLocation(),
@@ -84,7 +84,7 @@ function [|distance2|](distanceParam1): void {
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "origin",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "_origin",
                             kind = lsproto.SymbolKind.Property,
                             location = f:Ranges()[2]:LSLocation(),

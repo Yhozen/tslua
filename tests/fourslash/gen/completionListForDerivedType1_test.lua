@@ -4,6 +4,7 @@ local gort = require("tslua.fourslash.goruntime")
 local zero = require("tslua.fourslash.tests.zero_generated")
 local fourslash = require("tslua.fourslash")
 local util = require("tslua.fourslash.tests.util")
+local lsproto = require("tslua.lsp.lsproto")
 local testutil = require("tslua.testutil")
 
 local P = {}
@@ -28,19 +29,15 @@ f2./*2*/ // here bar has return type any, but bar2 is Foo2]]
             f:VerifyCompletions(t, "1", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
-                items = {
-                    exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "bar", detail = "(method) IFoo.bar(): IFoo" }),
-                    },
-                },
+                items = { exact = { lsproto.CompletionItem({ label = "bar", detail = "(method) IFoo.bar(): IFoo" }) } },
             }))
             f:VerifyCompletions(t, "2", zero.fourslash_CompletionsExpectedList({
                 isIncomplete = false,
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     exact = {
-                        zero.lsp_lsproto_CompletionItem({ label = "bar", detail = "(method) IFoo.bar(): IFoo" }),
-                        zero.lsp_lsproto_CompletionItem({ label = "bar2", detail = "(method) IFoo2.bar2(): IFoo2" }),
+                        lsproto.CompletionItem({ label = "bar", detail = "(method) IFoo.bar(): IFoo" }),
+                        lsproto.CompletionItem({ label = "bar2", detail = "(method) IFoo2.bar2(): IFoo2" }),
                     },
                 },
             }))

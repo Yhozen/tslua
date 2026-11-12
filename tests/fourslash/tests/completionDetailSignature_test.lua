@@ -30,7 +30,7 @@ function foo(x: any): any {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "foo",
                             kind = lsproto.CompletionItemKind.Function,
                             sortText = ls.SortText.LocationPriority,

@@ -40,7 +40,7 @@ var y = class {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "myClass",
                             detail = "class myClass",
                             kind = lsproto.CompletionItemKind.Class,
@@ -53,7 +53,7 @@ var y = class {
                 itemDefaults = { commitCharacters = util.DefaultCommitCharacters, editRange = util.Ignored },
                 items = {
                     includes = {
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "myClass",
                             detail = "(local class) myClass",
                             kind = lsproto.CompletionItemKind.Property,

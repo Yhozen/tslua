@@ -29,12 +29,12 @@ export const [|weirdName|];
                     pattern = "weirdName",
                     preferences = zero.ls_lsutil_UserPreferences({ excludeLibrarySymbolsInNavTo = core.Tristate.TSFalse }),
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "weirdName",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),
                         }),
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "weirdName",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[2]:LSLocation(),
@@ -46,7 +46,7 @@ export const [|weirdName|];
                 zero.fourslash_VerifyWorkspaceSymbolCase({
                     pattern = "weirdName",
                     exact = {
-                        zero.lsp_lsproto_SymbolInformation({
+                        lsproto.SymbolInformation({
                             name = "weirdName",
                             kind = lsproto.SymbolKind.Variable,
                             location = f:Ranges()[1]:LSLocation(),

@@ -29,7 +29,7 @@ function P.TestCompletionListAfterRegularExpressionLiteral01(t)
                         "ignoreCase",
                         "multiline",
                         "lastIndex",
-                        zero.lsp_lsproto_CompletionItem({
+                        lsproto.CompletionItem({
                             label = "compile",
                             sortText = ls.DeprecateSortText(ls.SortText.LocationPriority),
                             tags = { lsproto.CompletionItemTag.Deprecated },
