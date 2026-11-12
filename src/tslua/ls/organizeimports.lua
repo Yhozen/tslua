@@ -14,35 +14,6 @@ local EF = printer.EmitFlags
 ls.LanguageService = ls.LanguageService or {}
 local LanguageService = ls.LanguageService
 
--- Go lsutil.UserPreferences{OrganizeImportsTypeOrder: typeOrder}: the organize-imports fields of a
--- zero UserPreferences value with the type order set.
-local function userPreferencesWithTypeOrder(typeOrder)
-    return {
-        quotePreference = "",
-        organizeImportsSort = lsutil.OrganizeImportsSort.Auto,
-        organizeImportsIgnoreCase = core.Tristate.TSUnknown,
-        organizeImportsCollation = false,
-        organizeImportsLocale = "",
-        organizeImportsNumericCollation = core.Tristate.TSUnknown,
-        organizeImportsAccentCollation = core.Tristate.TSUnknown,
-        organizeImportsCaseFirst = lsutil.OrganizeImportsCaseFirst.False,
-        organizeImportsTypeOrder = typeOrder,
-    }
-end
-
--- Go change.NodeOptions literal with zero values for the fields not given.
-local function nodeOptions(fields)
-    return {
-        prefix = fields.prefix or "",
-        suffix = fields.suffix or "",
-        indentation = nil,
-        delta = nil,
-        leadingTriviaOption = fields.leadingTriviaOption or change.LeadingTriviaOption.None,
-        trailingTriviaOption = fields.trailingTriviaOption or change.TrailingTriviaOption.None,
-        joiner = "",
-    }
-end
-
 -- OrganizeImports organizes imports by:
 --  1. Removing unused imports
 --  2. Coalescing imports from the same module
@@ -69,12 +40,12 @@ function LanguageService:OrganizeImports(ctx, sourceFile, program, kind)
     local typeOrder = preferences.organizeImportsTypeOrder
 
     if sort == lsutil.OrganizeImportsSort.Auto then
-        local result = lsutil.DetectModuleSpecifierCaseBySort(topLevelImportGroupDecls, comparersToTest)
+        local result = lsutil.DetectModuleSpecifierCaseBySort(topLevelImportGroupDecls or {}, comparersToTest)
         moduleSpecifierComparer = result
     end
 
     if typeOrder == lsutil.OrganizeImportsTypeOrder.Auto or sort == lsutil.OrganizeImportsSort.Auto then
-        local namedImportComparer2, typeOrder2, found = lsutil.DetectNamedImportOrganizationBySort(topLevelImportDecls, comparersToTest, typeOrdersToTest)
+        local namedImportComparer2, typeOrder2, found = lsutil.DetectNamedImportOrganizationBySort(topLevelImportDecls or {}, comparersToTest, typeOrdersToTest)
         if found then
             if namedImportComparer == nil or sort == lsutil.OrganizeImportsSort.Auto then
                 namedImportComparer = namedImportComparer2
@@ -177,7 +148,7 @@ function ls.organizeImportsWorker(oldImportDecls, comparer, shouldSort, shouldCo
         end
 
         local specifierComparer = lsutil.GetNamedImportSpecifierComparer(
-            userPreferencesWithTypeOrder(comparer.typeOrder),
+            lsutil.UserPreferences_new({ organizeImportsTypeOrder = comparer.typeOrder }),
             comparer.namedImportComparer
         )
 
@@ -213,7 +184,7 @@ function ls.organizeImportsWorker(oldImportDecls, comparer, shouldSort, shouldCo
             changeTracker.emitContext:SetEmitFlags(imp, EF.EFNoLeadingComments)
         end
 
-        local options = nodeOptions({
+        local options = change.NodeOptions_new({
             leadingTriviaOption = change.LeadingTriviaOption.Exclude, -- Preserve header comment
             trailingTriviaOption = change.TrailingTriviaOption.Include,
             suffix = "\n",
@@ -802,7 +773,7 @@ function ls.organizeExportsWorker(oldExportDecls, comparer, sourceFile, changeTr
     end
 
     local specifierComparerFunc = lsutil.GetNamedImportSpecifierComparer(
-        userPreferencesWithTypeOrder(comparer.typeOrder),
+        lsutil.UserPreferences_new({ organizeImportsTypeOrder = comparer.typeOrder }),
         comparer.namedImportComparer
     )
 
@@ -822,7 +793,7 @@ function ls.organizeExportsWorker(oldExportDecls, comparer, sourceFile, changeTr
                 changeTracker.emitContext:AddEmitFlags(exp, EF.EFNoLeadingComments)
             end
 
-            local options = nodeOptions({
+            local options = change.NodeOptions_new({
                 leadingTriviaOption = change.LeadingTriviaOption.Exclude,
                 trailingTriviaOption = change.TrailingTriviaOption.Include,
                 suffix = "\n",

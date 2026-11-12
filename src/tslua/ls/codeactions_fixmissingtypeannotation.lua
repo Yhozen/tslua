@@ -22,19 +22,6 @@ local NBFlags = nodebuilder.Flags
 local NBInternalFlags = nodebuilder.InternalFlags
 local EF = printer.EmitFlags
 
--- Go change.NodeOptions literal with zero values for the fields not given.
-local function nodeOptions(fields)
-    return {
-        prefix = fields.prefix or "",
-        suffix = fields.suffix or "",
-        indentation = nil,
-        delta = nil,
-        leadingTriviaOption = fields.leadingTriviaOption or change.LeadingTriviaOption.None,
-        trailingTriviaOption = fields.trailingTriviaOption or change.TrailingTriviaOption.None,
-        joiner = "",
-    }
-end
-
 local optimisticNameOptions = { flags = printer.GeneratedIdentifierFlagsOptimistic, prefix = "", suffix = "" }
 
 ls.isolatedDeclarationsFixErrorCodes = {
@@ -412,7 +399,7 @@ function isolatedDeclarationsFixer:addInlineAssertion(span)
         -- Insert `: expr as Type` after the shorthand property name
         local clonedName = factory:DeepCloneNode(targetNode:AsShorthandPropertyAssignment():Name())
         local asExpr = ls.createAsExpression(factory, clonedName, typeNode)
-        self.changeTracker:InsertNodeAt(self.sourceFile, targetNode:End(), asExpr, nodeOptions({ prefix = ": " }))
+        self.changeTracker:InsertNodeAt(self.sourceFile, targetNode:End(), asExpr, change.NodeOptions_new({ prefix = ": " }))
     elseif isExpressionTarget then
         -- Replace expression with `(expression) satisfies Type as Type` or `expression satisfies Type as Type`
         local clonedTarget = factory:DeepCloneNode(targetNode)
