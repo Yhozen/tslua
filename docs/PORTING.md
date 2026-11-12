@@ -17,10 +17,14 @@ is the specification and the upstream test baselines are the oracle.
 
 ## Scope
 
-In scope: what `tsc` does from the command line — parse, bind, check, report diagnostics, emit
-JavaScript and declarations, `tsconfig.json`, module resolution. Out of scope (for now): the
-language server (`ls`, `lsp`, `project`, `fourslash`), API server, watch mode, `--build`,
-incremental, tracing, pprof, localization (English only), goroutine parallelism.
+In scope (like tsrs): the `tsc` command line — parse, bind, check, diagnostics, JavaScript and
+declaration emit, source maps, `tsconfig.json`, module resolution, incremental builds
+(`.tsbuildinfo`), `--build`, watch mode (`--watch`, polling/mock watch backends; native
+inotify/fanotify/FSEvents backends need syscalls and are out of reach of pure Lua), content
+mappers — and the language server (`ls`, `lsp`, `project`, `format`, `astnav`, `fourslash`
+harness) and the API server (`api`). Out of scope: tracing (`--generateTrace`), pprof,
+localization (English only), automatic type acquisition, telemetry, goroutine parallelism
+(everything runs sequentially, in the order Go uses with `--singleThreaded`).
 
 ## Layout
 
