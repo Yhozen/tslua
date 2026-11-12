@@ -1127,7 +1127,7 @@ function Checker:getConditionalTypeInstantiation(t, mapper, forConstraint, alias
         -- instantiation cache key from the type IDs of the type arguments.
         local typeArguments = core.Map(root.outerTypeParameters, function(tp) return mapper:Map(tp) end)
         local key = checker.getConditionalTypeKey(typeArguments, alias, forConstraint)
-        local result = root.instantiations[key]
+        local result = root.instantiations and root.instantiations[key] -- Go: reading a nil map yields nil
         if result == nil then
             local newMapper = checker.newTypeMapper(root.outerTypeParameters, typeArguments)
             local checkType = root.checkType
@@ -2361,7 +2361,7 @@ function Checker:getTypeAliasInstantiation(symbol, typeArguments, alias)
     local links = self.typeAliasLinks:Get(symbol)
     local typeParameters = links.typeParameters
     local key = checker.getTypeAliasInstantiationKey(typeArguments, alias)
-    local instantiation = links.instantiations[key]
+    local instantiation = links.instantiations and links.instantiations[key] -- Go: reading a nil map yields nil
     if instantiation == nil then
         local mapper = checker.newTypeMapper(typeParameters, self:fillMissingTypeArguments(typeArguments, typeParameters, self:getMinTypeArgumentCount(typeParameters), ast.IsInJSFile(symbol.valueDeclaration)))
         instantiation = self:instantiateTypeWithAlias(t, mapper, alias)
