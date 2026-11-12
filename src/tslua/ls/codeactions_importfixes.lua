@@ -1,0 +1,1 @@
+-- Placeholder so tslua.ls loads; owned by agent ls-fixes (Go internal/ls/codeactions_importfixes.go), who replaces this file.

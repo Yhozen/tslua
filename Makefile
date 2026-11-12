@@ -4,7 +4,7 @@ GO_PKGS := ./internal/ast ./internal/core ./internal/checker ./internal/binder .
 	./internal/transformers/... ./internal/module ./internal/jsnum ./internal/evaluator \
 	./internal/outputpaths ./internal/tspath ./internal/collections ./internal/nodebuilder \
 	./internal/sourcemap ./internal/stringutil ./internal/modulespecifiers \
-	./internal/pseudochecker
+	./internal/pseudochecker ./internal/ls ./internal/ls/lsutil ./internal/ls/lsconv ./internal/ls/change
 
 LUA_PATH_ENV := LUA_PATH="src/?.lua;src/?/init.lua;;"
 

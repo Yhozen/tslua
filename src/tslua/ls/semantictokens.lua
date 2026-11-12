@@ -1,0 +1,1 @@
+-- Placeholder so tslua.ls loads; owned by agent ls-info (Go internal/ls/semantictokens.go), who replaces this file.

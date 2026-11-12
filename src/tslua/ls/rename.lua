@@ -1,0 +1,1 @@
+-- Placeholder so tslua.ls loads; owned by agent ls-refs (Go internal/ls/rename.go), who replaces this file.

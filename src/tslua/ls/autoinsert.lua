@@ -1,0 +1,1 @@
+-- Placeholder so tslua.ls loads; owned by agent ls-completions (Go internal/ls/autoinsert.go), who replaces this file.

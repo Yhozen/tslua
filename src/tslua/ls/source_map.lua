@@ -1,0 +1,1 @@
+-- Placeholder so tslua.ls loads; owned by agent ls-core (Go internal/ls/source_map.go), who replaces this file.
