@@ -92,7 +92,7 @@ function vfstest.FromMapWithClock(m, useCaseSensitiveFileNames, clock)
     local mfs = {}
     -- Sorted creation to ensure times are always guaranteed to be in order.
     local keys = {}
-    for k in pairs(m) do
+    for k in pairs(m or {}) do -- a nil Go map has no keys
         keys[#keys + 1] = k
     end
     table.sort(keys, function(a, b)
@@ -109,7 +109,14 @@ function vfstest.FromMapWithClock(m, useCaseSensitiveFileNames, clock)
             file = fstest.CopyMapFile(f)
             file.modTime = clock:Now()
         else
-            error(string.format("invalid file type %s", type(f)), 0)
+            -- Go %T of the value.
+            local typeName = type(f)
+            if math.type(f) == "integer" then
+                typeName = "int"
+            elseif math.type(f) == "float" then
+                typeName = "float64"
+            end
+            error(string.format("invalid file type %s", typeName), 0)
         end
 
         if file.mode & iofs.ModeSymlink ~= 0 then
