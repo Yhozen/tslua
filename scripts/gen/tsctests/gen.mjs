@@ -214,7 +214,18 @@ function emitInput(s, ind) {
             lines.push(`${i3}caption = ${luaString(e.caption)},`);
             if (e.commandLineArgs) lines.push(`${i3}commandLineArgs = ${luaStringArray(e.commandLineArgs)},`);
             if (e.expectedDiff) lines.push(`${i3}expectedDiff = ${luaString(e.expectedDiff)},`);
-            if (e.ops) {
+            if (e.ops && e.opsForIncrementalCorrectness) {
+                lines.push(`${i3}edit = function(sys)`);
+                lines.push(`${i3}    if not sys.forIncrementalCorrectness then`);
+                lines.push(...emitOps(e.ops, i3 + "        "));
+                const other = emitOps(e.opsForIncrementalCorrectness, i3 + "        ");
+                if (other.length) {
+                    lines.push(`${i3}    else`);
+                    lines.push(...other);
+                }
+                lines.push(`${i3}    end`);
+                lines.push(`${i3}end,`);
+            } else if (e.ops) {
                 const body = emitOps(e.ops, i3 + "    ");
                 if (body.length === 0) {
                     lines.push(`${i3}edit = function(sys) end,`);

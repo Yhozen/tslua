@@ -73,11 +73,12 @@ type dumpFile struct {
 }
 
 type dumpEdit struct {
-	Caption         string    `json:"caption"`
-	CommandLineArgs *[]string `json:"commandLineArgs,omitempty"`
-	ExpectedDiff    string    `json:"expectedDiff,omitempty"`
-	Ops             *[][]any  `json:"ops,omitempty"`
-	NoChange        bool      `json:"noChange,omitempty"`
+	Caption                      string    `json:"caption"`
+	CommandLineArgs              *[]string `json:"commandLineArgs,omitempty"`
+	ExpectedDiff                 string    `json:"expectedDiff,omitempty"`
+	Ops                          *[][]any  `json:"ops,omitempty"`
+	OpsForIncrementalCorrectness *[][]any  `json:"opsForIncrementalCorrectness,omitempty"`
+	NoChange                     bool      `json:"noChange,omitempty"`
 }
 
 type dumpScenarioT struct {
@@ -158,13 +159,24 @@ func dumpScenario(t *testing.T, test *tscInput, scenario string) bool {
 				de.CommandLineArgs = &args
 			}
 			if e.edit != nil {
-				sys := &TestSys{recorder: &recorder{}, fs: &testFs{}}
-				e.edit(sys)
-				ops := sys.recorder.ops
-				if ops == nil {
-					ops = [][]any{}
+				// Edits may branch on sys.forIncrementalCorrectness: record both variants.
+				record := func(forIncrementalCorrectness bool) [][]any {
+					sys := &TestSys{recorder: &recorder{}, fs: &testFs{}, forIncrementalCorrectness: forIncrementalCorrectness}
+					e.edit(sys)
+					ops := sys.recorder.ops
+					if ops == nil {
+						ops = [][]any{}
+					}
+					return ops
 				}
+				ops := record(false)
 				de.Ops = &ops
+				opsForIncrementalCorrectness := record(true)
+				a, _ := json.Marshal(ops)
+				b, _ := json.Marshal(opsForIncrementalCorrectness)
+				if string(a) != string(b) {
+					de.OpsForIncrementalCorrectness = &opsForIncrementalCorrectness
+				}
 			}
 			edits = append(edits, de)
 		}

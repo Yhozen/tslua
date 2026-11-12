@@ -169,6 +169,7 @@ tsbuild/sample/explainFiles
 tsbuild/sample/indicates-that-it-would-skip-builds-during-a-dry-build
 tsbuild/sample/listEmittedFiles
 tsbuild/sample/listFiles
+tsbuild/sample/rebuilds-completely-when-version-in-tsbuildinfo-doesnt-match-ts-version
 tsbuild/sample/rebuilds-from-start-if-force-option-is-set
 tsbuild/sample/rebuilds-when-extended-config-file-changes
 tsbuild/sample/removes-all-files-it-built

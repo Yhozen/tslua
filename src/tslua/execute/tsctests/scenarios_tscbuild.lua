@@ -7445,8 +7445,10 @@ export const m = mod;]],
                     tsctests.newTscEdit({
                         caption = "tsbuildinfo written has error",
                         edit = function(sys)
-                            sys:prependFile("/home/src/workspaces/project/tsconfig.tsbuildinfo", "Some random string")
-                            sys:replaceFileText("/home/src/workspaces/project/tsconfig.tsbuildinfo", "\"version\":\"7.1.0-dev\"", "\"version\":\"FakeTSVersion\"")
+                            if not sys.forIncrementalCorrectness then
+                                sys:prependFile("/home/src/workspaces/project/tsconfig.tsbuildinfo", "Some random string")
+                                sys:replaceFileText("/home/src/workspaces/project/tsconfig.tsbuildinfo", "\"version\":\"7.1.0-dev\"", "\"version\":\"FakeTSVersion\"")
+                            end
                         end,
                     }),
                 },
@@ -7517,9 +7519,11 @@ export const m = mod;]],
                     tsctests.newTscEdit({
                         caption = "convert tsbuildInfo version to something that is say to previous version",
                         edit = function(sys)
-                            sys:replaceFileText("/user/username/projects/sample1/core/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
-                            sys:replaceFileText("/user/username/projects/sample1/logic/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
-                            sys:replaceFileText("/user/username/projects/sample1/tests/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
+                            if not sys.forIncrementalCorrectness then
+                                sys:replaceFileText("/user/username/projects/sample1/core/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
+                                sys:replaceFileText("/user/username/projects/sample1/logic/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
+                                sys:replaceFileText("/user/username/projects/sample1/tests/tsconfig.tsbuildinfo", "\"version\":\"FakeTSVersion\"", "\"version\":\"FakeTsPreviousVersion\"")
+                            end
                         end,
                     }),
                 },
