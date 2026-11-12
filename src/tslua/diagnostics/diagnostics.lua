@@ -1,4 +1,5 @@
 local diagnostics = require("tslua.diagnostics")
+local localepkg = require("tslua.locale")
 
 local Category = diagnostics.Category
 
@@ -81,9 +82,35 @@ function diagnostics.Localize(locale, message, key, ...)
     return diagnostics.Format(text, { ... })
 end
 
--- Localization is out of scope (English only): there are no localized message tables.
+-- map[language.Tag]map[Key]string; false caches Go nil (no localization for the tag).
+diagnostics.localizedMessagesCache = {}
+
 function diagnostics.getLocalizedMessages(loc)
-    return nil
+    if loc == nil or loc == localepkg.Default then
+        return nil
+    end
+
+    -- Check cache first
+    local cached = diagnostics.localizedMessagesCache[loc]
+    if cached ~= nil then
+        if cached == false then
+            return nil
+        end
+        return cached
+    end
+
+    local messages = nil
+
+    local _, index, confidence = diagnostics.matcher:Match(loc)
+    if confidence >= localepkg.Confidence.Low and index >= 0 and index < #diagnostics.localeFuncs then
+        local fn = diagnostics.localeFuncs[index + 1]
+        if fn then
+            messages = fn()
+        end
+    end
+
+    diagnostics.localizedMessagesCache[loc] = messages or false
+    return messages
 end
 
 -- strings.ToValidUTF8(s, "�"): each run of invalid bytes becomes one U+FFFD.

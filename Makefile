@@ -21,6 +21,7 @@ upstream:
 generate:
 	cd scripts/gen/goconsts && go run . $(abspath $(UPSTREAM)) $(abspath src/tslua) $(GO_PKGS)
 	node scripts/gen/diagnostics.mjs $(UPSTREAM)
+	cd scripts/gen/loctables && go run . $(abspath $(UPSTREAM)) $(abspath src/tslua)
 	node scripts/gen/ast.mjs $(UPSTREAM)
 	node scripts/gen/lsproto.mjs $(UPSTREAM)
 
