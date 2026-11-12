@@ -36,7 +36,7 @@ function ast.propagateNodeListSubtreeFacts(children, propagate)
         return None
     end
     local facts = None
-    local nodes = children.nodes
+    local nodes = children.nodes or {}
     for i = 1, #nodes do
         facts = facts | propagate(nodes[i])
     end
