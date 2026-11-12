@@ -1,0 +1,14 @@
+-- Client interface (implemented by the LSP server and by projecttestutil.ClientMock):
+--   WatchFiles(ctx, id WatcherID, watchers []*lsproto.FileSystemWatcher) error
+--   UnwatchFiles(ctx, id WatcherID) error
+--   RegisterContentMapperExtensions(ctx, extensions []string) error
+--   RefreshDiagnostics(ctx) error
+--   PublishDiagnostics(ctx, params *lsproto.PublishDiagnosticsParams) error
+--   RefreshInlayHints(ctx) error
+--   RefreshCodeLens(ctx) error
+--   ProgressStart(message *diagnostics.Message, args ...any)
+--   ProgressFinish(message *diagnostics.Message, args ...any)
+--   SendTelemetry(ctx, telemetry lsproto.TelemetryEvent) error
+--   IsActive() bool
+--   SetLocale(locale string) -- updates the locale used for diagnostic messages.
+--   GetLocale() locale.Locale -- returns the current display locale for diagnostic messages.
