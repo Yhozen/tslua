@@ -176,7 +176,9 @@ function Checker:getWithAlternativeContainers(container, symbol, enclosingDeclar
             end
             return found
         end)
-        self:sortSymbols(variableMatches)
+        if variableMatches ~= nil then
+            self:sortSymbols(variableMatches)
+        end
     end
 
     local res = {}
