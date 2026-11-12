@@ -7,7 +7,8 @@ local iofs = vfs.iofs
 
 -- Pure-Lua stand-ins for the Go os package (POSIX only). Files are read with io.open; a path is a
 -- directory when reading from it fails with EISDIR; directories are listed with `find` through
--- io.popen. File modification times are not available (ModTime() is 0). The Go semaphores that
+-- io.popen. File modification times are read lazily with `find -printf %T@` (fractional seconds,
+-- 0 when unavailable) for infos returned by os.Stat. The Go semaphores that
 -- limit concurrent syscalls have no equivalent (the port is single-threaded).
 
 local EISDIR = 21
@@ -24,7 +25,22 @@ function osFileInfo:Name() return self.name end
 function osFileInfo:Size() return self.size end
 function osFileInfo:Mode() return self.mode end
 function osFileInfo:Type() return iofs.FileMode_Type(self.mode) end
-function osFileInfo:ModTime() return 0 end
+function osFileInfo:ModTime()
+    if self.modTime == nil then
+        self.modTime = 0
+        if self.path ~= nil then
+            local p = io.popen("find -H " .. shellQuote(self.path) .. " -maxdepth 0 -printf %T@ 2>/dev/null")
+            if p ~= nil then
+                local t = tonumber(p:read("a") or "")
+                p:close()
+                if t ~= nil then
+                    self.modTime = t
+                end
+            end
+        end
+    end
+    return self.modTime
+end
 function osFileInfo:IsDir() return iofs.FileMode_IsDir(self.mode) end
 function osFileInfo:Sys() return nil end
 function osFileInfo:Info() return self, nil end
@@ -42,11 +58,11 @@ local function osStat(path)
     local name = iofs.pathBase(path)
     if code == EISDIR then
         f:close()
-        return setmetatable({ name = name, size = 0, mode = iofs.ModeDir | 493 }, osFileInfo), nil
+        return setmetatable({ name = name, size = 0, mode = iofs.ModeDir | 493, path = path }, osFileInfo), nil
     end
     local size = f:seek("end") or 0
     f:close()
-    return setmetatable({ name = name, size = size, mode = 420 }, osFileInfo), nil
+    return setmetatable({ name = name, size = size, mode = 420, path = path }, osFileInfo), nil
 end
 osvfs.osStat = osStat
 
@@ -380,9 +396,19 @@ function osFS:Remove(path)
     return nil
 end
 
+-- A zero time leaves that time unchanged (like Go os.Chtimes).
 function osFS:Chtimes(path, aTime, mTime)
-    local ok = os.execute("touch -a -d @" .. tostring(math.floor(aTime)) .. " -- " .. shellQuote(path)
-        .. " && touch -m -d @" .. tostring(math.floor(mTime)) .. " -- " .. shellQuote(path))
+    local cmds = {}
+    if aTime ~= 0 then
+        cmds[#cmds + 1] = "touch -a -d @" .. string.format("%.6f", aTime) .. " -- " .. shellQuote(path)
+    end
+    if mTime ~= 0 then
+        cmds[#cmds + 1] = "touch -m -d @" .. string.format("%.6f", mTime) .. " -- " .. shellQuote(path)
+    end
+    if #cmds == 0 then
+        return nil
+    end
+    local ok = os.execute(table.concat(cmds, " && "))
     if ok ~= true then
         return iofs.NewError("chtimes " .. path .. ": failed")
     end
