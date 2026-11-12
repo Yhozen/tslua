@@ -1,0 +1,3 @@
+-- Cloneable: a table with Clone() returning a copy.
+-- Value: { Value(), Original(), Dirty(), Change(apply), ChangeIf(cond, apply), Delete(), Locked(fn) }
+-- (implemented by Box, MapEntry, SyncMapEntry and lockedEntry).
