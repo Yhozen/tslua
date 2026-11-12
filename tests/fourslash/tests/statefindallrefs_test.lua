@@ -444,7 +444,7 @@ end
 function P.TestFindAllRefsRootOfReferencedProject(t)
     t:Parallel()
     for i1, disableSourceOfProjectReferenceRedirect in gort.ipairs({ false, true }) do
-        t:Run("TestFindAllRefsRootOfReferencedProject" .. core.IfElse(disableSourceOfProjectReferenceRedirect, "DeclarationMaps", ""), function(t)
+        t:Run("TestFindAllRefsRootOfReferencedProject" .. (core.IfElse(disableSourceOfProjectReferenceRedirect, "DeclarationMaps", "") or ""), function(t)
                 t:Parallel()
                 testutil.RecoverAndFail(t, "Panic on fourslash test", function()
                     local content = gort.fmt.Sprintf([[
@@ -493,7 +493,7 @@ function foo() {
 	"references": [
 		{ "path": "./common" },
 	],
-}]], core.IfElse(disableSourceOfProjectReferenceRedirect, "// @tsc: --build /src/tsconfig.json", ""), disableSourceOfProjectReferenceRedirect, disableSourceOfProjectReferenceRedirect)
+}]], (core.IfElse(disableSourceOfProjectReferenceRedirect, "// @tsc: --build /src/tsconfig.json", "") or ""), disableSourceOfProjectReferenceRedirect, disableSourceOfProjectReferenceRedirect)
                     local f, done = fourslash.NewFourslash(t, nil, content)
                     gort.Defer(done, function()
                         f:GoToMarker(t, "keyboard")
@@ -508,7 +508,7 @@ end
 function P.TestFindAllRefsAncestorSiblingProjectsLoading(t)
     t:Parallel()
     for i3, disableSolutionSearching in gort.ipairs({ false, true }) do
-        t:Run("TestFindAllRefsAncestorSiblingProjectsLoading" .. core.IfElse(disableSolutionSearching, "DisableSolutionSearching", ""), function(t)
+        t:Run("TestFindAllRefsAncestorSiblingProjectsLoading" .. (core.IfElse(disableSolutionSearching, "DisableSolutionSearching", "") or ""), function(t)
                 t:Parallel()
                 testutil.RecoverAndFail(t, "Panic on fourslash test", function()
                     local content = gort.fmt.Sprintf([[
@@ -1164,7 +1164,7 @@ function P.TestFindAllRefsDeclarationInOtherProject(t)
             dtsMapPresent = false,
         },
     }) do
-        local subScenario = (((((gort.fmt.Sprintf("Proj%sLoaded", core.IfElse(tc.projectAlreadyLoaded, "Is", "IsNot")) .. "RefdProjLoadingIs") .. core.IfElse(tc.disableReferencedProjectLoad, "Disabled", "Enabled")) .. "ProjRefRedirectsAre") .. core.IfElse(tc.disableSourceOfProjectReferenceRedirect, "Disabled", "Enabled")) .. "DeclMapIs") .. core.IfElse(tc.dtsMapPresent, "Present", "Missing")
+        local subScenario = (((((gort.fmt.Sprintf("Proj%sLoaded", (core.IfElse(tc.projectAlreadyLoaded, "Is", "IsNot") or "")) .. "RefdProjLoadingIs") .. (core.IfElse(tc.disableReferencedProjectLoad, "Disabled", "Enabled") or "")) .. "ProjRefRedirectsAre") .. (core.IfElse(tc.disableSourceOfProjectReferenceRedirect, "Disabled", "Enabled") or "")) .. "DeclMapIs") .. (core.IfElse(tc.dtsMapPresent, "Present", "Missing") or "")
         t:Run("TestFindAllRefsDeclarationInOtherProject" .. subScenario, function(t)
                 t:Parallel()
                 testutil.RecoverAndFail(t, "Panic on fourslash test", function()

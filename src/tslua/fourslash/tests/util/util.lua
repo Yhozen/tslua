@@ -34,8 +34,8 @@ function util.sortCompletionItems(items)
                 bSortText = b.sortText
             end
         end
-        aSortText = core.OrElse(aSortText, defaultSortText)
-        bSortText = core.OrElse(bSortText, defaultSortText)
+        aSortText = (core.OrElse(aSortText, defaultSortText) or "")
+        bSortText = (core.OrElse(bSortText, defaultSortText) or "")
         local bySortText = compareStrings(aSortText, bSortText)
         if bySortText ~= 0 then
             return bySortText

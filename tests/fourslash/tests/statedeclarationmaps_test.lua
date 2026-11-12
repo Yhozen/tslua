@@ -10,7 +10,7 @@ local P = {}
 function P.TestDeclarationMapsOpeningOriginalLocationProject(t)
     t:Parallel()
     for i1, disableSourceOfProjectReferenceRedirect in gort.ipairs({ false, true }) do
-        t:Run("TestDeclarationMapsOpeningOriginalLocationProject" .. core.IfElse(disableSourceOfProjectReferenceRedirect, "DisableSourceOfProjectReferenceRedirect", ""), function(t)
+        t:Run("TestDeclarationMapsOpeningOriginalLocationProject" .. (core.IfElse(disableSourceOfProjectReferenceRedirect, "DisableSourceOfProjectReferenceRedirect", "") or ""), function(t)
                 t:Parallel()
                 testutil.RecoverAndFail(t, "Panic on fourslash test", function()
                     local content = gort.fmt.Sprintf([[
@@ -303,9 +303,9 @@ function P.TestDeclarationMapsRename(t)
             disableSourceOfProjectReferenceRedirect = false,
         },
     }) do
-        local buildStr = core.IfElse(not tc.dontBuild, "// @tsc: --build /myproject/dependency,--build /myproject/main", "")
-        local mainRefsStr = core.IfElse(not tc.mainWithNoRef, "\"references\": [{ \"path\": \"../dependency\" }]", "")
-        local filesStr = core.IfElse(not tc.tsconfigNotSolution, "\"files\": [],", "")
+        local buildStr = (core.IfElse(not tc.dontBuild, "// @tsc: --build /myproject/dependency,--build /myproject/main", "") or "")
+        local mainRefsStr = (core.IfElse(not tc.mainWithNoRef, "\"references\": [{ \"path\": \"../dependency\" }]", "") or "")
+        local filesStr = (core.IfElse(not tc.tsconfigNotSolution, "\"files\": [],", "") or "")
         local content = gort.fmt.Sprintf([[
 
 // @stateBaseline: true 

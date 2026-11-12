@@ -389,7 +389,7 @@ end
 
 function fourslash.getBaseFileNameFromTest(t)
     local name = t:Name()
-    name = core.LastOrNil(gort.strings.Split(name, "/"))
+    name = core.LastOrNil(gort.strings.Split(name, "/")) or ""
     name = gort.strings.TrimPrefix(name, "Test")
     name = stringutil.LowerFirstChar(name)
     local sw11 = name
@@ -654,23 +654,23 @@ function fourslash.sendRequestAndBaselineWorker(t, f, info, params, baselineProj
     if baselineProjects then
         f:baselineState(t)
     end
-    f:baselineRequestOrNotification(t, info.method, params)
+    f:baselineRequestOrNotification(t, info.Method, params)
     local resMsg, result, resultOk = lsptestutil.SendRequest(t, f.client, info, params)
     if baselineProjects then
         f:baselineState(t)
     end
     -- Go: case OnTypeFormatting: if !f.reportFormatOnTypeCrash { break }; fallthrough; default: ...
-    if info.method ~= lsproto.Method.TextDocumentOnTypeFormatting or f.reportFormatOnTypeCrash then
+    if info.Method ~= lsproto.Method.TextDocumentOnTypeFormatting or f.reportFormatOnTypeCrash then
         do
             if resMsg == nil then
-                t:Fatalf(prefix .. "Nil response received for %s request", info.method)
+                t:Fatalf(prefix .. "Nil response received for %s request", info.Method)
             end
             local resp = resMsg:AsResponse()
             if resp.error ~= nil then
-                t:Fatalf(prefix .. "%s request returned error: %s", info.method, resp.error:String())
+                t:Fatalf(prefix .. "%s request returned error: %s", info.Method, resp.error:String())
             end
             if not resultOk then
-                t:Fatalf(prefix .. "Unexpected %s response type: %T, error: %v", info.method, resp.result, resp.error)
+                t:Fatalf(prefix .. "Unexpected %s response type: %T, error: %v", info.Method, resp.result, resp.error)
             end
         end
     end
@@ -679,11 +679,11 @@ end
 
 function fourslash.sendNotification(t, f, info, params)
     t:Helper()
-    if info.method ~= lsproto.Method.TextDocumentDidChange then
+    if info.Method ~= lsproto.Method.TextDocumentDidChange then
         f:baselineState(t)
-        f:updateState(info.method, params)
+        f:updateState(info.Method, params)
     end
-    f:baselineRequestOrNotification(t, info.method, params)
+    f:baselineRequestOrNotification(t, info.Method, params)
     lsptestutil.SendNotification(t, f.client, info, params)
 end
 
@@ -1831,7 +1831,7 @@ function FourslashTest:getAllQuickFixActions(t, ...)
     if gort.len(diagnostics_) == 0 then
         return nil
     end
-    local diagnostic = fourslash.selectCodeFixDiagnostic(diagnostics_, core.FirstOrNil(errorCode))
+    local diagnostic = fourslash.selectCodeFixDiagnostic(diagnostics_, core.FirstOrNil(errorCode) or 0)
     if diagnostic == nil then
         return nil
     end

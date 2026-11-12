@@ -584,7 +584,38 @@ func (g *gen) call(e *ast.CallExpr) string {
 			return g.builtin(e, b.Name())
 		}
 	}
-	return g.callString(e, g.args(e))
+	s := g.callString(e, g.args(e))
+	// generic functions returning a type parameter instantiated with a scalar return nil in Lua
+	// where Go returns the zero value (core.FirstOrNil on an []int)
+	if ft, ok := g.info.TypeOf(fun).(*types.Signature); ok {
+		var orig *types.Signature
+		var id *ast.Ident
+		switch f := fun.(type) {
+		case *ast.Ident:
+			id = f
+		case *ast.SelectorExpr:
+			id = f.Sel
+		case *ast.IndexExpr:
+			if x, ok := f.X.(*ast.Ident); ok {
+				id = x
+			} else if x, ok := f.X.(*ast.SelectorExpr); ok {
+				id = x.Sel
+			}
+		}
+		if id != nil {
+			if fn, ok := g.info.Uses[id].(*types.Func); ok {
+				orig, _ = fn.Type().(*types.Signature)
+			}
+		}
+		if orig != nil && orig.TypeParams().Len() > 0 && ft.Results().Len() == 1 {
+			if _, isTP := orig.Results().At(0).Type().(*types.TypeParam); isTP {
+				if z := g.scalarZero(ft.Results().At(0).Type()); z != "" {
+					return "(" + s + " or " + z + ")"
+				}
+			}
+		}
+	}
+	return s
 }
 
 func (g *gen) conversion(e *ast.CallExpr, to types.Type) string {

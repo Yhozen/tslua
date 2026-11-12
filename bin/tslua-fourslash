@@ -529,6 +529,21 @@ else
     end
 end
 
+-- Results (with the failure messages) for triage: tests/out/fourslash-results.txt.
+do
+    os.execute("mkdir -p " .. shellQuote(root .. "/tests/out"))
+    local out = {}
+    for _, r in ipairs(results) do
+        out[#out + 1] = r.status .. "\t" .. r.id
+        if r.status ~= "pass" and r.status ~= "skip" then
+            for _, m in ipairs(r.messages) do
+                out[#out + 1] = "    " .. string.gsub(string.sub(m, 1, 3000), "\n", "\n    ")
+            end
+        end
+    end
+    writeFile(root .. "/tests/out/fourslash-results.txt", table.concat(out, "\n") .. "\n")
+end
+
 -- Summary.
 
 local counts = { pass = 0, fail = 0, crash = 0, timeout = 0, skip = 0 }

@@ -1978,7 +1978,7 @@ function FourslashTest:VerifyRenameFailed(t, preferences)
         })
         local prefix = self:getCurrentPositionPrefix()
         self:baselineState(t)
-        self:baselineRequestOrNotification(t, lsproto.TextDocumentPrepareRenameInfo.method, params)
+        self:baselineRequestOrNotification(t, lsproto.TextDocumentPrepareRenameInfo.Method, params)
         local resMsg, result, _ = lsptestutil.SendRequest(t, self.client, lsproto.TextDocumentPrepareRenameInfo, params)
         self:baselineState(t)
         if (resMsg ~= nil) and (resMsg:AsResponse().error ~= nil) then
