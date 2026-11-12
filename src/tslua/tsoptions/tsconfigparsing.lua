@@ -20,7 +20,7 @@ local isOrderedMap = tsoptions.isOrderedMap
 local isSlice = tsoptions.isSlice
 
 -- Go `struct{}{}` returned by convertToJson for an empty root (neither a map nor a slice).
-tsoptions.emptyStruct = setmetatable({}, { __name = "struct{}" })
+tsoptions.emptyStruct = setmetatable({}, { __name = "struct{}", __index = { MarshalJSON = function() return "{}", nil end } })
 
 local function newOrderedMap()
     return collections.NewOrderedMapWithSizeHint(0)

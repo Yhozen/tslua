@@ -1,4 +1,5 @@
 local core = require("tslua.core")
+local json = require("tslua.json")
 
 local Tristate = core.Tristate
 
@@ -48,4 +49,29 @@ function TypeAcquisition.Equals(ta, other)
         slicesEqual(ta.include, other.include) and
         slicesEqual(ta.exclude, other.exclude) and
         ta.disableFilenameBasedTypeAcquisition == other.disableFilenameBasedTypeAcquisition)
+end
+
+-- Go encoding/json of the struct (all fields `json:",omitzero"`): members in field order, Tristate as
+-- true/false, nil slices omitted. Returns (string, err).
+function TypeAcquisition:MarshalJSON()
+    local parts = {}
+    local function add(name, raw)
+        parts[#parts + 1] = json.QuoteString(name) .. ":" .. raw
+    end
+    if self.enable ~= Tristate.TSUnknown then
+        add("enable", (core.Tristate_MarshalJSON(self.enable)))
+    end
+    for _, name in ipairs({ "include", "exclude" }) do
+        if self[name] ~= nil then
+            local raw, err = json.Marshal(self[name])
+            if err ~= nil then
+                return nil, err
+            end
+            add(name, raw)
+        end
+    end
+    if self.disableFilenameBasedTypeAcquisition ~= Tristate.TSUnknown then
+        add("disableFilenameBasedTypeAcquisition", (core.Tristate_MarshalJSON(self.disableFilenameBasedTypeAcquisition)))
+    end
+    return "{" .. table.concat(parts, ",") .. "}", nil
 end
