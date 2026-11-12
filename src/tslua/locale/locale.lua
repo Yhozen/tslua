@@ -38,7 +38,8 @@ function locale.Parse(localeStr)
         parts[#parts + 1] = part
     end
     local lang = parts[1]
-    if lang == nil or not string.find(lang, "^%a%a%a?$") and not string.find(lang, "^%a%a%a%a%a%a?%a?%a?$") then
+    -- 5-8 letter primary subtags are well-formed, but none are registered, so Go rejects them
+    if lang == nil or not string.find(lang, "^%a%a%a?$") then
         return locale.Default, false
     end
     local out = { string.lower(lang) }
