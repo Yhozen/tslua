@@ -1442,7 +1442,7 @@ function Checker:getVariancesWorker(symbol, typeParameters)
             -- ensures stable results for circular generic types.
             local minIndex = stackIndex
             for i = stackIndex + 1, #c.varianceStack - 1 do
-                if c:compareSymbols(c.varianceStack[i + 1].symbol, c.varianceStack[minIndex + 1].symbol) < 0 then
+                if c.compareSymbols(c.varianceStack[i + 1].symbol, c.varianceStack[minIndex + 1].symbol) < 0 then
                     minIndex = i
                 end
             end
