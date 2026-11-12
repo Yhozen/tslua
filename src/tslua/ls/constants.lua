@@ -1,1 +1,4 @@
--- Placeholder so tslua.ls loads; owned by agent ls-core (Go internal/ls/constants.go), who replaces this file.
+local ls = require("tslua.ls")
+
+ls.moduleSpecifierResolutionLimit = 100
+ls.moduleSpecifierResolutionCacheAttemptLimit = 1000

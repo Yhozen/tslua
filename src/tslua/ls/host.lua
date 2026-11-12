@@ -1,1 +1,15 @@
--- Placeholder so tslua.ls loads; owned by agent ls-core (Go internal/ls/host.go), who replaces this file.
+-- Host is an interface implemented by the project system: a table with the methods
+--   UseCaseSensitiveFileNames() bool
+--   ReadFile(path) (contents string, ok bool)
+--   Converters() *lsconv.Converters
+--   GetPreferences(activeFile) lsutil.UserPreferences
+--   GetECMALineInfo(fileName) *sourcemap.ECMALineInfo
+--   AutoImportRegistry() *autoimport.Registry
+--
+--   -- Used for module specifier completions.
+--   -- ! Do not use for anything else, as this violates the principle that
+--   -- the host is a snapshot-in-time.
+--   ReadDirectory(currentDir, path, extensions, excludes, includes, depth) []string
+--   GetDirectories(path) []string
+--   DirectoryExists(path) bool
+--   FileExists(path) bool
