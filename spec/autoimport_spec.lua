@@ -1068,4 +1068,235 @@ describe("autoimport registry lifecycle", function()
         assert.are.equal(1, stats.uniquePackageCount, "expected one unique package after realpath dedup")
         session:Close()
     end)
+
+    it("content-mapped node_modules file uses the project bucket", function()
+        -- Blocked on content mapper support in tslua.project/tsoptions
+        -- (project.collectConfiguredContentMappers: mapper.definition is nil).
+        if os.getenv("TSLUA_CONTENT_MAPPER_TESTS") == nil then
+            pending("content mapper configuration not supported yet")
+            return
+        end
+        local contentmappertest = require("tslua.testutil.contentmappertest")
+        local files = {
+            ["/home/project/tsconfig.json"] = [[{
+			"compilerOptions": { "module": "esnext", "moduleResolution": "bundler", "strict": true, "skipLibCheck": true },
+			"contentMappers": [ { "package": "mapper", "extensions": [".vue"] } ]
+		}]],
+            ["/home/project/node_modules/mapper/package.json"] = contentmappertest.PackageJSON(contentmappertest.ComponentMapper),
+            ["/home/project/node_modules/profile-package/ProfileCard.vue"] = "<component name=\"ProfileCard\">\n<script lang=\"ts\">\nexport const profileTitle = \"Profile\";\n</script>",
+            ["/home/project/node_modules/profile-package/HiddenCard.vue"] = "<component name=\"HiddenCard\">\n<script lang=\"ts\">\nexport const hiddenTitle = \"Hidden\";\n</script>",
+            ["/home/project/node_modules/profile-package/ordinary.ts"] = "export const ordinary = true;",
+            ["/home/project/load.ts"] = "import \"profile-package/ProfileCard.vue\";\nimport \"profile-package/ordinary\";",
+            ["/home/project/main.ts"] = "profileTitle;",
+        }
+        local init = projecttestutil.GetSessionInitOptions(files, project.NewSessionOptions({
+            currentDirectory = "/home/project",
+            defaultLibraryPath = bundled.LibPath(),
+            typingsLocation = projecttestutil.TestTypingsLocation,
+            positionEncoding = lsproto.PositionEncodingKind.UTF8,
+            runExternalCode = true,
+        }), nil)
+        init.spawner = contentmappertest.NewSpawner()
+        local session = project.NewSession(init)
+
+        local mainURI = "file:///home/project/main.ts"
+        session:DidOpenFile(nil, mainURI, 1, files["/home/project/main.ts"], TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainURI))
+        session:WaitForBackgroundTasks()
+
+        local projectBucket = singleBucket(autoImportStats(session).projectBuckets)
+        assert.are.equal(3, projectBucket.fileCount, "expected the two project roots and referenced mapped package file")
+        session:Close()
+    end)
+
+    it("hidden directories in node_modules: deep import through subdirectory package.json in hidden store", function()
+        -- See https://github.com/microsoft/typescript-go/issues/2780
+        local projectRoot = "/home/src/fuse-project"
+        local storeDir = projectRoot .. "/node_modules/.yarn-store"
+        local pkgStoreDir = storeDir .. "/some-pkg-npm-1.0.0-abc123/package"
+
+        local files = {
+            [projectRoot .. "/tsconfig.json"] = [[{
+				"compilerOptions": {
+					"module": "commonjs",
+					"target": "es2020",
+					"strict": true
+				}
+			}]],
+            [projectRoot .. "/package.json"] = [[{
+				"name": "test-project",
+				"dependencies": {
+					"some-pkg": "*",
+					"real-package": "*"
+				}
+			}]],
+            -- Deep import: "some-pkg/debug" — resolves through the subdirectory package.json
+            [projectRoot .. "/index.ts"] = [[import { debug } from "some-pkg/debug";]],
+
+            -- Real package that should be indexed normally
+            [projectRoot .. "/node_modules/real-package/package.json"] = [[{"name":"real-package","version":"1.0.0","types":"index.d.ts"}]],
+            [projectRoot .. "/node_modules/real-package/index.d.ts"] = "export declare const realExport: number;\n",
+
+            -- Symlink: node_modules/some-pkg -> .yarn-store/.../package/
+            [projectRoot .. "/node_modules/some-pkg"] = vfstest.Symlink(pkgStoreDir),
+
+            -- Root package.json with name+version but NO "exports" field.
+            [pkgStoreDir .. "/package.json"] = [[{"name":"some-pkg","version":"1.0.0","types":"index.d.ts"}]],
+            [pkgStoreDir .. "/index.d.ts"] = "export declare const something: number;\n",
+            -- Subdirectory package.json for the deep import — no name or version.
+            [pkgStoreDir .. "/debug/package.json"] = [[{"main":"./debug.js","types":"./debug.d.ts"}]],
+            [pkgStoreDir .. "/debug/debug.d.ts"] = "export declare function debug(msg: string): void;\n",
+            [pkgStoreDir .. "/debug/debug.js"] = "exports.debug = function(msg) { console.log(msg); };\n",
+
+            -- Other content in the hidden store that should never be crawled
+            [storeDir .. "/other-pkg-npm-2.0.0-def456/package/package.json"] = [[{"name":"other-pkg","version":"1.0.0","types":"index.d.ts"}]],
+            [storeDir .. "/other-pkg-npm-2.0.0-def456/package/index.d.ts"] = "export declare const other: string;\n",
+        }
+
+        local session = projecttestutil.Setup(files)
+        local indexURI = "file://" .. projectRoot .. "/index.ts"
+        session:DidOpenFile(nil, indexURI, 1, files[projectRoot .. "/index.ts"], TypeScript)
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+
+        local stats = autoImportStats(session)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+
+        -- .yarn-store must not appear as a dependency name.
+        assert.is_not_nil(nodeModulesBucket.dependencyNames, "DependencyNames should not be nil")
+        for name in pairs(nodeModulesBucket.dependencyNames:Keys() or {}) do
+            assert.is_true(string.byte(name, 1) ~= 0x2E, string.format("hidden directory %q should not appear as a dependency name", name))
+        end
+        session:Close()
+    end)
+
+    describe("autoImportEntrypointDirectorySearch", function()
+        local projectRoot = "/home/src/entrypoint-search"
+        local nodeModulesDir = projectRoot .. "/node_modules"
+        local pkgDir = nodeModulesDir .. "/my-pkg"
+
+        local files = {
+            [projectRoot .. "/tsconfig.json"] = [[{
+			"compilerOptions": {
+				"module": "commonjs",
+				"target": "es2020"
+			}
+		}]],
+            [projectRoot .. "/package.json"] = [[{
+			"name": "test-project",
+			"dependencies": { "my-pkg": "*" }
+		}]],
+            [projectRoot .. "/index.ts"] = [[import { main } from "my-pkg";]],
+            -- Package with NO "exports" field and multiple files.
+            [pkgDir .. "/package.json"] = [[{"name":"my-pkg","version":"1.0.0","types":"index.d.ts"}]],
+            [pkgDir .. "/index.d.ts"] = "export declare const main: number;\n",
+            [pkgDir .. "/extra.d.ts"] = "export declare const extra: string;\n",
+            [pkgDir .. "/nested/deep.d.ts"] = "export declare const deep: boolean;\n",
+            [pkgDir .. "/nested/deeper.d.ts"] = "export declare const deeper: boolean;\n",
+        }
+        local indexURI = "file://" .. projectRoot .. "/index.ts"
+
+        it("default limits to main entrypoint", function()
+            local session = projecttestutil.Setup(files)
+            session:DidOpenFile(nil, indexURI, 1, files[projectRoot .. "/index.ts"], TypeScript)
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            local nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            -- Without the preference, only the main entrypoint (index.d.ts) should be found
+            assert.are.equal(1, nodeModulesBucket.fileCount, "expected only 1 file (main entrypoint) by default")
+            session:Close()
+        end)
+
+        it("autoImportEntrypointDirectorySearch enables all files", function()
+            local session = projecttestutil.Setup(files)
+            local prefs = lsutil.NewDefaultUserPreferences()
+            prefs.autoImportEntrypointDirectorySearch = core.Tristate.TSTrue
+            session:Configure(prefs)
+            session:DidOpenFile(nil, indexURI, 1, files[projectRoot .. "/index.ts"], TypeScript)
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            local nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            -- With the preference, all 4 .d.ts files should be found via directory search
+            assert.is_true(nodeModulesBucket.fileCount >= 4, string.format("expected at least 4 files from directory search, got %d", nodeModulesBucket.fileCount))
+            session:Close()
+        end)
+
+        it("changing preference triggers rebuild", function()
+            local session = projecttestutil.Setup(files)
+            session:DidOpenFile(nil, indexURI, 1, files[projectRoot .. "/index.ts"], TypeScript)
+
+            -- Build auto-imports with default preferences (directory search disabled)
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            local nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            assert.are.equal(1, nodeModulesBucket.fileCount, "expected only 1 file initially")
+
+            -- Now enable directory search
+            local prefs = lsutil.NewDefaultUserPreferences()
+            prefs.autoImportEntrypointDirectorySearch = core.Tristate.TSTrue
+            session:Configure(prefs)
+
+            -- Registry should report not prepared (preference changed)
+            local snapshot = session:Snapshot()
+            local defaultProject = snapshot:GetDefaultProject(indexURI)
+            assert.is_not_nil(defaultProject)
+            local projectPath = defaultProject:ConfigFilePath()
+            assert.is_false(snapshot:AutoImportRegistry():IsPreparedForImportingFile(projectRoot .. "/index.ts", projectPath, prefs),
+                "registry should not be prepared after preference change")
+
+            -- Rebuild
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            assert.is_true(nodeModulesBucket.fileCount >= 4, string.format("expected at least 4 files after rebuild with directory search enabled, got %d", nodeModulesBucket.fileCount))
+            session:Close()
+        end)
+
+        it("deep import from program update enables recursive search for that package", function()
+            local session = projecttestutil.Setup(files)
+            session:DidOpenFile(nil, indexURI, 1, files[projectRoot .. "/index.ts"], TypeScript)
+
+            -- Initial build with top-level import only ("my-pkg", not a deep import)
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            local nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            assert.are.equal(1, nodeModulesBucket.fileCount, "expected only 1 file (main entrypoint) before deep import")
+
+            -- Now update the program to add a deep import from the same package
+            local newContent = "import { main } from \"my-pkg\";\nimport { deep } from \"my-pkg/nested/deep\";\n"
+            session:DidChangeFile(nil, indexURI, 2, wholeDocument(newContent))
+
+            -- After the program update, auto-imports should detect the deep import and
+            -- enable recursive directory search for my-pkg, finding all .d.ts files.
+            noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+            nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+            assert.is_true(nodeModulesBucket.fileCount >= 4, string.format("expected at least 4 files after deep import triggers recursive search, got %d", nodeModulesBucket.fileCount))
+            session:Close()
+        end)
+    end)
+
+    it("updateIndexes: @types fallback for many packages", function()
+        local projectRoot = "/home/src/autoimport-fallback-race"
+        local packageCount = 40
+
+        local files = {
+            [projectRoot .. "/tsconfig.json"] = [[{
+			"compilerOptions": { "module": "esnext", "target": "esnext", "strict": true }
+		}]],
+            [projectRoot .. "/index.ts"] = "export {};\n",
+        }
+        for i = 0, packageCount - 1 do
+            local dir = string.format("%s/node_modules/pkg%d", projectRoot, i)
+            files[dir .. "/package.json"] = string.format([[{"name":"pkg%d","version":"1.0.0","main":"index.js"}]], i)
+            files[dir .. "/index.js"] = "module.exports = {};\n"
+            local typesDir = string.format("%s/node_modules/@types/pkg%d", projectRoot, i)
+            files[typesDir .. "/package.json"] = string.format([[{"name":"@types/pkg%d","version":"1.0.0","types":"index.d.ts"}]], i)
+            files[typesDir .. "/index.d.ts"] = string.format("export declare const foo%d: number;\n", i)
+        end
+
+        local session = projecttestutil.Setup(files)
+        local indexURI = "file://" .. projectRoot .. "/index.ts"
+        session:DidOpenFile(nil, indexURI, 1, "export {};\n", TypeScript)
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+
+        local nodeModulesBucket = singleBucket(autoImportStats(session).nodeModulesBuckets)
+        assert.are.equal(packageCount, nodeModulesBucket.exportCount)
+        session:Close()
+    end)
 end)
