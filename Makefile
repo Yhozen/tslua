@@ -6,7 +6,7 @@ GO_PKGS := ./internal/ast ./internal/core ./internal/checker ./internal/binder .
 	./internal/sourcemap ./internal/stringutil ./internal/modulespecifiers \
 	./internal/pseudochecker ./internal/ls ./internal/ls/lsutil ./internal/ls/lsconv ./internal/ls/change ./internal/ls/autoimport \
 	./internal/project ./internal/project/dirty ./internal/project/logging ./internal/project/background \
-	./internal/jsonrpc ./internal/lsp ./internal/lsp/lsproto
+	./internal/jsonrpc ./internal/lsp ./internal/lsp/lsproto ./internal/api ./internal/api/encoder
 
 LUA_PATH_ENV := LUA_PATH="src/?.lua;src/?/init.lua;;"
 
