@@ -6,6 +6,7 @@ local lsproto = require("tslua.lsp.lsproto")
 local stringutil = require("tslua.stringutil")
 local testrunner = require("tslua.testrunner")
 local tspath = require("tslua.tspath")
+local gort = require("tslua.fourslash.goruntime")
 
 -- Inserted in source files by surrounding desired text
 -- in a range with `[|` and `|]`. For example,
@@ -168,7 +169,7 @@ end
 
 function fourslash.isConfigFile(fileName)
     fileName = string.lower(fileName)
-    return stringutil.HasSuffix(fileName, "tsconfig.json") or stringutil.HasSuffix(fileName, "jsconfig.json")
+    return gort.strings.HasSuffix(fileName, "tsconfig.json") or gort.strings.HasSuffix(fileName, "jsconfig.json")
 end
 
 -- locationInformation: { position, sourcePosition, sourceLine, sourceColumn }
@@ -204,6 +205,15 @@ end
 function TestFileInfo:SpanMap()
     return nil
 end
+
+fourslash.emitThisFileOption = "emitthisfile"
+fourslash.noOpenFileOption = "noopen"
+
+fourslash.parserState = {
+    stateNone = 0,
+    stateInSlashStarMarker = 1,
+    stateInObjectMarker = 2,
+}
 
 local function trimSpace(s)
     return (string.gsub(string.gsub(s, "^[ \t\n\r\v\f]+", ""), "[ \t\n\r\v\f]+$", ""))
@@ -254,7 +264,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
         end
     end
 
-    local state = fourslash.stateNone
+    local state = fourslash.parserState.stateNone
     local previousCharacter, i = core.DecodeRune(content, 0)
     local size = 0
     local currentCharacter
@@ -265,7 +275,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
     end
     while i < n do
         currentCharacter, size = core.DecodeRune(content, i)
-        if state == fourslash.stateNone then
+        if state == fourslash.parserState.stateNone then
             if previousCharacter == 0x5B --[[ [ ]] and currentCharacter == 0x7C --[[ | ]] then
                 -- found a range start
                 openRanges[#openRanges + 1] = {
@@ -301,7 +311,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
                 difference = difference + 2
             elseif previousCharacter == 0x2F --[[ / ]] and currentCharacter == 0x2A --[[ * ]] and (i + 1 >= n or byte(content, i + 2) ~= 0x2F) then
                 -- found a possible marker start
-                state = fourslash.stateInSlashStarMarker
+                state = fourslash.parserState.stateInSlashStarMarker
                 openMarker = {
                     position = (i - 1) - difference,
                     sourcePosition = i - 1,
@@ -310,7 +320,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
                 }
             elseif previousCharacter == 0x7B --[[ { ]] and currentCharacter == 0x7C --[[ | ]] then
                 -- found an object marker start
-                state = fourslash.stateInObjectMarker
+                state = fourslash.parserState.stateInObjectMarker
                 openMarker = {
                     position = (i - 1) - difference,
                     sourcePosition = i - 1,
@@ -319,7 +329,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
                 }
                 flush(i - 1)
             end
-        elseif state == fourslash.stateInObjectMarker then
+        elseif state == fourslash.parserState.stateInObjectMarker then
             -- Object markers are only ever terminated by |} and have no content restrictions
             if previousCharacter == 0x7C --[[ | ]] and currentCharacter == 0x7D --[[ } ]] then
                 local objectMarkerData = trimSpace(sub(content, openMarker.sourcePosition + 2, i - 1))
@@ -339,9 +349,9 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
 
                 -- Reset the state
                 openMarker = nil
-                state = fourslash.stateNone
+                state = fourslash.parserState.stateNone
             end
-        elseif state == fourslash.stateInSlashStarMarker then
+        elseif state == fourslash.parserState.stateInSlashStarMarker then
             if previousCharacter == 0x2A --[[ * ]] and currentCharacter == 0x2F --[[ / ]] then
                 -- Record the marker
                 -- start + 2 to ignore the */, -1 on the end to ignore the * (/ is next)
@@ -363,7 +373,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
 
                 -- Reset the state
                 openMarker = nil
-                state = fourslash.stateNone
+                state = fourslash.parserState.stateNone
             elseif not (stringutil.IsDigit(currentCharacter) or
                     stringutil.IsASCIILetter(currentCharacter) or
                     currentCharacter == 0x24 --[[ $ ]] or
@@ -376,7 +386,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
                     flush(i)
                     lastNormalCharPosition = i
                     openMarker = nil
-                    state = fourslash.stateNone
+                    state = fourslash.parserState.stateNone
                 end
             end
         end
@@ -484,7 +494,7 @@ function fourslash.reportError(fileName, line, col, message)
 end
 
 function fourslash.chompLeadingSpace(content)
-    local lines = stringutil.SplitString(content, "\n")
+    local lines = gort.strings.Split(content, "\n")
     for _, line in ipairs(lines) do
         if #line > 0 and byte(line, 1) ~= 0x20 then
             return content

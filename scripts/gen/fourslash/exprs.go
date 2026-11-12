@@ -392,10 +392,20 @@ func (g *gen) binary(e *ast.BinaryExpr) string {
 			return x + " .. " + y
 		}
 		return x + " + " + y
-	case token.SUB, token.MUL, token.LSS, token.GTR, token.LEQ, token.GEQ, token.EQL:
+	case token.EQL, token.NEQ:
+		if _, isStruct := xt.Underlying().(*types.Struct); isStruct {
+			eq := g.gort() + ".StructEqual(" + g.expr(e.X) + ", " + g.expr(e.Y) + ")"
+			if e.Op == token.NEQ {
+				return "not " + eq
+			}
+			return eq
+		}
+		if e.Op == token.NEQ {
+			return x + " ~= " + y
+		}
+		return x + " == " + y
+	case token.SUB, token.MUL, token.LSS, token.GTR, token.LEQ, token.GEQ:
 		return x + " " + e.Op.String() + " " + y
-	case token.NEQ:
-		return x + " ~= " + y
 	case token.QUO:
 		if isIntegerType(xt) {
 			return g.gort() + ".idiv(" + g.expr(e.X) + ", " + g.expr(e.Y) + ")"

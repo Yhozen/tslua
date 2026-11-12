@@ -66,7 +66,7 @@ function testConverters:PositionToLineAndCharacter(script, position)
 end
 
 function testConverters:LineAndCharacterToPosition(script, position)
-    local positions = lsconv.FromLSPPosition(self.converters, script, position, spanmap.Feature.All)
+    local positions = lsconv.FromLSPPosition(self, script, position, spanmap.Feature.All)
     debug.Assert(gort.len(positions) == 1, "fourslash script must have exactly one position projection")
     return positions[1].position
 end
@@ -365,31 +365,25 @@ end
 function FourslashTest:handleServerRequest(_p7, req)
     local sw8 = req.method
     if sw8 == lsproto.Method.WorkspaceConfiguration then
-        local params, err = lsproto.UnmarshalParams(req)
+        local params, err = lsproto.UnmarshalParams("*ConfigurationParams", req)
         if ((err ~= nil) or (params == nil)) or (params.items == nil) then
-            return lsproto.ResponseMessage({ id = req.id, jsonrpc = req.jsonrpc, result = { self.userPreferences } })
+            return lsproto.NewResponseMessage(req.id, { self.userPreferences }, nil)
         end
-        local results = gort.makeSlice(gort.len(params.items), function() return nil end)
+        -- (nil sections are JSON nulls: Lua arrays cannot hold nil)
+        local results = gort.makeSlice(gort.len(params.items), function() return json.Null end)
         for i9, item in gort.ipairs(params.items) do
             local i = i9 - 1
             if (item.section ~= nil) and (item.section == "js/ts") then
                 results[i + 1] = gort.CloneStruct(self.userPreferences)
             end
         end
-        do return lsproto.ResponseMessage({ id = req.id, jsonrpc = req.jsonrpc, result = results }) end
+        do return lsproto.NewResponseMessage(req.id, results, nil) end
     elseif sw8 == lsproto.Method.ClientRegisterCapability then
-        do return lsproto.ResponseMessage({ id = req.id, jsonrpc = req.jsonrpc, result = lsproto.Null }) end
+        do return lsproto.NewResponseMessage(req.id, lsproto.Null, nil) end
     elseif sw8 == lsproto.Method.ClientUnregisterCapability then
-        do return lsproto.ResponseMessage({ id = req.id, jsonrpc = req.jsonrpc, result = lsproto.Null }) end
+        do return lsproto.NewResponseMessage(req.id, lsproto.Null, nil) end
     else
-        do return lsproto.ResponseMessage({
-                id = req.id,
-                jsonrpc = req.jsonrpc,
-                error = setmetatable({
-                    code = lsproto.ErrorCode.MethodNotFound,
-                    message = gort.fmt.Sprintf("Unknown method: %s", req.method),
-                }, jsonrpc.ResponseError),
-            }) end
+        do return lsproto.NewResponseMessage(req.id, nil, jsonrpc.NewResponseError(lsproto.ErrorCode.MethodNotFound, gort.fmt.Sprintf("Unknown method: %s", req.method))) end
     end
 end
 
@@ -2368,14 +2362,14 @@ function FourslashTest:VerifyBaselineCodeLens(t, preferences)
                         do
                             local commandArgs = resolvedCodeLens.command.arguments
                             if commandArgs ~= nil then
-                                local locs, err = fourslash.roundtripThroughJson((commandArgs)[3])
+                                local locs, err = fourslash.roundtripThroughJson("[]Location", (commandArgs)[3])
                                 if err ~= nil then
                                     t:Fatalf("failed to re-encode code lens locations: %v", err)
                                 end
                                 locations = locs
                             end
                         end
-                        local ranges = lsconv.FromLSPRange(self.converters.converters, self:getScriptInfo(openFile), resolvedCodeLens.range, spanmap.Feature.All)
+                        local ranges = lsconv.FromLSPRange(self.converters, self:getScriptInfo(openFile), resolvedCodeLens.range, spanmap.Feature.All)
                         if gort.len(ranges) ~= 1 then
                             goto continue128
                         end
@@ -2428,12 +2422,12 @@ function FourslashTest:verifyBaselineDefinitions(t, definitionCommand, definitio
         elseif result.definitionLinks ~= nil then
             local originRange = nil
             resultAsSpans = core.Map(result.definitionLinks, function(link)
-                    if (originRange ~= nil) and (((link.originSelectionRange == nil) or (originRange ~= link.originSelectionRange))) then
+                    if (originRange ~= nil) and (((link.originSelectionRange == nil) or (not gort.StructEqual(originRange, link.originSelectionRange)))) then
                         error("multiple different origin ranges in definition links", 0)
                     end
                     originRange = link.originSelectionRange
                     local contextSpan = nil
-                    if (link.targetRange ~= link.targetSelectionRange) and (not self.isStradaServer) then
+                    if (not gort.StructEqual(link.targetRange, link.targetSelectionRange)) and (not self.isStradaServer) then
                         contextSpan = link.targetRange
                     end
                     return { uri = link.targetUri, textSpan = link.targetSelectionRange, contextSpan = contextSpan }

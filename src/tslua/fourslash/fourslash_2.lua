@@ -769,17 +769,19 @@ function FourslashTest:lookupMarkersOrGetRanges(t, markers)
     return referenceLocations
 end
 
-function fourslash.roundtripThroughJson(value)
-    local result = nil
+-- Go roundtripThroughJson[T]: T is given as a Go type string of lsproto (e.g. "[]Location").
+function fourslash.roundtripThroughJson(goType, value)
+    local result = lsproto.Zero(goType)
     local bytes, err = json.Marshal(value)
     if err ~= nil then
         return result, gort.fmt.Errorf("failed to marshal value to JSON: %w", err)
     end
     do
-        local err = json.Unmarshal(bytes, result)
-        if err ~= nil then
-            return result, gort.fmt.Errorf("failed to unmarshal value from JSON: %w", err)
+        local decoded, err2 = lsproto.UnmarshalAs(goType, bytes)
+        if err2 ~= nil then
+            return result, gort.fmt.Errorf("failed to unmarshal value from JSON: %w", err2)
         end
+        result = decoded
     end
     return result, nil
 end
@@ -991,7 +993,7 @@ function fourslash.updatePosition(pos, editStart, editEnd, newText)
 end
 
 function FourslashTest:fromLSPRange(script, r)
-    local ranges = lsconv.FromLSPRange(self.converters.converters, script, r, spanmap.Feature.All)
+    local ranges = lsconv.FromLSPRange(self.converters, script, r, spanmap.Feature.All)
     if gort.len(ranges) ~= 1 then
         return setmetatable({ pos = 0, end_ = 0 }, core.TextRange)
     end
@@ -2209,7 +2211,7 @@ function FourslashTest:verifyDiagnostics(t, expected, filterDiagnostics)
     local expectedWithRanges = gort.makeSlice(gort.len(expected), function() return nil end)
     for i274, diag in gort.ipairs(expected) do
         local i = i274 - 1
-        if diag.range == emptyRange then
+        if gort.StructEqual(diag.range, emptyRange) then
             local rangesInFile = self:getRangesInFile(self.activeFilename)
             if gort.len(rangesInFile) == 0 then
                 t:Fatalf("No ranges found in file %s to assign to diagnostic with empty range", self.activeFilename)

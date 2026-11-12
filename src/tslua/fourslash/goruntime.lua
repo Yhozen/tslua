@@ -1166,6 +1166,11 @@ function M.cmp.Diff(x, y, ...)
     return "(-actual +expected):\n" .. table.concat(out, "\n")
 end
 
+-- Go == on struct values (field-wise, recursively for nested value structs).
+function M.StructEqual(a, b)
+    return M.cmp.Diff(a, b) == ""
+end
+
 function M.cmp.Compare(a, b)
     if a < b then
         return -1

@@ -715,11 +715,11 @@ function FourslashTest:getBaselineContentForFile(fileName, content, spansInFile,
         if options.startMarkerPrefix ~= nil then
             local startPrefix = options.startMarkerPrefix(span)
             if startPrefix ~= nil then
-                if ((options.marker ~= nil) and (fileName == options.marker:FileName())) and (span.textSpan.start == options.marker:LSPos()) then
+                if ((options.marker ~= nil) and (fileName == options.marker:FileName())) and (gort.StructEqual(span.textSpan.start, options.marker:LSPos())) then
                     local _, ok = gort.MapLookup(detailPrefixes, details[1], "")
                     debug.Assert(not ok, "Expected only single prefix at marker location")
                     detailPrefixes[details[1]] = startPrefix
-                elseif (span.contextSpan ~= nil) and (span.contextSpan.start == span.textSpan.start) then
+                elseif (span.contextSpan ~= nil) and (gort.StructEqual(span.contextSpan.start, span.textSpan.start)) then
                     detailPrefixes[details[contextSpanIndex + 1]] = startPrefix
                 else
                     detailPrefixes[details[textSpanIndex + 1]] = startPrefix
@@ -729,9 +729,9 @@ function FourslashTest:getBaselineContentForFile(fileName, content, spansInFile,
         if options.endMarkerSuffix ~= nil then
             local endSuffix = options.endMarkerSuffix(span)
             if endSuffix ~= nil then
-                if ((options.marker ~= nil) and (fileName == options.marker:FileName())) and (span.textSpan.end_ == options.marker:LSPos()) then
+                if ((options.marker ~= nil) and (fileName == options.marker:FileName())) and (gort.StructEqual(span.textSpan.end_, options.marker:LSPos())) then
                     detailSuffixes[details[1]] = endSuffix
-                elseif (span.contextSpan ~= nil) and (span.contextSpan.end_ == span.textSpan.end_) then
+                elseif (span.contextSpan ~= nil) and (gort.StructEqual(span.contextSpan.end_, span.textSpan.end_)) then
                     detailSuffixes[details[(textSpanIndex + 2) + 1]] = endSuffix
                 else
                     detailSuffixes[details[(textSpanIndex + 1) + 1]] = endSuffix
@@ -895,7 +895,7 @@ function textWithContext:add(detail)
     end
     if (detail == nil) or (((detail.kind ~= fourslash.detailKind.TextEnd) and (detail.kind ~= fourslash.detailKind.ContextEnd))) then
         local posLineIndex = self.lineInfo
-        if (self.posInfo == nil) or (self.posInfo ~= self.pos) then
+        if (self.posInfo == nil) or (not gort.StructEqual(self.posInfo, self.pos)) then
             posLineIndex = self.lineStarts:ComputeIndexOfLineStart(self.converters:LineAndCharacterToPosition(self, self.pos))
         end
         local locationLineIndex = gort.len(self.lineStarts.lineStarts) - 1
