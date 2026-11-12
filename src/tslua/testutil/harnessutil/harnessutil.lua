@@ -5,6 +5,7 @@ local collections = require("tslua.collections")
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local incremental = require("tslua.execute.incremental")
 local outputpaths = require("tslua.outputpaths")
 local parser = require("tslua.parser")
 local repo = require("tslua.repo")
@@ -1038,9 +1039,21 @@ function CompilationResult:GetSourceMapRecord()
     return sourceMapRecorder:String()
 end
 
--- testBuildInfoReader wraps an incremental.BuildInfoReader (incremental is out of scope).
+local testBuildInfoReader = {}
+testBuildInfoReader.__index = testBuildInfoReader
+harnessutil.testBuildInfoReader = testBuildInfoReader
+
+function testBuildInfoReader:ReadBuildInfo(config)
+    local r = self.inner:ReadBuildInfo(config)
+    if r == nil then
+        return nil
+    end
+    r.version = core.Version()
+    return r
+end
+
 function harnessutil.getTestBuildInfoReader(host)
-    error("not implemented: getTestBuildInfoReader (incremental is out of scope)", 0)
+    return setmetatable({ inner = incremental.NewBuildInfoReader(host) }, testBuildInfoReader)
 end
 
 function harnessutil.createProgram(host, config)
@@ -1056,7 +1069,9 @@ function harnessutil.createProgram(host, config)
     })
     local program = compiler.NewProgram(programOptions)
     if core.Tristate_IsTrue(config:CompilerOptions().incremental) then
-        error("not implemented: incremental.NewProgram (incremental is out of scope)", 0)
+        local oldProgram = incremental.ReadBuildInfoProgram(config, harnessutil.getTestBuildInfoReader(host), host)
+        local incrementalProgram = incremental.NewProgram(program, oldProgram, incremental.CreateHost(host), nil, false)
+        return incrementalProgram
     end
     return program
 end

@@ -46,7 +46,7 @@ function tsoptions.newParsedCommandLineStruct(init)
         raw = nil,
         compileOnSave = nil,
 
-        comparePathsOptions = nil,
+        comparePathsOptions = tspath.NewComparePathsOptions(false, ""), -- Go zero value (value struct)
         wildcardDirectoriesOnce = false,
         wildcardDirectories = nil,
         includeGlobsOnce = false,

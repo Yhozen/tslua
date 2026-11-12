@@ -1,10 +1,12 @@
--- Port of execute/tsc.go (non-watch, non-build, non-incremental paths).
+-- Port of execute/tsc.go (non-watch, non-build paths).
 local execute = require("tslua.execute")
 local ast = require("tslua.ast")
+local build = require("tslua.execute.build")
 local collections = require("tslua.collections")
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local incremental = require("tslua.execute.incremental")
 local tsc = require("tslua.execute.tsc")
 local json = require("tslua.json")
 local tsoptions = require("tslua.tsoptions")
@@ -67,7 +69,12 @@ function execute.tscBuildCompilation(ctx, sys, buildCommand, testing)
         return tsc.NewCommandLineResult(ExitStatus.Success)
     end
 
-    error("not implemented: tscBuildCompilation (--build orchestrator)")
+    local orchestrator = build.NewOrchestrator({
+        sys = sys,
+        command = buildCommand,
+        testing = testing,
+    })
+    return orchestrator:Start(ctx)
 end
 
 function execute.tscCompilation(ctx, sys, commandLine, testing)
@@ -181,7 +188,17 @@ function execute.tscCompilation(ctx, sys, commandLine, testing)
         return tsc.NewCommandLineResult(ExitStatus.Success)
     end
     if isTrue(configForCompilation:CompilerOptions().watch) then
-        error("not implemented: tscCompilation --watch (createWatcher)")
+        local watcher = execute.createWatcher(
+            sys,
+            configForCompilation,
+            compilerOptionsFromCommandLine,
+            commandLineRaw,
+            reportDiagnostic,
+            reportErrorSummary,
+            testing
+        )
+        watcher:start(ctx)
+        return tsc.NewCommandLineResult(ExitStatus.Success, watcher)
     elseif configForCompilation:CompilerOptions():IsIncremental() then
         return execute.performIncrementalCompilation(
             ctx,
@@ -225,7 +242,50 @@ function execute.getTraceFromSys(sys, locale, testing)
 end
 
 function execute.performIncrementalCompilation(ctx, sys, config, reportDiagnostic, reportErrorSummary, extendedConfigCache, compileTimes, testing)
-    error("not implemented: performIncrementalCompilation (incremental/composite builds)")
+    local contentMapperHost = tsc.NewContentMapperHost(ctx, sys, config:CompilerOptions())
+    local contentMapperProject = execute.getContentMapperProject(contentMapperHost, config)
+    local host = compiler.NewCachedFSCompilerHost(sys:GetCurrentDirectory(), sys:FS(), sys:DefaultLibraryPath(), extendedConfigCache, execute.getTraceFromSys(sys, config:Locale(), testing), contentMapperProject)
+    local buildInfoReadStart = sys:Now()
+    local oldProgram = incremental.ReadBuildInfoProgram(config, incremental.NewBuildInfoReader(host), host)
+    compileTimes.buildInfoReadTime = sys:Now() - buildInfoReadStart
+
+    local tr = execute.startTracingIfNeeded(sys, config, testing)
+
+    local parseStart = sys:Now()
+    local program = compiler.NewProgram(compiler.NewProgramOptions({
+        config = config,
+        host = host,
+        tracing = tr,
+    }))
+    compileTimes.parseTime = sys:Now() - parseStart
+    local changesComputeStart = sys:Now()
+    local incrementalProgram = incremental.NewProgram(program, oldProgram, incremental.CreateHost(host), function() return sys:Now() end, testing ~= nil)
+    compileTimes.changesComputeTime = sys:Now() - changesComputeStart
+    if contentMapperHost ~= nil then
+        compileTimes.contentMapperTimes = contentMapperHost:Timings()
+    end
+    local result = tsc.EmitAndReportStatistics({
+        sys = sys,
+        programLike = incrementalProgram,
+        program = incrementalProgram:GetProgram(),
+        config = config,
+        reportDiagnostic = reportDiagnostic,
+        reportErrorSummary = reportErrorSummary,
+        writer = sys:Writer(),
+        compileTimes = compileTimes,
+        testing = testing,
+        tracing = tr,
+    })
+
+    execute.stopTracing(sys, tr)
+
+    if testing ~= nil then
+        testing:OnProgram(incrementalProgram)
+    end
+    if contentMapperProject ~= nil then
+        contentMapperProject:Close()
+    end
+    return tsc.NewCommandLineResult(result.status)
 end
 
 function execute.performCompilation(ctx, sys, config, reportDiagnostic, reportErrorSummary, extendedConfigCache, compileTimes, testing)

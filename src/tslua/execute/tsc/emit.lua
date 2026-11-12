@@ -1,6 +1,7 @@
 local tsc = require("tslua.execute.tsc")
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
+local incremental = require("tslua.execute.incremental")
 local tspath = require("tslua.tspath")
 
 function tsc.GetTraceWithWriterFromSys(w, locale, testing)
@@ -67,6 +68,15 @@ function tsc.EmitFilesAndReportErrors(input)
             local checkStart = input.sys:Now()
             local diags = input.programLike:GetSemanticDiagnostics(c, file)
             result.times.checkTime = input.sys:Now() - checkStart
+            if getmetatable(input.programLike) == incremental.Program then
+                local nestedEmitTime = input.programLike:TakeNestedEmitTime()
+                if nestedEmitTime > result.times.checkTime then
+                    result.times.checkTime = 0
+                else
+                    result.times.checkTime = result.times.checkTime - nestedEmitTime
+                end
+                result.times.emitTime = result.times.emitTime + nestedEmitTime
+            end
             return diags
         end
     )
