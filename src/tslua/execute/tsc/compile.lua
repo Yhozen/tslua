@@ -1,5 +1,7 @@
 local tsc = require("tslua.execute.tsc")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
+local locale = require("tslua.locale")
 
 -- System interface (a table with methods):
 --   Writer() -> io.Writer, ErrorWriter() -> io.Writer, FS() -> vfs.FS, DefaultLibraryPath(),
@@ -48,7 +50,10 @@ function tsc.NewContentMapperHost(ctx, sys, options)
     if not core.Tristate_IsTrue(options.runExternalCode) then
         return nil
     end
-    error("not implemented: NewContentMapperHost (content mappers / --runExternalCode)")
+    local diagnosticLocale = locale.Parse(options.locale)
+    return contentmapper.NewHostWithOptions(ctx, sys, diagnosticLocale, {
+        logger = tsc.newContentMapperLogger(sys),
+    })
 end
 
 -- CompileTimes: durations in seconds.

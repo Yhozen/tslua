@@ -1,4 +1,5 @@
 local ipc = require("tslua.ipc")
+local core = require("tslua.core")
 local jsonrpc = require("tslua.jsonrpc")
 
 -- AsyncConn manages bidirectional JSON-RPC communication with async request handling.
@@ -9,7 +10,7 @@ local jsonrpc = require("tslua.jsonrpc")
 -- goroutines). A connection whose Run loop would execute in the background in Go (the client side,
 -- `go conn.Run(ctx)`) is started with RunInBackground instead; its loop then advances on demand
 -- while Call waits for a response, which is the only time a client observes it. Context cancellation
--- and deadlines are not observable by blocking reads and are ignored.
+-- is observed between messages (a blocking read cannot be interrupted).
 local AsyncConn = {}
 AsyncConn.__index = AsyncConn
 ipc.AsyncConn = AsyncConn
@@ -49,6 +50,11 @@ end
 -- step reads and dispatches one message: the body of Run's loop. Returns (done, err) where done
 -- reports that the loop ended (with err as Run's result).
 function AsyncConn:step(ctx)
+    local ctxErr = core.ContextErr(ctx)
+    if ctxErr ~= nil then
+        return true, ctxErr
+    end
+
     local msg, err = self.protocol:ReadMessage()
     if err ~= nil then
         if jsonrpc.ErrorsIs(err, jsonrpc.EOF) then
@@ -211,6 +217,11 @@ function AsyncConn:Call(ctx, method, params)
     end
 
     while self.responses[key] == nil do
+        local ctxErr = core.ContextErr(ctx)
+        if ctxErr ~= nil then
+            cleanup()
+            return nil, ctxErr
+        end
         if self.terminal ~= nil or not self:pumpBackground() then
             if self.responses[key] ~= nil then
                 break

@@ -10,9 +10,9 @@ local spanmap = require("tslua.spanmap")
 local tspath = require("tslua.tspath")
 local xxh3 = require("tslua.xxh3")
 
--- Lua runs the host sequentially: mapper connections are driven synchronously (see ipc.AsyncConn),
--- mutexes are dropped, and contexts carry no deadline, so the initialize timeout below is reported
--- only when the mapper closes the connection without answering.
+-- Lua runs the host sequentially: mapper connections are driven synchronously (see ipc.AsyncConn) and
+-- mutexes are dropped. A blocking read cannot be interrupted, so the initialize timeout is not
+-- enforced (a mapper that never answers blocks); cancellation is observed between messages.
 
 local codec = contentmapper.codec
 local PositionEncoding = contentmapper.PositionEncoding
@@ -783,7 +783,7 @@ function contentmapper.NewHostWithOptions(ctx, spawner, diagnosticLocale, option
             if exited then
                 return nil, nil, "", "", contentmapper.NewInitializeError({ kind = InitializeErrorKind.ProcessExit, mapperName = diagnosticName, exitCode = exitCode })
             end
-            if jsonrpc.ErrorsIs(err, ipc.ErrRequestTimeout) then
+            if jsonrpc.ErrorsIs(err, core.Canceled) or jsonrpc.ErrorsIs(err, ipc.ErrRequestTimeout) then
                 return nil, nil, "", "", contentmapper.NewInitializeError({ kind = InitializeErrorKind.NoResponse, mapperName = diagnosticName, timeoutSeconds = contentmapper.initializeTimeoutSeconds })
             end
             return nil, nil, "", "", contentmapper.NewInitializeError({ kind = InitializeErrorKind.Request, mapperName = diagnosticName, detail = errorString(err) })
@@ -793,8 +793,10 @@ function contentmapper.NewHostWithOptions(ctx, spawner, diagnosticLocale, option
 end
 
 function contentmapper.newWithDial(ctx, diagnosticLocale, timing, dial)
+    local hostCtx, cancel = core.WithCancel(ctx)
     local h = setmetatable({
-        ctx = ctx,
+        ctx = hostCtx,
+        cancel = cancel,
         dial = dial,
         timing = timing,
         diagnosticLocale = diagnosticLocale or locale.Default,
@@ -803,10 +805,9 @@ function contentmapper.newWithDial(ctx, diagnosticLocale, timing, dial)
         projectLeases = {},
         nextProjectID = 0,
     }, host)
-    -- context.AfterFunc(ctx, Close): Lua contexts are never cancelled.
-    h.stop = function()
-        return false
-    end
+    h.stop = core.AfterFunc(ctx, function()
+        h:Close()
+    end)
     return h
 end
 
@@ -1074,8 +1075,9 @@ end
 -- when the context passed to New is cancelled.
 function host:Close()
     self.stop()
+    self.cancel()
     local closers = {}
-    for _, identity in ipairs(contentmapper.sortedKeys(self.conns)) do
+    for _, identity in ipairs(contentmapper.sortedKeys(self.conns or {})) do
         local mc = self.conns[identity]
         if mc.closer ~= nil then
             closers[#closers + 1] = mc.closer

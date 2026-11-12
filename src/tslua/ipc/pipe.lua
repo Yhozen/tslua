@@ -119,15 +119,12 @@ function pipeEnd:Write(data)
     return #data, nil
 end
 
--- Close closes this endpoint; the other endpoint then reads end of input. A suspended peer is resumed
--- so it can observe the closed pipe and finish.
+-- Close closes this endpoint; the other endpoint then reads end of input. A peer blocked reading stays
+-- suspended (like a goroutine nobody wakes up) and is collected with the pipe.
 function pipeEnd:Close()
     if self.closed then
         return nil
     end
     self.closed = true
-    while self.peer ~= nil and coroutine.status(self.peer) == "suspended" do
-        self:resumePeer()
-    end
     return nil
 end

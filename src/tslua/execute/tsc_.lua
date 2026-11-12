@@ -327,7 +327,11 @@ function execute.getContentMapperProject(host, config)
     if host == nil or core.Len(config:ContentMappers()) == 0 then
         return nil
     end
-    error("not implemented: getContentMapperProject (content mappers)")
+    return host:Project({
+        configFileName = config:ConfigName(),
+        mappers = config:ContentMappers(),
+        compilerOptions = config:CompilerOptions(),
+    })
 end
 
 function execute.showConfig(sys, config, configFileName)
