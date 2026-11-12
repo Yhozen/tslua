@@ -1994,7 +1994,8 @@ function Checker:getExpandedParameters(sig, skipUnionExpanding)
                 end
                 return symbol
             end)
-            return core.Concatenate(core.Slice(sig.parameters, 0, ri), restParams)
+            -- Go [][]*ast.Symbol elements may be empty but never absent (no nil holes in Lua arrays).
+            return core.Concatenate(core.Slice(sig.parameters, 0, ri), restParams) or {}
         end
 
         if checker.isTupleType(restType) then
@@ -2005,7 +2006,7 @@ function Checker:getExpandedParameters(sig, skipUnionExpanding)
             end)
         end
     end
-    return { sig.parameters }
+    return { sig.parameters or {} }
 end
 
 function NodeBuilderImpl:tryGetThisParameterDeclaration(signature)
