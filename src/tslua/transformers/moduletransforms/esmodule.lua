@@ -256,7 +256,7 @@ end
 
 function ESModuleTransformer:visitCallExpression(node)
     if core.Tristate_IsTrue(self.compilerOptions.rewriteRelativeImportExtensions) then
-        if ast.IsImportCall(node:AsNode()) and #node.arguments.nodes > 0 or
+        if ast.IsImportCall(node:AsNode()) and core.Len(node.arguments.nodes) > 0 or
             ast.IsInJSFile(node:AsNode()) and ast.IsRequireCall(node:AsNode(), false --[[requireStringLiteralLikeArgument]]) then
             return self:visitImportOrRequireCall(node)
         end
@@ -265,7 +265,7 @@ function ESModuleTransformer:visitCallExpression(node)
 end
 
 function ESModuleTransformer:visitImportOrRequireCall(node)
-    if #node.arguments.nodes == 0 then
+    if core.Len(node.arguments.nodes) == 0 then
         return self:Visitor():VisitEachChild(node:AsNode())
     end
 
@@ -281,7 +281,7 @@ function ESModuleTransformer:visitImportOrRequireCall(node)
     local arguments = {}
     arguments[#arguments + 1] = argument
 
-    local rest = core.FirstResult(self:Visitor():VisitSlice(core.Slice(node.arguments.nodes, 1, #node.arguments.nodes)))
+    local rest = core.FirstResult(self:Visitor():VisitSlice(core.Slice(node.arguments.nodes, 1, core.Len(node.arguments.nodes))))
     arguments = appendAll(arguments, rest)
 
     local argumentList = self:Factory():NewNodeList(arguments)

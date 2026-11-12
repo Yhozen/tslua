@@ -52,7 +52,7 @@ end
 function externalModuleInfoCollector:collect()
     local hasImportStar = false
     local hasImportDefault = false
-    for _, node in ipairs(self.sourceFile.statements.nodes) do
+    for _, node in ipairs(self.sourceFile.statements.nodes or {}) do
         -- Look through NotEmittedStatement to find elided export= declarations
         -- (e.g., `declare export = x` is elided by the type eraser but must still be collected)
         if ast.IsNotEmittedStatement(node) then
@@ -124,7 +124,7 @@ function externalModuleInfoCollector:collect()
         elseif node.kind == Kind.VariableStatement then
             local n = node:AsVariableStatement()
             if ast.HasSyntacticModifier(node, ModifierFlags.Export) then
-                for _, decl in ipairs(n.declarationList:AsVariableDeclarationList().declarations.nodes) do
+                for _, decl in ipairs(n.declarationList:AsVariableDeclarationList().declarations.nodes or {}) do
                     self:collectExportedVariableInfo(decl)
                 end
             end
@@ -374,13 +374,13 @@ function moduletransforms.getImportNeedsImportStarHelper(node)
     end
     local namedImports = bindings:AsNamedImports()
     local defaultRefCount = 0
-    for _, binding in ipairs(namedImports.elements.nodes) do
+    for _, binding in ipairs(namedImports.elements.nodes or {}) do
         if moduletransforms.isNamedDefaultReference(binding) then
             defaultRefCount = defaultRefCount + 1
         end
     end
     -- Import star is required if there's default named refs mixed with non-default refs, or if theres non-default refs and it has a default import
-    return (defaultRefCount > 0 and defaultRefCount ~= #namedImports.elements.nodes) or ((#namedImports.elements.nodes - defaultRefCount) ~= 0 and ast.IsDefaultImport(node:AsNode()))
+    return (defaultRefCount > 0 and defaultRefCount ~= core.Len(namedImports.elements.nodes)) or ((core.Len(namedImports.elements.nodes) - defaultRefCount) ~= 0 and ast.IsDefaultImport(node:AsNode()))
 end
 
 function moduletransforms.getImportNeedsImportDefaultHelper(node)

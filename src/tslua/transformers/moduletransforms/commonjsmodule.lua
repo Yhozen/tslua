@@ -486,7 +486,7 @@ function CommonJSModuleTransformer:appendExportsOfVariableDeclarationList(statem
         return statements
     end
 
-    for _, decl in ipairs(node.declarations.nodes) do
+    for _, decl in ipairs(node.declarations.nodes or {}) do
         statements = self:appendExportsOfBindingElement(statements, decl, isForInOrOfInitializer)
     end
 
@@ -1050,7 +1050,7 @@ function CommonJSModuleTransformer:visitTopLevelVariableStatement(node)
         end
 
         -- If we're exporting these variables, then these just become assignments to 'exports.x'.
-        for _, variable in ipairs(node.declarationList:AsVariableDeclarationList().declarations.nodes) do
+        for _, variable in ipairs(node.declarationList:AsVariableDeclarationList().declarations.nodes or {}) do
             local v = variable:AsVariableDeclaration()
 
             if ast.IsIdentifier(v:Name()) and transformers.IsLocalName(self:EmitContext(), v:Name()) then
@@ -1476,7 +1476,7 @@ function CommonJSModuleTransformer:destructuringNeedsFlattening(node)
             end
         end
     elseif ast.IsArrayLiteralExpression(node) then
-        for _, elem in ipairs(node:AsArrayLiteralExpression().elements.nodes) do
+        for _, elem in ipairs(node:AsArrayLiteralExpression().elements.nodes or {}) do
             if ast.IsSpreadElement(elem) then
                 if self:destructuringNeedsFlattening(elem:Expression()) then
                     return true
@@ -1830,7 +1830,7 @@ end
 function CommonJSModuleTransformer:visitCallExpression(node)
     local needsRewrite = false
     if core.Tristate_IsTrue(self.compilerOptions.rewriteRelativeImportExtensions) then
-        if ast.IsImportCall(node:AsNode()) and #node.arguments.nodes > 0 or
+        if ast.IsImportCall(node:AsNode()) and core.Len(node.arguments.nodes) > 0 or
             ast.IsInJSFile(node:AsNode()) and ast.IsRequireCall(node:AsNode(), false --[[requireStringLiteralLikeArgument]]) then
             needsRewrite = true
         end
@@ -1992,7 +1992,7 @@ end
 function CommonJSModuleTransformer:shimOrRewriteImportOrRequireCall(node)
     local expression = self:Visitor():VisitNode(node.expression)
     local argumentsList = node.arguments
-    if #node.arguments.nodes > 0 then
+    if core.Len(node.arguments.nodes) > 0 then
         local firstArgument = self:Visitor():VisitNode(node.arguments.nodes[1])
         local firstArgumentChanged = false
         if ast.IsStringLiteralLike(firstArgument) then
@@ -2004,7 +2004,7 @@ function CommonJSModuleTransformer:shimOrRewriteImportOrRequireCall(node)
             firstArgumentChanged = true
         end
 
-        local rest, restChanged = self:Visitor():VisitSlice(core.Slice(node.arguments.nodes, 1, #node.arguments.nodes))
+        local rest, restChanged = self:Visitor():VisitSlice(core.Slice(node.arguments.nodes, 1, core.Len(node.arguments.nodes)))
         if firstArgumentChanged or restChanged then
             local arguments = appendAll({ firstArgument }, rest)
             argumentsList = self:Factory():NewNodeList(arguments)
