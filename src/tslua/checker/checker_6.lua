@@ -3456,7 +3456,7 @@ function Checker:getUnionSignatures(signatureLists)
         -- nature and having overloads in multiple constituents would necessitate making a power set of signatures from the type, whose
         -- ordering would be non-obvious)
         local masterList = signatureLists[indexWithLengthOverOne + 1]
-        local results = core.Slice(masterList, 0, #masterList)
+        local results = core.Slice(masterList, 0, core.Len(masterList))
         for _, signatures in ipairs(signatureLists) do
             if not core.Same(signatures, masterList) then
                 local signature = signatures[1]
