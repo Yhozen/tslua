@@ -1738,7 +1738,7 @@ function ls.findFirstJsxNode(root)
         end
 
         -- Skip subtree if it doesn't contain JSX
-        if node:SubtreeFacts() & ast.SubtreeContainsJsx == 0 then
+        if node:SubtreeFacts() & ast.SubtreeFacts.SubtreeContainsJsx == 0 then
             return nil
         end
 
