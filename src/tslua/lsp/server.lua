@@ -1484,7 +1484,7 @@ end
 function crossProjectOrchestrator:GetProjectsLoadingProjectTree(ctx, requestedProjectTrees)
     local result = {}
     self.server.session:WithSnapshotLoadingProjectTree(ctx, requestedProjectTrees, function(snapshot)
-        for _, p in ipairs(snapshot.ProjectCollection:Projects()) do
+        for _, p in ipairs(snapshot.projectCollection:Projects()) do
             result[#result + 1] = p
         end
     end)
@@ -2227,7 +2227,7 @@ function Server:handleWorkspaceSymbol(ctx, params, reqMsg)
         end)
     else
         self.session:WithSnapshotLoadingProjectTree(ctx, nil, function(snapshot)
-            local programs = core.Map(snapshot.ProjectCollection:Projects(), function(p)
+            local programs = core.Map(snapshot.projectCollection:Projects(), function(p)
                 return p:GetProgram()
             end)
             provideSymbols(snapshot, programs)
@@ -2395,7 +2395,7 @@ function Server:handleProjectInfo(ctx, params, _)
         return nil, err
     end
     local configFilePath = ""
-    if defaultProject ~= nil and defaultProject.Kind == project.Kind.Configured then
+    if defaultProject ~= nil and defaultProject.kind == project.Kind.Configured then
         configFilePath = defaultProject:Name()
     end
     return lsproto.ProjectInfoResult({

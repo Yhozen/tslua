@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 -- tslua: the `tsc` command line. Port of cmd/tsgo/main.go and cmd/tsgo/sys.go
--- (the --lsp and --api modes are out of scope).
+-- (the --api mode is not supported yet) and cmd/tsgo/lsp.go (--lsp).
 
 local scriptDir = (arg and arg[0] or ""):match("^(.*)/[^/]*$") or "."
 local root = scriptDir .. "/.."
@@ -97,8 +97,10 @@ function osSys:GetEnvironmentVariable(name)
     return os.getenv(name) or ""
 end
 
+-- Spawn launches a content mapper process (cmd/tsgo spawnProcess; see tslua.ipc process.lua for how
+-- its stdio is piped without native bidirectional pipes).
 function osSys:Spawn(command, dir, stderr)
-    return nil, "not implemented: Spawn"
+    return require("tslua.ipc").SpawnProcess(command, dir, stderr)
 end
 
 local function newSystem()
@@ -118,12 +120,130 @@ local function newSystem()
     }, osSys)
 end
 
+-- cmd/tsgo/lsp.go
+
+-- Go flag.FlagSet parsing for the --lsp flags. Returns (values, err).
+local function parseLSPFlags(args)
+    local defs = { stdio = "bool", pprofDir = "string", pipe = "string", socket = "string", clientProcessId = "int" }
+    local values = { stdio = false, pprofDir = "", pipe = "", socket = "", clientProcessId = 0 }
+    local i = 1
+    while i <= #args do
+        local a = args[i]
+        if a == "--" then
+            break
+        end
+        local name, value = a:match("^%-%-?([^=]+)=(.*)$")
+        if name == nil then
+            name = a:match("^%-%-?(.+)$")
+        end
+        if name == nil or a == "-" then
+            break
+        end
+        local kind = defs[name]
+        if kind == nil then
+            return nil, "flag provided but not defined: -" .. name
+        end
+        if kind == "bool" then
+            values[name] = value == nil or value == "true" or value == "1"
+        else
+            if value == nil then
+                i = i + 1
+                value = args[i]
+                if value == nil then
+                    return nil, "flag needs an argument: -" .. name
+                end
+            end
+            if kind == "int" then
+                local n = math.tointeger(tonumber(value))
+                if n == nil then
+                    return nil, "invalid value " .. string.format("%q", value) .. " for flag -" .. name .. ": parse error"
+                end
+                value = n
+            end
+            values[name] = value
+        end
+        i = i + 1
+    end
+    return values, nil
+end
+
+local function runLSP(args)
+    local lsp = require("tslua.lsp")
+    local flags, err = parseLSPFlags(args)
+    if err ~= nil then
+        io.stderr:write(err, "\n")
+        return 2
+    end
+
+    if not flags.stdio then
+        io.stderr:write("only stdio is supported\n")
+        return 1
+    end
+
+    if flags.pprofDir ~= "" then
+        -- pprof profiling is out of scope for the Lua port.
+        io.stderr:write("pprof profiles are not supported; ignoring -pprofDir\n")
+    end
+
+    local fs = bundled.WrapFS(osvfs.FS())
+    local defaultLibraryPath = bundled.LibPath()
+    local typingsLocation = osvfs.GetGlobalTypingsCacheLocation()
+
+    local cwd = osvfs.Getwd()
+    if cwd == nil or cwd == "" then
+        io.stderr:write("Error getting current directory\n")
+        return 1
+    end
+
+    local s = lsp.NewServer({
+        in_ = lsp.ToReader(io.stdin),
+        out = lsp.ToWriter(io.stdout),
+        err = newFileWriter(io.stderr),
+        cwd = tspath.NormalizePath(cwd),
+        fs = fs,
+        defaultLibraryPath = defaultLibraryPath,
+        typingsLocation = typingsLocation,
+        npmInstall = function(dir, npmArgs)
+            local quoted = {}
+            for i, a in ipairs(npmArgs) do
+                quoted[i] = "\x27" .. a:gsub("\x27", "\x27\\\x27\x27") .. "\x27"
+            end
+            local p = io.popen("cd \x27" .. dir:gsub("\x27", "\x27\\\x27\x27") .. "\x27 && npm " .. table.concat(quoted, " "), "r")
+            if p == nil then
+                return nil, "failed to run npm"
+            end
+            local out = p:read("a")
+            local ok = p:close()
+            if not ok then
+                return out, "npm exited with an error"
+            end
+            return out, nil
+        end,
+        -- Spawning child processes with piped stdio (content mappers) needs more than the Lua
+        -- standard library offers.
+        spawn = nil,
+        progressDelay = 0.25,
+        -- The parent process watchdog needs a concurrent ticker; it is not started.
+        setParentProcessID = nil,
+    })
+
+    local runErr = s:Run(nil)
+    if runErr ~= nil then
+        io.stderr:write(require("tslua.jsonrpc").ErrorString(runErr), "\n")
+        return 1
+    end
+    return 0
+end
+
 local function runMain()
     local args = {}
     for i = 1, #arg do
         args[i] = arg[i]
     end
-    if #args > 0 and (args[1] == "--lsp" or args[1] == "--api") then
+    if #args > 0 and args[1] == "--lsp" then
+        return runLSP({ table.unpack(args, 2) })
+    end
+    if #args > 0 and args[1] == "--api" then
         io.stderr:write("tslua: " .. args[1] .. " is not supported\n")
         return tsc.ExitStatus.NotImplemented
     end
