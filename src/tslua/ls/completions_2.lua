@@ -790,7 +790,7 @@ function LanguageService:getEntryForMemberCompletion(ctx, typeChecker, symbol, n
         body = ls.createSnippetTabStopBody(changeTracker.nodeFactory, changeTracker.emitContext)
     end
 
-    local nodes = fixer:createMemberFromSymbol(symbol, classLikeDeclaration, file, body, ls.preserveOptionalFlags.Property, abstract)
+    local nodes = fixer:createMemberFromSymbol(symbol, classLikeDeclaration, file, body, ls.preserveOptionalFlagsProperty, abstract)
     local additionalTextEdits = nil
     if importAdder ~= nil and importAdder:HasFixes() then
         additionalTextEdits = importAdder:Edits()
