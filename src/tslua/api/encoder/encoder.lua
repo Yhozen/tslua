@@ -21,13 +21,20 @@ end
 -- description of the header, string offsets, string data, extended node data, structured data and
 -- nodes sections.
 
+-- hashParts returns (hi, lo) of a SourceFile.Hash (xxh3.Uint128). The field is nil (Go zero
+-- value), an xxh3.Uint128 table, or the 32-digit hex string form tslua.project stores.
+function encoder.hashParts(h)
+    if h == nil or h == "" then
+        return 0, 0
+    elseif type(h) == "string" then
+        return tonumber(string.sub(h, 1, 16), 16), tonumber(string.sub(h, 17, 32), 16)
+    end
+    return h.hi, h.lo
+end
+
 -- SourceFileHash returns the 128-bit content hash for a source file as a hex string.
 function encoder.SourceFileHash(sourceFile)
-    local h = sourceFile.hash
-    local hi, lo = 0, 0
-    if h ~= nil then
-        hi, lo = h.hi, h.lo
-    end
+    local hi, lo = encoder.hashParts(sourceFile.hash)
     return string.format("%016x%016x", hi, lo)
 end
 
@@ -328,9 +335,7 @@ function encoder.encodeTree(rootNode, sourceFile)
     local hashLo, hashHi = 0, 0
     local parseOpts = 0
     if rootNode.kind == Kind.SourceFile then
-        if sourceFile.hash ~= nil then
-            hashLo, hashHi = sourceFile.hash.lo, sourceFile.hash.hi
-        end
+        hashHi, hashLo = encoder.hashParts(sourceFile.hash)
         parseOpts = encoder.encodeParseOptions(sourceFile:ParseOptions().externalModuleIndicatorOptions)
 
         -- Encode imports, moduleAugmentations, and ambientModuleNames into structured data,
