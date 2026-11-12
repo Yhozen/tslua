@@ -1425,7 +1425,7 @@ function Checker:resolveESModuleSymbol(moduleSymbol, node, moduleSpecifier)
 end
 
 function Checker:hasSignatures(t)
-    return #self:getSignaturesOfStructuredType(t, SignatureKind.Call) > 0 or #self:getSignaturesOfStructuredType(t, SignatureKind.Construct) > 0
+    return core.Len(self:getSignaturesOfStructuredType(t, SignatureKind.Call)) > 0 or core.Len(self:getSignaturesOfStructuredType(t, SignatureKind.Construct)) > 0
 end
 
 function checker.isESMFormatImportImportingCommonjsFormatFile(usageMode, targetMode)
