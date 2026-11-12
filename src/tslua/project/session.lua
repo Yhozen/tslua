@@ -225,6 +225,8 @@ function Session:Trace(msg)
 end
 
 function Session:Configure(config)
+    -- UserPreferences is passed by value.
+    config = project.copyValue(config)
     self.pendingUserConfigChanges = true
     local oldConfig = self.workspaceUserPreferences
     self.workspaceUserPreferences = config
