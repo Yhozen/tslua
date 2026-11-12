@@ -166,9 +166,9 @@ function MockWatchBackend:SendChangedPaths(changes)
     local events = {}
     local seenDirs = {}
     for _, c in ipairs(changes or {}) do
-        local kind = fswatch().EventKind.Update
+        local kind = fswatch().EventKind.EventUpdate
         if c.deleted then
-            kind = fswatch().EventKind.Delete
+            kind = fswatch().EventKind.EventDelete
         end
         events[#events + 1] = { kind = kind, path = c.path }
         -- Emit update events for parent directories of changed files.
@@ -180,7 +180,7 @@ function MockWatchBackend:SendChangedPaths(changes)
                 break
             end
             seenDirs[dir] = true
-            events[#events + 1] = { kind = fswatch().EventKind.Update, path = dir }
+            events[#events + 1] = { kind = fswatch().EventKind.EventUpdate, path = dir }
             local parent = pathDir(dir)
             if parent == dir then
                 break
