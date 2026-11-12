@@ -14,7 +14,7 @@ goal.
 - `src/tslua/bundled/libs/` — the `lib.*.d.ts` files.
 - `bin/tslua` — the `tsc`-like command line; `bin/tslua-test` — the baseline runner.
 - `scripts/gen/` — generators for constants, diagnostic messages and the AST.
-- `docs/PORTING.md`, `docs/AST.md` — conventions; `docs/STATUS.md` — progress.
+- `docs/PORTING.md`, `docs/AST.md`, `docs/CHECKER.md` — conventions; `docs/JOURNEY.md` — log of progress, learnings and roadblocks.
 
 ## Development
 

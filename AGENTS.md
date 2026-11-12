@@ -8,3 +8,5 @@ contract) before writing code. The Go source in `vendor/typescript-go/internal/`
 - Load a package: `lua -e 'package.path="src/?.lua;src/?/init.lua;"..package.path; require("tslua.ast")'`.
 - Write scripts in JavaScript (Node) or Lua, not Python.
 - Commit only your own paths; never `git add -A`.
+- Record learnings and roadblocks that would help others in `docs/JOURNEY.md` (Learnings /
+  Roadblocks sections); package-specific notes go in `.context/progress/<agent>.md`.
