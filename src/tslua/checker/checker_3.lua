@@ -1866,6 +1866,9 @@ function Checker:resolveCall(node, signatures, candidatesOutArray, checkMode, ca
     s.candidates = self:reorderCandidates(signatures, callChainFlags)
     if candidatesOutArray ~= nil then
         setOutArray(candidatesOutArray, s.candidates)
+        -- Go's *candidatesOutArray aliases s.candidates, so later in-place updates
+        -- (s.candidates[i] = checkCandidate, getCandidateForOverloadFailure) are visible to the caller.
+        s.candidates = candidatesOutArray
     end
 
     if #s.candidates == 0 then
