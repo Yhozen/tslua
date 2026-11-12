@@ -4,7 +4,7 @@ GO_PKGS := ./internal/ast ./internal/core ./internal/checker ./internal/binder .
 	./internal/transformers/... ./internal/module ./internal/jsnum ./internal/evaluator \
 	./internal/outputpaths ./internal/tspath ./internal/collections ./internal/nodebuilder \
 	./internal/sourcemap ./internal/stringutil ./internal/modulespecifiers \
-	./internal/pseudochecker ./internal/ls ./internal/ls/lsutil ./internal/ls/lsconv ./internal/ls/change \
+	./internal/pseudochecker ./internal/ls ./internal/ls/lsutil ./internal/ls/lsconv ./internal/ls/change ./internal/ls/autoimport \
 	./internal/project ./internal/project/dirty ./internal/project/logging ./internal/project/background \
 	./internal/jsonrpc ./internal/lsp ./internal/lsp/lsproto
 
