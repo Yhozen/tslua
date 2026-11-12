@@ -26,14 +26,10 @@ local IterationUse = checker.IterationUse
 local UnionReduction = checker.UnionReduction
 local ElementFlags = checker.ElementFlags
 local AccessFlags = checker.AccessFlags
-local InferenceFlags = checker.InferenceFlags
-local AssignmentKind = checker.AssignmentKind
 local SymbolFlags = ast.SymbolFlags
 local Kind = ast.Kind
 local NodeFlags = ast.NodeFlags
-local ModifierFlags = ast.ModifierFlags
 local FunctionFlags = ast.FunctionFlags
-local JSDeclarationKind = ast.JSDeclarationKind
 local ModuleKind = core.ModuleKind
 
 -- Go slices.Contains
@@ -3069,4 +3065,637 @@ function Checker:GetSymbolAtLocation(node)
 
     -- set ignoreErrors: true because any lookups invoked by the API shouldn't cause any new errors
     return self:getSymbolAtLocation(ast.GetReparsedNodeForNode(node), true --[[ignoreErrors]])
+end
+
+-- Returns the symbol associated with a given AST node. Do *not* use this function in the checker itself! It should
+-- be used only by the language service and external tools. The semantics of the function are deliberately "fuzzy"
+-- and aim to just return *some* symbol for the node. To obtain the symbol associated with a node for type checking
+-- purposes, use appropriate function for the context, e.g. `getResolvedSymbol` for an expression identifier,
+-- `getSymbolOfDeclaration` for a declaration, etc.
+function Checker:getSymbolAtLocation(node, ignoreErrors)
+    if ast.IsSourceFile(node) then
+        if ast.IsExternalOrCommonJSModule(node:AsSourceFile()) then
+            return self:getMergedSymbol(node:Symbol())
+        end
+        return nil
+    end
+    local parent = node.parent
+    local grandParent = parent.parent
+
+    if node.flags & NodeFlags.InWithStatement ~= 0 then
+        -- We cannot answer semantic questions within a with block, do not proceed any further
+        return nil
+    end
+
+    if ast.IsDeclarationNameOrImportPropertyName(node) then
+        -- This is a declaration, call getSymbolOfNode
+        local parentSymbol = self:getSymbolOfDeclaration(parent)
+        if ast.IsImportOrExportSpecifier(parent) and parent:PropertyName() == node then
+            return self:getImmediateAliasedSymbol(parentSymbol)
+        end
+        return parentSymbol
+    elseif ast.IsLiteralComputedPropertyDeclarationName(node) then
+        return self:getSymbolOfDeclaration(grandParent)
+    end
+
+    if ast.IsIdentifier(node) then
+        if checker.isInRightSideOfImportOrExportAssignment(node) then
+            return self:getSymbolOfNameOrPropertyAccessExpression(node)
+        elseif ast.IsBindingElement(parent) and ast.IsObjectBindingPattern(grandParent) and node == parent:PropertyName() then
+            local typeOfPattern = self:getTypeOfNode(grandParent)
+            local propertyDeclaration = self:getPropertyOfType(typeOfPattern, node:Text())
+            if propertyDeclaration ~= nil then
+                return propertyDeclaration
+            end
+        elseif ast.IsMetaProperty(parent) and parent:Name() == node then
+            local metaProp = parent:AsMetaProperty()
+            if metaProp.keywordToken == Kind.NewKeyword and node:Text() == "target" then
+                -- `target` in `new.target`
+                return self:checkNewTargetMetaProperty(parent).symbol
+            end
+            -- The `meta` in `import.meta` could be given `getTypeOfNode(parent).symbol` (the `ImportMeta` interface symbol), but
+            -- we have a fake expression type made for other reasons already, whose transient `meta`
+            -- member should more exactly be the kind of (declarationless) symbol we want.
+            -- (See #44364 and #45031 for relevant implementation PRs)
+            if metaProp.keywordToken == Kind.ImportKeyword and node:Text() == "meta" then
+                return (self:getGlobalImportMetaExpressionType():AsObjectType().members or {})["meta"]
+            end
+            -- no other meta properties are valid syntax, thus no others should have symbols
+            return nil
+        elseif ast.IsJSDocParameterTag(parent) and parent:Name() == node then
+            local fn = ast.GetNodeAtPosition(ast.GetSourceFileOfNode(node), node:Pos(), false)
+            if fn ~= nil and ast.IsFunctionLike(fn) then
+                for _, param in ipairs(fn:Parameters() or {}) do
+                    if ast.IsIdentifier(param:Name()) and param:Name():Text() == node:Text() then
+                        return self:getSymbolOfNode(param)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Go switch with fallthrough: `case_` names the case currently being executed.
+    local k = node.kind
+    local case_
+    if k == Kind.Identifier or k == Kind.PrivateIdentifier or k == Kind.PropertyAccessExpression or k == Kind.QualifiedName then
+        case_ = "name"
+    elseif k == Kind.ThisKeyword then
+        case_ = "this"
+    elseif k == Kind.ThisType then
+        case_ = "thisType"
+    elseif k == Kind.SuperKeyword then
+        case_ = "super"
+    elseif k == Kind.ConstructorKeyword then
+        case_ = "constructor"
+    elseif k == Kind.StringLiteral or k == Kind.NoSubstitutionTemplateLiteral then
+        case_ = "string"
+    elseif k == Kind.NumericLiteral then
+        case_ = "numeric"
+    elseif k == Kind.DefaultKeyword or k == Kind.FunctionKeyword or k == Kind.EqualsGreaterThanToken or k == Kind.ClassKeyword then
+        case_ = "keyword"
+    elseif k == Kind.ImportType then
+        case_ = "importType"
+    elseif k == Kind.ExportKeyword then
+        case_ = "export"
+    elseif k == Kind.ImportKeyword then
+        case_ = "import"
+    elseif k == Kind.NewKeyword then
+        case_ = "new"
+    elseif k == Kind.InstanceOfKeyword then
+        case_ = "instanceof"
+    elseif k == Kind.MetaProperty then
+        case_ = "metaProperty"
+    elseif k == Kind.JsxNamespacedName then
+        case_ = "jsxNamespacedName"
+    else
+        return nil
+    end
+
+    if case_ == "name" then
+        if not ast.IsThisInTypeQuery(node) then
+            return self:getSymbolOfNameOrPropertyAccessExpression(node)
+        end
+        case_ = "this" -- fallthrough
+    end
+    if case_ == "this" then
+        local container = self:getThisContainer(node, false --[[includeArrowFunctions]], false --[[includeClassComputedPropertyName]])
+        if ast.IsFunctionLike(container) then
+            local sig = self:getSignatureFromDeclaration(container)
+            if sig.thisParameter ~= nil then
+                return sig.thisParameter
+            end
+        end
+        if ast.IsInExpressionContext(node) then
+            return self:checkExpression(node).symbol
+        end
+        case_ = "thisType" -- fallthrough
+    end
+    if case_ == "thisType" then
+        return self:getTypeFromThisTypeNode(node).symbol
+    elseif case_ == "super" then
+        return self:checkExpression(node).symbol
+    elseif case_ == "constructor" then
+        -- constructor keyword for an overload, should take us to the definition if it exist
+        local constructorDeclaration = parent
+        if constructorDeclaration ~= nil and constructorDeclaration.kind == Kind.Constructor then
+            return constructorDeclaration.parent:Symbol()
+        end
+        return nil
+    end
+    if case_ == "string" then
+        -- 1). import x = require("./mo/*gotToDefinitionHere*/d")
+        -- 2). External module name in an import declaration
+        -- 3). Require in Javascript
+        -- 4). type A = import("./f/*gotToDefinitionHere*/oo")
+        if (ast.IsExternalModuleImportEqualsDeclaration(grandParent) and ast.GetExternalModuleImportEqualsDeclarationExpression(grandParent) == node) or
+            ((parent.kind == Kind.ImportDeclaration or parent.kind == Kind.JSImportDeclaration or parent.kind == Kind.ExportDeclaration) and ast.GetExternalModuleName(parent) == node) or
+            ast.IsVariableDeclarationInitializedToRequire(grandParent) or ast.IsImportCall(parent) or
+            (ast.IsLiteralTypeNode(parent) and ast.IsLiteralImportTypeNode(grandParent) and grandParent:AsImportTypeNode().argument == parent) then
+            return self:resolveExternalModuleName(node, node, ignoreErrors)
+        end
+        if ast.IsCallExpression(parent) and ast.IsBindableObjectDefinePropertyCall(parent) and parent:Arguments()[2] == node then
+            return self:getSymbolOfDeclaration(parent)
+        end
+        case_ = "numeric" -- fallthrough
+    end
+    if case_ == "numeric" then
+        -- index access
+        local objectType
+        if ast.IsElementAccessExpression(parent) then
+            if parent:AsElementAccessExpression().argumentExpression == node then
+                objectType = self:getTypeOfExpression(parent:Expression())
+            end
+        elseif ast.IsLiteralTypeNode(parent) and ast.IsIndexedAccessTypeNode(grandParent) then
+            objectType = self:getTypeFromTypeNode(grandParent:AsIndexedAccessTypeNode().objectType)
+        end
+
+        if objectType ~= nil then
+            return self:getPropertyOfType(objectType, node:Text())
+        end
+        return nil
+    elseif case_ == "keyword" then
+        return self:getSymbolOfNode(node.parent)
+    elseif case_ == "importType" then
+        if ast.IsLiteralImportTypeNode(node) then
+            return self:getSymbolAtLocation(node:AsImportTypeNode().argument:AsLiteralTypeNode().literal, ignoreErrors)
+        end
+        return nil
+    elseif case_ == "export" then
+        if ast.IsExportAssignment(parent) then
+            if parent:Symbol() == nil then
+                error("Symbol should be defined", 0)
+            end
+            return parent:Symbol()
+        end
+        return nil
+    end
+    if case_ == "import" then
+        if ast.IsMetaProperty(node.parent) and node.parent:Text() == "defer" then
+            return nil
+        end
+        case_ = "new" -- fallthrough
+    end
+    if case_ == "new" then
+        if ast.IsMetaProperty(parent) then
+            return self:checkMetaPropertyKeyword(parent).symbol
+        end
+        return nil
+    elseif case_ == "instanceof" then
+        if ast.IsBinaryExpression(parent) then
+            local t = self:getTypeOfExpression(parent:AsBinaryExpression().right)
+            local hasInstanceMethodType = self:getSymbolHasInstanceMethodOfObjectType(t)
+            if hasInstanceMethodType ~= nil and hasInstanceMethodType.symbol ~= nil then
+                return hasInstanceMethodType.symbol
+            end
+            return t.symbol
+        end
+        return nil
+    elseif case_ == "metaProperty" then
+        return self:checkExpression(node).symbol
+    elseif case_ == "jsxNamespacedName" then
+        if ast.IsJsxTagName(node) and checker.isJsxIntrinsicTagName(node) then
+            local symbol = self:getIntrinsicTagSymbol(node.parent)
+            if symbol == self.unknownSymbol then
+                return nil
+            end
+            return symbol
+        end
+        -- fallthrough to default
+    end
+    return nil
+end
+
+function Checker:getIndexSignaturesAtLocation(node)
+    local signatures
+    if ast.IsIdentifier(node) and ast.IsPropertyAccessExpression(node.parent) and node.parent:Name() == node then
+        local keyType = self:getLiteralTypeFromPropertyName(node)
+        local objectType = self:getTypeOfExpression(node.parent:Expression())
+        for _, t in ipairs(objectType:Distributed()) do
+            for _, info in ipairs(self:getApplicableIndexInfos(t, keyType) or {}) do
+                if info.declaration ~= nil then
+                    signatures = core.AppendIfUnique(signatures, info.declaration)
+                end
+            end
+        end
+    end
+    return signatures
+end
+
+function Checker:getSymbolOfNameOrPropertyAccessExpression(name)
+    if ast.IsDeclarationName(name) then
+        return self:getSymbolOfNode(name.parent)
+    end
+    if name.parent.kind == Kind.ExportAssignment and ast.IsEntityNameExpression(name) then
+        -- Even an entity name expression that doesn't resolve as an entityname may still typecheck as a property access expression
+        local success = self:resolveEntityName(
+            name,
+            --[[all meanings]] SymbolFlags.Value | SymbolFlags.Type | SymbolFlags.Namespace | SymbolFlags.Alias,
+            true --[[ignoreErrors]], false --[[dontResolveAlias]], nil --[[location]]
+        )
+        if success ~= nil and success ~= self.unknownSymbol then
+            return success
+        end
+    elseif ast.IsEntityName(name) and checker.isInRightSideOfImportOrExportAssignment(name) then
+        -- Since we already checked for ExportAssignment, this really could only be an Import
+        local importEqualsDeclaration = ast.FindAncestorKind(name, Kind.ImportEqualsDeclaration)
+        if importEqualsDeclaration == nil then
+            error("ImportEqualsDeclaration should be defined", 0)
+        end
+        return self:getSymbolOfPartOfRightHandSideOfImportEquals(name)
+    end
+
+    if ast.IsEntityName(name) then
+        local possibleImportNode = checker.isImportTypeQualifierPart(name)
+        if possibleImportNode ~= nil then
+            self:getTypeFromTypeNode(possibleImportNode)
+            local sym = self:getResolvedSymbolOrNil(name)
+            return core.IfElse(sym == self.unknownSymbol, nil, sym)
+        end
+    end
+
+    while ast.IsRightSideOfQualifiedNameOrPropertyAccess(name) do
+        name = name.parent
+    end
+
+    if checker.isInNameOfExpressionWithTypeArgumentsOrHeritageTypeReference(name) then
+        local meaning
+        if name.parent.kind == Kind.ExpressionWithTypeArguments or name.parent.kind == Kind.TypeReference then
+            -- A heritage element name may appear in type space, value space, or both;
+            -- ensure the meaning matches its context.
+            meaning = core.IfElse(ast.IsPartOfTypeNode(name), SymbolFlags.Type, SymbolFlags.Value)
+
+            -- In a class 'extends' clause we are also looking for a value.
+            if ast.IsExpressionWithTypeArgumentsInClassExtendsClause(name.parent) then
+                meaning = meaning | SymbolFlags.Value
+            end
+        else
+            meaning = SymbolFlags.Namespace
+        end
+
+        meaning = meaning | SymbolFlags.Alias
+        local entityNameSymbol
+        if ast.IsEntityNameExpression(name) then
+            entityNameSymbol = self:resolveEntityName(name, meaning, true --[[ignoreErrors]], false --[[dontResolveAlias]], nil --[[location]])
+        end
+        if entityNameSymbol ~= nil then
+            return entityNameSymbol
+        end
+    end
+
+    if ast.IsExpressionNode(name) then
+        if ast.NodeIsMissing(name) then
+            -- Missing entity name.
+            return nil
+        end
+        local isJSDoc = ast.IsJSDocNameReferenceContext(name)
+        if ast.IsIdentifier(name) then
+            if ast.IsJsxTagName(name) and checker.isJsxIntrinsicTagName(name) then
+                local symbol = self:getIntrinsicTagSymbol(name.parent)
+                return core.IfElse(symbol == self.unknownSymbol, nil, symbol)
+            end
+            local meaning = core.IfElse(isJSDoc, SymbolFlags.Value | SymbolFlags.Type | SymbolFlags.Namespace, SymbolFlags.Value)
+            local location
+            if isJSDoc then
+                location = ast.GetHostSignatureFromJSDoc(name)
+            end
+            local result = self:resolveEntityName(name, meaning, true --[[ignoreErrors]], true --[[dontResolveAlias]], location)
+            if result == nil and isJSDoc then
+                local container = ast.FindAncestor(name, ast.IsClassOrInterfaceLike)
+                if container ~= nil then
+                    local symbol = self:getSymbolOfDeclaration(container)
+                    -- Handle unqualified references to class static members and class or interface instance members
+                    result = self:getMergedSymbol(self:getSymbol(self:getExportsOfSymbol(symbol), name:Text(), meaning))
+                    if result == nil then
+                        result = self:getPropertyOfType(self:getDeclaredTypeOfSymbol(symbol), name:Text())
+                    end
+                end
+            end
+            return result
+        elseif ast.IsPrivateIdentifier(name) then
+            return self:getSymbolForPrivateIdentifierExpression(name)
+        elseif ast.IsPropertyAccessExpression(name) or ast.IsQualifiedName(name) then
+            local links = self.symbolNodeLinks:Get(name)
+            if links.resolvedSymbol ~= nil then
+                return links.resolvedSymbol
+            end
+            if ast.IsPropertyAccessExpression(name) then
+                self:checkPropertyAccessExpression(name, CheckMode.Normal, false --[[writeOnly]])
+                if links.resolvedSymbol == nil and not ast.IsPrivateIdentifier(name:Name()) then
+                    links.resolvedSymbol = self:getApplicableIndexSymbol(
+                        self:checkExpressionCached(name:Expression()),
+                        self:getLiteralTypeFromPropertyName(name:Name())
+                    )
+                end
+            else
+                self:checkQualifiedName(name, CheckMode.Normal)
+            end
+            if links.resolvedSymbol == nil and isJSDoc and ast.IsQualifiedName(name) then
+                return self:resolveJSDocMemberName(name)
+            end
+            return links.resolvedSymbol
+        end
+    elseif ast.IsEntityName(name) and checker.isTypeReferenceIdentifier(name) then
+        local meaning = core.IfElse(name.parent.kind == Kind.TypeReference, SymbolFlags.Type, SymbolFlags.Namespace)
+        local symbol = self:resolveEntityName(name, meaning, true --[[ignoreErrors]], true --[[dontResolveAlias]], nil --[[location]])
+        if symbol ~= nil and symbol ~= self.unknownSymbol then
+            return symbol
+        end
+        if ast.IsNameOfHeritageClauseTypeReference(name) then
+            return nil
+        end
+        return self:getUnresolvedSymbolForEntityName(name)
+    end
+
+    if name.parent.kind == Kind.TypePredicate then
+        return self:resolveEntityName(
+            name,
+            SymbolFlags.FunctionScopedVariable, --[[meaning]]
+            true, --[[ignoreErrors]]
+            false, --[[dontResolveAlias]]
+            nil --[[location]]
+        )
+    end
+    return nil
+end
+
+function Checker:isThisPropertyAndThisTyped(node)
+    if node:Expression().kind == Kind.ThisKeyword then
+        local container = self:getThisContainer(node, false --[[includeArrowFunctions]], false --[[includeClassComputedPropertyName]])
+        if ast.IsFunctionLike(container) then
+            local containingLiteral = checker.getContainingObjectLiteral(container)
+            if containingLiteral ~= nil then
+                local contextualType = self:getApparentTypeOfContextualType(containingLiteral, ContextFlags.None)
+                local t = self:getThisTypeOfObjectLiteralFromContextualType(containingLiteral, contextualType)
+                return t ~= nil and not checker.IsTypeAny(t)
+            end
+        end
+    end
+    return false
+end
+
+function Checker:getTypeOfNode(node)
+    if ast.IsSourceFile(node) and not ast.IsExternalOrCommonJSModule(node:AsSourceFile()) then
+        return self.errorType
+    end
+
+    if node.flags & NodeFlags.InWithStatement ~= 0 then
+        -- We cannot answer semantic questions within a with block, do not proceed any further
+        return self.errorType
+    end
+
+    local classDecl, isImplements = ast.TryGetClassImplementingOrExtendingHeritageClauseElement(node)
+    local classType
+    if classDecl ~= nil then
+        classType = self:getDeclaredTypeOfClassOrInterface(self:getSymbolOfDeclaration(classDecl))
+    end
+
+    if ast.IsPartOfTypeNode(node) then
+        local typeFromTypeNode = self:getTypeFromTypeNode(node)
+        if classType ~= nil then
+            return self:getTypeWithThisArgument(
+                typeFromTypeNode,
+                classType:AsInterfaceType().thisType,
+                false --[[needApparentType]]
+            )
+        end
+
+        return typeFromTypeNode
+    end
+
+    if ast.IsExpressionNode(node) then
+        return self:getRegularTypeOfExpression(node)
+    end
+
+    if classType ~= nil and not isImplements then
+        -- A SyntaxKind.ExpressionWithTypeArguments is considered a type node, except when it occurs in the
+        -- extends clause of a class. We handle that case here.
+        local baseType = core.FirstOrNil(self:getBaseTypes(classType))
+        if baseType ~= nil then
+            return self:getTypeWithThisArgument(baseType, classType:AsInterfaceType().thisType, false --[[needApparentType]])
+        end
+        return self.errorType
+    end
+
+    if ast.IsTypeDeclaration(node) then
+        -- In this case, we call getSymbolOfDeclaration instead of getSymbolAtLocation because it is a declaration
+        local symbol = self:getSymbolOfDeclaration(node)
+        return self:getDeclaredTypeOfSymbol(symbol)
+    end
+
+    if ast.IsTypeDeclarationName(node) then
+        local symbol = self:getSymbolAtLocation(node, false --[[ignoreErrors]])
+        if symbol ~= nil then
+            return self:getDeclaredTypeOfSymbol(symbol)
+        end
+        return self.errorType
+    end
+
+    if ast.IsBindingElement(node) then
+        local t = self:getTypeForVariableLikeDeclaration(node, true --[[includeOptionality]], CheckMode.Normal)
+        if t ~= nil then
+            return t
+        end
+        return self.errorType
+    end
+
+    if ast.IsDeclaration(node) then
+        -- In this case, we call getSymbolOfDeclaration instead of getSymbolLAtocation because it is a declaration
+        local symbol = self:getSymbolOfDeclaration(node)
+        if symbol ~= nil then
+            return self:getTypeOfSymbol(symbol)
+        end
+        return self.errorType
+    end
+
+    if ast.IsDeclarationNameOrImportPropertyName(node) then
+        local symbol = self:getSymbolAtLocation(node, false --[[ignoreErrors]])
+        if symbol ~= nil then
+            return self:getTypeOfSymbol(symbol)
+        end
+        return self.errorType
+    end
+
+    if ast.IsBindingPattern(node) then
+        local t = self:getTypeForVariableLikeDeclaration(node.parent, true --[[includeOptionality]], CheckMode.Normal)
+        if t ~= nil then
+            return t
+        end
+        return self.errorType
+    end
+
+    if checker.isInRightSideOfImportOrExportAssignment(node) then
+        local symbol = self:getSymbolAtLocation(node, false --[[ignoreErrors]])
+        if symbol ~= nil then
+            local declaredType = self:getDeclaredTypeOfSymbol(symbol)
+            if not self:isErrorType(declaredType) then
+                return declaredType
+            end
+            return self:getTypeOfSymbol(symbol)
+        end
+    end
+
+    if ast.IsMetaProperty(node.parent) and node.parent:AsMetaProperty().keywordToken == node.kind then
+        return self:checkMetaPropertyKeyword(node.parent)
+    end
+
+    if ast.IsImportAttributes(node) then
+        return self.getGlobalImportAttributesType()
+    end
+
+    return self.errorType
+end
+
+function Checker:getThisTypeOfObjectLiteralFromContextualType(containingLiteral, contextualType)
+    local literal = containingLiteral
+    local t = contextualType
+    while t ~= nil do
+        local thisType = self:getThisTypeFromContextualType(t)
+        if thisType ~= nil then
+            return thisType
+        end
+        if literal.parent.kind ~= Kind.PropertyAssignment then
+            break
+        end
+        literal = literal.parent.parent
+        t = self:getApparentTypeOfContextualType(literal, ContextFlags.None)
+    end
+    return nil
+end
+
+function Checker:getThisTypeFromContextualType(t)
+    return self:mapType(t, function(t1)
+        if t1.flags & TypeFlags.Intersection ~= 0 then
+            for _, t2 in ipairs(t1:AsIntersectionType().types) do
+                local typeArg = self:getThisTypeArgument(t2)
+                if typeArg ~= nil then
+                    return typeArg
+                end
+            end
+            return nil
+        else
+            return self:getThisTypeArgument(t1)
+        end
+    end)
+end
+
+function Checker:getThisTypeArgument(t)
+    if t.objectFlags & ObjectFlags.Reference ~= 0 and t:AsTypeReference().target == self.globalThisType then
+        return self:getTypeArguments(t)[1]
+    end
+    return nil
+end
+
+function Checker:getApplicableIndexInfos(t, keyType)
+    return core.Filter(self:getIndexInfosOfType(t), function(info) return self:isApplicableIndexType(keyType, info.keyType) end)
+end
+
+function Checker:getApplicableIndexSymbol(t, keyType)
+    local info = self:getApplicableIndexInfo(t, keyType)
+    if info ~= nil and info ~= self.anyBaseTypeIndexInfo then
+        if info.indexSymbol == nil then
+            local declarations
+            if info.declaration ~= nil then
+                declarations = { info.declaration }
+            else
+                for _, info1 in ipairs(self:getIndexInfosOfType(t) or {}) do
+                    if info1.declaration ~= nil and self:isApplicableIndexType(keyType, info1.keyType) then
+                        declarations = core.Append(declarations, info1.declaration)
+                    end
+                end
+            end
+            if core.Len(declarations) ~= 0 then
+                local symbol = self:newSymbol(SymbolFlags.Property, ast.InternalSymbolNameIndex)
+                symbol.checkFlags = symbol.checkFlags | ast.CheckFlags.IndexSymbol
+                symbol.declarations = declarations
+                symbol.valueDeclaration = declarations[1]
+                symbol.parent = t.symbol
+                local links = self.valueSymbolLinks:Get(symbol)
+                links.resolvedType = info.valueType
+                info.indexSymbol = symbol
+            end
+        end
+        return info.indexSymbol
+    end
+    return nil
+end
+
+function Checker:getRegularTypeOfExpression(expr)
+    if ast.IsRightSideOfQualifiedNameOrPropertyAccess(expr) then
+        expr = expr.parent
+    end
+    return self:getRegularTypeOfLiteralType(self:getTypeOfExpression(expr))
+end
+
+function Checker:containsArgumentsReference(node)
+    if node:Body() == nil then
+        return false
+    end
+
+    local cachedContainsArguments = self.cachedArgumentsReferenced[node]
+    if cachedContainsArguments ~= nil then
+        return cachedContainsArguments
+    end
+
+    local visit
+    visit = function(n)
+        if n == nil then
+            return false
+        end
+        local k = n.kind
+        if k == Kind.Identifier then
+            return n:Text() == self.argumentsSymbol.name and self:IsArgumentsSymbol(self:getResolvedSymbol(n))
+        elseif k == Kind.PropertyDeclaration or k == Kind.MethodDeclaration or k == Kind.GetAccessor or k == Kind.SetAccessor then
+            if ast.IsComputedPropertyName(n:Name()) then
+                return visit(n:Name())
+            end
+        elseif k == Kind.PropertyAccessExpression or k == Kind.ElementAccessExpression then
+            return visit(n:Expression())
+        elseif k == Kind.PropertyAssignment then
+            return visit(n:Initializer())
+        end
+        if checker.nodeStartsNewLexicalEnvironment(n) or ast.IsPartOfTypeNode(n) then
+            return false
+        end
+        return n:ForEachChild(visit)
+    end
+
+    local containsArguments = visit(node:Body())
+    self.cachedArgumentsReferenced[node] = containsArguments
+    return containsArguments
+end
+
+function Checker:GetTypeAtLocation(node)
+    return self:getTypeOfNode(ast.GetReparsedNodeForNode(node))
+end
+
+function Checker:GetEmitResolver()
+    self.emitResolverOnce:Do(function()
+        self.emitResolver = checker.newEmitResolver(self)
+    end)
+
+    return self.emitResolver
+end
+
+function Checker:GetAliasedSymbol(symbol)
+    return self:resolveAlias(symbol)
 end
