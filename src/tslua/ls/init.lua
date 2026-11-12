@@ -3,6 +3,9 @@ package.loaded["tslua.ls"] = ls
 for k, v in pairs(require("tslua.ls.consts_generated")) do
     ls[k] = v
 end
+-- Classes that several files add methods to are created here, before any file loads.
+ls.LanguageService = {}
+ls.LanguageService.__index = ls.LanguageService
 require("tslua.ls.api")
 require("tslua.ls.autoinsert")
 require("tslua.ls.callhierarchy")

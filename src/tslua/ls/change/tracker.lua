@@ -53,8 +53,7 @@ change.trackerEditKindReplaceWithMultipleNodes = 4
 
 -- Tracker embeds *printer.EmitContext and *ast.NodeFactory: they are the fields emitContext and
 -- nodeFactory, and their methods are promoted (callable on the tracker).
-local Tracker = {}
-change.Tracker = Tracker
+local Tracker = change.Tracker
 Tracker.__index = function(self, k)
     local m = Tracker[k]
     if m ~= nil then
