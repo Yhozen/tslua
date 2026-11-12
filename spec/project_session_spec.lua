@@ -20,7 +20,6 @@ local function partialChange(startLine, startChar, endLine, endChar, text)
         partial = {
             range = {
                 start = { line = startLine, character = startChar },
-                ["end"] = { line = endLine, character = endChar },
                 end_ = { line = endLine, character = endChar },
             },
             text = text,
