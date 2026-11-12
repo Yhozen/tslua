@@ -77,7 +77,7 @@ end
 -- convex load penalty. A nil order means stable program order. File indices and the
 -- returned checker indices are 0-based.
 function compiler.getCheckerAssociationsInOrder(fileWeights, adjacentFiles, fileOrder, checkerCount, penaltyMultiplier)
-    if #fileWeights == 0 then
+    if core.Len(fileWeights) == 0 then
         return nil
     end
 
