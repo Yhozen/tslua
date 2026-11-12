@@ -19,6 +19,14 @@ fourslash.diffTableWriter = diffTableWriter
 
 local FourslashTest = fourslash.FourslashTest
 
+-- Go calls these *project.ConfigFileRegistry methods on a nil registry (they check c != nil).
+local nilConfigFileRegistry = {
+    GetTestConfigEntry = function() return nil end,
+    GetTestConfigFileNamesEntry = function() return nil end,
+    ForEachTestConfigEntry = function() end,
+    ForEachTestConfigFileNamesEntry = function() end,
+}
+
 function fourslash.newStateBaseline(fsFromMap)
     local stateBaseline = {
         fsDiffer = fsbaselineutil.NewFSDiffer({
@@ -38,9 +46,9 @@ function FourslashTest:baselineRequestOrNotification(t, method, params)
     if not self.testData:isStateBaseliningEnabled() then
         return
     end
-    local res, _ = json.Marshal({ method = method, params = params }, json.WithIndent("  "))
+    local res, _ = json.MarshalIndent({ method = method, params = params }, "", "  ")
     self.stateBaseline.baseline:WriteString("\n")
-    self.stateBaseline.baseline:Write(res)
+    self.stateBaseline.baseline:WriteString(res)
     self.stateBaseline.baseline:WriteString("\n")
     self.stateBaseline.isInitialized = true
 end
@@ -96,7 +104,7 @@ function diffTable:print(w, header)
     local diffKeys = gort.makeSlice(0, function() return "" end)
     local keyWidth = 0
     local indent = self.options.indent .. "  "
-    for key, _ in self.diff:Keys() do
+    for key, _ in gort.seq(self.diff:Keys()) do
         keyWidth = math.max(keyWidth, #key)
         diffKeys = gort.append(diffKeys, key)
     end
@@ -168,7 +176,7 @@ end
 
 function fourslash.sliceFromIterSeqPath(seq)
     local result = nil
-    for path, _ in seq do
+    for path, _ in gort.seq(seq) do
         result = gort.append(result, path)
     end
     gort.slices.Sort(result)
@@ -356,7 +364,11 @@ function FourslashTest:printConfigFileRegistryDiff(t, snapshot, w)
     local options = { indent = "    ", sortKeys = true }
     configFileRegistry:ForEachTestConfigEntry(function(path, entry)
         local configChange = ""
-        local oldEntry = self.stateBaseline.serializedConfigFileRegistry:GetTestConfigEntry(path)
+        -- (Go calls GetTestConfigEntry on a possibly nil *ConfigFileRegistry, which returns nil)
+        local oldEntry = nil
+        if self.stateBaseline.serializedConfigFileRegistry ~= nil then
+            oldEntry = (self.stateBaseline.serializedConfigFileRegistry or nilConfigFileRegistry):GetTestConfigEntry(path)
+        end
         if oldEntry == nil then
             configChange = "*new*"
             configDiffsTable:setHasChange()
@@ -395,7 +407,7 @@ function FourslashTest:printConfigFileRegistryDiff(t, snapshot, w)
     end)
     configFileRegistry:ForEachTestConfigFileNamesEntry(function(path, entry)
         local configFileNamesChange = ""
-        local oldEntry = self.stateBaseline.serializedConfigFileRegistry:GetTestConfigFileNamesEntry(path)
+        local oldEntry = (self.stateBaseline.serializedConfigFileRegistry or nilConfigFileRegistry):GetTestConfigFileNamesEntry(path)
         if oldEntry == nil then
             configFileNamesChange = "*new*"
             configFileNamesDiffsTable:setHasChange()
@@ -446,7 +458,7 @@ function FourslashTest:printConfigFileRegistryDiff(t, snapshot, w)
             ancestorDiff:print(w, "Ancestors:" .. ancestorDiffModified)
         end)
     end)
-    self.stateBaseline.serializedConfigFileRegistry:ForEachTestConfigEntry(function(path, entry)
+    ;(self.stateBaseline.serializedConfigFileRegistry or nilConfigFileRegistry):ForEachTestConfigEntry(function(path, entry)
         if configFileRegistry:GetTestConfigEntry(path) == nil then
             configDiffsTable:setHasChange()
             configDiffsTable:add(path, function(w)
@@ -454,7 +466,7 @@ function FourslashTest:printConfigFileRegistryDiff(t, snapshot, w)
             end)
         end
     end)
-    self.stateBaseline.serializedConfigFileRegistry:ForEachTestConfigFileNamesEntry(function(path, entry)
+    ;(self.stateBaseline.serializedConfigFileRegistry or nilConfigFileRegistry):ForEachTestConfigFileNamesEntry(function(path, entry)
         if configFileRegistry:GetTestConfigFileNamesEntry(path) == nil then
             configFileNamesDiffsTable:setHasChange()
             configFileNamesDiffsTable:add(path, function(w)

@@ -1032,7 +1032,7 @@ function fourslash.annotateContentWithTooltips(t, f, markersAndItems, opName, ge
     end
     local builder = gort.NewBuilder()
     local seenFirst = false
-    for fileName, lines in filesToLines:Entries() do
+    for fileName, lines in gort.seq(filesToLines:Entries()) do
         builder:WriteString(gort.fmt.Sprintf("=== %s ===\n", fileName))
         for i36, line in gort.ipairs(lines) do
             builder:WriteString("// ")

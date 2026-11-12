@@ -590,7 +590,7 @@ func (g *gen) rangeStmt(s *ast.RangeStmt, label string) {
 			g.line("for %s = 0, %s - 1 do", key, g.expr(s.X))
 		}
 	case *types.Signature:
-		g.line("for %s, %s in %s do", key, val, g.expr(s.X))
+		g.line("for %s, %s in %s.seq(%s) do", key, val, g.gort(), g.expr(s.X))
 	default:
 		g.line("%s", g.fail(s, "range over %s", xt))
 		g.line("do")

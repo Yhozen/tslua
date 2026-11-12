@@ -42,6 +42,22 @@ function M.pairs(m)
     return pairs(m)
 end
 
+-- for x := range seq (iter.Seq): seq is an iterator function or, where a Lua port materializes the
+-- sequence, an array.
+function M.seq(seq)
+    if type(seq) == "function" then
+        return seq
+    end
+    local i = 0
+    return function()
+        i = i + 1
+        if seq == nil then
+            return nil
+        end
+        return seq[i]
+    end
+end
+
 -- for i, r := range s: 0-based byte index and rune.
 function M.runes(s)
     local pos = 0
@@ -434,12 +450,43 @@ M.fmt = {}
 function M.fmt.Sprintf(format, ...)
     local args = table.pack(...)
     local i = 0
-    return (string.gsub(format, "%%([%-%+# 0]*%d*%.?%d*)([%a%%])", function(_, verb)
-        if verb == "%" then
+    return (string.gsub(format, "%%([%-%+# 0]*)([%d%*]*)(%.?[%d%*]*)([%a%%])", function(flags, width, prec, verb)
+        if verb == "%" and flags == "" and width == "" and prec == "" then
             return "%"
         end
+        if width == "*" then
+            i = i + 1
+            width = tostring(args[i])
+        end
+        if prec == ".*" then
+            i = i + 1
+            prec = "." .. tostring(args[i])
+        end
         i = i + 1
-        return formatValue(args[i], verb)
+        local v = args[i]
+        local text
+        if verb == "d" and type(v) == "number" then
+            text = string.format("%d", v)
+        elseif (verb == "f" or verb == "g" or verb == "e") and type(v) == "number" then
+            text = string.format("%" .. prec .. verb, v)
+        elseif verb == "x" and type(v) == "number" then
+            text = string.format("%x", v)
+        else
+            text = formatValue(v, verb)
+            if prec ~= "" and verb == "s" then
+                text = string.sub(text, 1, tonumber(string.sub(prec, 2)) or #text)
+            end
+        end
+        local w = tonumber(width)
+        if w ~= nil and utf8.len(text) ~= nil and utf8.len(text) < w then
+            local pad = string.rep((string.find(flags, "0", 1, true) and not string.find(flags, "-", 1, true)) and "0" or " ", w - utf8.len(text))
+            if string.find(flags, "-", 1, true) then
+                text = text .. pad
+            else
+                text = pad .. text
+            end
+        end
+        return text
     end))
 end
 
