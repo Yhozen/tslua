@@ -571,6 +571,7 @@ submodule/compiler/argumentsReferenceInMethod6_Js.ts
 submodule/compiler/argumentsReferenceInMethod7_Js.ts
 submodule/compiler/argumentsReferenceInObjectLiteral_Js(alwaysstrict=true).ts
 submodule/compiler/argumentsSpreadRestIterables(target=esnext).tsx
+submodule/compiler/argumentsUsedInClassFieldInitializerOrStaticInitializationBlock.ts
 submodule/compiler/argumentsUsedInObjectLiteralProperty.ts
 submodule/compiler/arithAssignTyping.ts
 submodule/compiler/arithmeticOnInvalidTypes.ts
@@ -1029,6 +1030,7 @@ submodule/compiler/circularReferenceInImport.ts
 submodule/compiler/circularReferenceInReturnType.ts
 submodule/compiler/circularReferenceInReturnType2.ts
 submodule/compiler/circularResolvedSignature.ts
+submodule/compiler/circularTypeArgumentsLocalAndOuterNoCrash1.ts
 submodule/compiler/circularTypeofWithFunctionModule.ts
 submodule/compiler/circularlyConstrainedMappedTypeContainingConditionalNoInfiniteInstantiationDepth.ts
 submodule/compiler/circularlyReferentialInterfaceAccessNoCrash.ts
