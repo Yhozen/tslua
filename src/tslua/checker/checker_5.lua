@@ -3134,6 +3134,8 @@ function Checker:getDeclaredTypeOfClassOrInterface(symbol)
         local t = self:newObjectType(kind, symbol)
         links.declaredType = t
         local outerTypeParameters = self:getOuterTypeParametersOfClassOrInterface(symbol)
+        -- Go slices keep their length when appended to; the Lua append below works in place.
+        local outerTypeParameterCount = core.Len(outerTypeParameters)
         local typeParameters = self:appendLocalTypeParametersOfClassOrInterfaceOrTypeAlias(outerTypeParameters, symbol)
         -- A class or interface is generic if it has type parameters or a "this" type. We always give classes a "this" type
         -- because it is not feasible to analyze all members to determine if the "this" type escapes the class (in particular,
@@ -3153,7 +3155,7 @@ function Checker:getDeclaredTypeOfClassOrInterface(symbol)
             end
             all[#all + 1] = d.thisType
             d.allTypeParameters = all
-            d.outerTypeParameterCount = core.Len(outerTypeParameters)
+            d.outerTypeParameterCount = outerTypeParameterCount
             d.resolvedTypeArguments = d:TypeParameters()
             d.instantiations = {}
             d.instantiations[checker.getTypeListKey(d.resolvedTypeArguments)] = t

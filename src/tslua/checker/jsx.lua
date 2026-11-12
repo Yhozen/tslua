@@ -932,7 +932,7 @@ function Checker:getUninstantiatedJsxSignaturesOfType(elementType, caller)
     if core.Len(signatures) == 0 and apparentElemType.flags & TypeFlags.Union ~= 0 then
         -- If each member has some combination of new/call signatures; make a union signature list for those
         signatures = c:getUnionSignatures(core.Map(apparentElemType:Types(), function(t)
-            return c:getUninstantiatedJsxSignaturesOfType(t, caller)
+            return c:getUninstantiatedJsxSignaturesOfType(t, caller) or {} -- Lua arrays cannot hold nil slices
         end))
     end
     return signatures

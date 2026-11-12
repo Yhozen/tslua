@@ -2374,7 +2374,7 @@ function Program:GetSymlinkCache()
 
                     do
                         local packageResolution = self.resolver:ResolvePackageDirectory(dep, packageJsonName, ModuleKind.ResolutionModeCommonJS, nil)
-                        if packageResolution:IsResolved() and packageResolution.originalPath ~= "" then
+                        if packageResolution ~= nil and packageResolution:IsResolved() and packageResolution.originalPath ~= "" then
                             knownSymlinks:ProcessResolution(
                                 tspath.CombinePaths(packageResolution.originalPath, "package.json"),
                                 tspath.CombinePaths(packageResolution.resolvedFileName, "package.json")

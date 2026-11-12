@@ -25,6 +25,8 @@ options:
   --batch K             cases per subprocess with --jobs (default 4)
   --timeout S           per-case timeout in seconds (default 120; 0 disables)
   --list                only list the selected case files
+  --transpile           run the transpile baselines (tests/cases/transpile of the submodule,
+                        internal/testrunner/transpile_runner.go) instead; cases filter by name
   -v, --verbose         print failure messages
   -q, --quiet           only print failures and the summary
 ]]
@@ -121,6 +123,7 @@ local opts = {
     quiet = false,
     worker = false,
     cases = {},
+    transpile = false,
 }
 
 do
@@ -169,6 +172,8 @@ do
             opts.timeout = tonumber(value(a)) or 120
         elseif a == "--list" then
             opts.list = true
+        elseif a == "--transpile" then
+            opts.transpile = true
         elseif a == "-v" or a == "--verbose" then
             opts.verbose = true
         elseif a == "-q" or a == "--quiet" then
@@ -189,6 +194,78 @@ do
 end
 
 local repo = require("tslua.repo")
+
+-- Transpile baselines (TestTranspile): every file under the submodule's tests/cases/transpile runs
+-- in-process through testrunner.TranspileBaselineRunner; each configuration is one case.
+if opts.transpile then
+    local testutil = require("tslua.testutil")
+    local testrunner = require("tslua.testrunner")
+    local dir = repo.TypeScriptSubmodulePath() .. "/tests/cases/transpile"
+    local runner = testrunner.NewTranspileBaselineRunner()
+    local files = {}
+    local p = io.popen("ls " .. dir)
+    for name in p:lines() do
+        local keep = string.find(name, "%.[cm]?[tj]sx?$") ~= nil
+        if keep and #opts.cases > 0 then
+            keep = false
+            for _, c in ipairs(opts.cases) do
+                if string.find(name, c, 1, true) then
+                    keep = true
+                end
+            end
+        end
+        if keep and opts.filter ~= nil and not string.find(name, opts.filter) then
+            keep = false
+        end
+        if keep then
+            files[#files + 1] = dir .. "/" .. name
+        end
+    end
+    p:close()
+    runner.testFiles = files
+    local pass, fail = 0, 0
+    local function messagesOf(t, out)
+        for _, m in ipairs(t.messages) do
+            out[#out + 1] = m
+        end
+        for _, c in ipairs(t.children) do
+            messagesOf(c, out)
+        end
+        return out
+    end
+    for _, f in ipairs(files) do
+        local t = testutil.NewT("", nil)
+        local ok, err = xpcall(function()
+            runner:runTest(t, f)
+        end, debug.traceback)
+        local name = string.match(f, "[^/]*$")
+        if not ok then
+            fail = fail + 1
+            io.write("CRASH transpile/" .. name .. "\n")
+            if opts.verbose then
+                io.write("      " .. tostring(err) .. "\n")
+            end
+        end
+        for _, c in ipairs(t.children) do
+            if c.failed or c.panicked ~= nil then
+                fail = fail + 1
+                io.write("FAIL  transpile/" .. c.name .. "\n")
+                if opts.verbose then
+                    for _, m in ipairs(messagesOf(c, {})) do
+                        io.write("      " .. m .. "\n")
+                    end
+                end
+            else
+                pass = pass + 1
+                if not opts.quiet then
+                    io.write("pass  transpile/" .. c.name .. "\n")
+                end
+            end
+        end
+    end
+    io.write(string.format("\ntranspile: %d pass, %d fail\n", pass, fail))
+    os.exit(fail == 0 and 0 or 1)
+end
 
 local SUITES = {
     { variant = "local", suite = "compiler", dir = "testdata/tests/cases/compiler" },

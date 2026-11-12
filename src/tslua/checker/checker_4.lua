@@ -111,9 +111,9 @@ function Checker:getInstantiationExpressionType(exprType, node)
             elseif tp.flags & TypeFlags.Union ~= 0 then
                 return c:mapType(tp, getInstantiatedType)
             elseif tp.flags & TypeFlags.Intersection ~= 0 then
-                return c:getIntersectionType(core.SameMap(t:AsIntersectionType().types, getInstantiatedTypePart))
+                return c:getIntersectionType(core.SameMap(tp:AsIntersectionType().types, getInstantiatedTypePart))
             end
-            return t
+            return tp
         end
         local result = getInstantiatedTypePart(t)
         hasSomeApplicableSignature = hasSomeApplicableSignature or hasApplicableSignature
@@ -3139,7 +3139,7 @@ function Checker:isInPropertyInitializerOrClassStaticBlock(node, ignoreArrowFunc
         elseif kind == Kind.ArrowFunction then
             return core.IfElse(ignoreArrowFunctions, FindAncestorResult.FindAncestorFalse, FindAncestorResult.FindAncestorQuit)
         elseif kind == Kind.Block then
-            return core.IfElse(ast.IsFunctionLikeDeclaration(node.parent) and node.parent.kind ~= Kind.ArrowFunction, FindAncestorResult.FindAncestorQuit, FindAncestorResult.FindAncestorFalse)
+            return core.IfElse(ast.IsFunctionLikeDeclaration(n.parent) and n.parent.kind ~= Kind.ArrowFunction, FindAncestorResult.FindAncestorQuit, FindAncestorResult.FindAncestorFalse)
         else
             return FindAncestorResult.FindAncestorFalse
         end
