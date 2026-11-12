@@ -251,3 +251,821 @@ describe("autoimport aliasResolver", function()
         ch:GetDiagnostics(nil, sourceFile)
     end)
 end)
+
+-- registry_test.go (needs tslua.project and tslua.testutil.projecttestutil)
+
+local function tryRequire(name)
+    local ok, mod = pcall(require, name)
+    if ok then
+        return mod
+    end
+    return nil
+end
+
+local projecttestutil = tryRequire("tslua.testutil.projecttestutil")
+local project = tryRequire("tslua.project")
+local hasSession = projecttestutil ~= nil and project ~= nil and projecttestutil.Setup ~= nil
+
+local lifecycleProjectRoot = "/home/src/autoimport-lifecycle"
+local monorepoProjectRoot = "/home/src/autoimport-monorepo"
+
+describe("autoimport registry lifecycle", function()
+    if not hasSession then
+        pending("tslua.project / tslua.testutil.projecttestutil not available")
+        return
+    end
+
+    local autoimporttestutil = require("tslua.testutil.autoimporttestutil")
+    local bundled = require("tslua.bundled")
+    local collections = require("tslua.collections")
+    local lsconv = require("tslua.ls.lsconv")
+    local lsproto = require("tslua.lsp.lsproto")
+    local lsutil = require("tslua.ls.lsutil")
+    local tspath = require("tslua.tspath")
+
+    local TypeScript = lsproto.LanguageKind.TypeScript
+    local JavaScript = lsproto.LanguageKind.JavaScript
+
+    local function autoImportStats(session)
+        local snapshot = session:Snapshot()
+        local registry = snapshot:AutoImportRegistry()
+        assert(registry ~= nil, "auto import registry not initialized")
+        return registry:GetCacheStats()
+    end
+
+    local function singleBucket(buckets)
+        assert(#buckets == 1, string.format("expected 1 bucket, got %d", #buckets))
+        return buckets[1]
+    end
+
+    local function wholeDocument(text)
+        return { { wholeDocument = { text = text } } }
+    end
+
+    local function noError(_, err)
+        assert.is_nil(err)
+    end
+
+    local function defaultPreferences()
+        local preferences = lsutil.NewDefaultUserPreferences()
+        preferences.includeCompletionsForModuleExports = core.Tristate.TSTrue
+        preferences.includeCompletionsForImportStatements = core.Tristate.TSTrue
+        return preferences
+    end
+
+    it("builds project and node_modules buckets", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+
+        local stats = autoImportStats(session)
+        local projectBucket = singleBucket(stats.projectBuckets)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(true, projectBucket.state:Dirty())
+        assert.are.equal(0, projectBucket.fileCount)
+        assert.are.equal(true, nodeModulesBucket.state:Dirty())
+        assert.are.equal(0, nodeModulesBucket.fileCount)
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        stats = autoImportStats(session)
+        projectBucket = singleBucket(stats.projectBuckets)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, projectBucket.state:Dirty())
+        assert.is_true(projectBucket.exportCount > 0)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty())
+        assert.is_true(nodeModulesBucket.exportCount > 0)
+        session:Close()
+    end)
+
+    it("bucket does not rebuild on same-file change", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 2)
+        local session = fixture:Session()
+        local utils = fixture:Utils()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        local secondaryFile = proj:File(1)
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        session:DidOpenFile(nil, secondaryFile:URI(), 1, secondaryFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        local updatedContent = mainFile:Content() .. "// change\n"
+        session:DidChangeFile(nil, mainFile:URI(), 2, wholeDocument(updatedContent))
+
+        noError(session:GetLanguageService(nil, mainFile:URI()))
+
+        local stats = autoImportStats(session)
+        local projectBucket = singleBucket(stats.projectBuckets)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(true, projectBucket.state:Dirty())
+        assert.are.equal(utils:ToPath(mainFile:FileName()), projectBucket.state:DirtyFile())
+        assert.are.equal(false, nodeModulesBucket.state:Dirty())
+        assert.are.equal("", nodeModulesBucket.state:DirtyFile())
+
+        -- Bucket should not recompute when requesting same file changed
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        stats = autoImportStats(session)
+        projectBucket = singleBucket(stats.projectBuckets)
+        assert.are.equal(true, projectBucket.state:Dirty())
+        assert.are.equal(utils:ToPath(mainFile:FileName()), projectBucket.state:DirtyFile())
+
+        -- Bucket should recompute when other file has changed
+        session:DidChangeFile(nil, secondaryFile:URI(), 1, wholeDocument("// new content"))
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        stats = autoImportStats(session)
+        projectBucket = singleBucket(stats.projectBuckets)
+        assert.are.equal(false, projectBucket.state:Dirty())
+        session:Close()
+    end)
+
+    it("bucket updates on same-file change when new files added to the program", function()
+        local projectRoot = "/home/src/explicit-files-project"
+        local files = {
+            [projectRoot .. "/tsconfig.json"] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"target": "esnext",
+					"strict": true
+				},
+				"files": ["index.ts"]
+			}]],
+            [projectRoot .. "/index.ts"] = "",
+            [projectRoot .. "/utils.ts"] = "export const foo = 1;\nexport const bar = 2;",
+        }
+        local session = projecttestutil.Setup(files)
+
+        local indexURI = "file://" .. projectRoot .. "/index.ts"
+
+        -- Open the index.ts file
+        session:DidOpenFile(nil, indexURI, 1, "", TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+        local stats = autoImportStats(session)
+        local projectBucket = singleBucket(stats.projectBuckets)
+        assert.are.equal(1, projectBucket.fileCount)
+
+        -- Edit index.ts to import foo from utils.ts
+        session:DidChangeFile(nil, indexURI, 2, wholeDocument([[import { foo } from "./utils";]]))
+
+        -- Bucket should be rebuilt because new files were added
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, indexURI))
+        stats = autoImportStats(session)
+        projectBucket = singleBucket(stats.projectBuckets)
+        assert.are.equal(2, projectBucket.fileCount)
+        session:Close()
+    end)
+
+    it("package.json dependency changes invalidate node_modules buckets", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local sessionUtils = fixture:Utils()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        local nodePackage = proj:NodeModules()[1]
+        local packageJSON = proj:PackageJSONFile()
+
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        local stats = autoImportStats(session)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty())
+
+        local fs = sessionUtils:FS()
+        local updatePackageJSON = function(content)
+            assert.is_nil(fs:WriteFile(packageJSON:FileName(), content))
+            session:DidChangeWatchedFiles(nil, {
+                { type = lsproto.FileChangeType.Changed, uri = packageJSON:URI() },
+            })
+        end
+
+        local sameDepsContent = string.format("{\n  \"name\": \"local-project-stable\",\n  \"dependencies\": {\n    \"%s\": \"*\"\n  }\n}\n", nodePackage.name)
+        updatePackageJSON(sameDepsContent)
+        noError(session:GetLanguageService(nil, mainFile:URI()))
+        stats = autoImportStats(session)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty())
+
+        local differentDepsContent = string.format("{\n  \"name\": \"local-project-stable\",\n  \"dependencies\": {\n    \"%s\": \"*\",\n    \"newpkg\": \"*\"\n  }\n}\n", nodePackage.name)
+        updatePackageJSON(differentDepsContent)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        stats = autoImportStats(session)
+        assert.is_true(singleBucket(stats.nodeModulesBuckets).dependencyNames:Has("newpkg"))
+        session:Close()
+    end)
+
+    it("node_modules buckets get deleted when no open files can reference them", function()
+        local fixture = autoimporttestutil.SetupMonorepoLifecycleSession(nil, {
+            root = monorepoProjectRoot,
+            name = "monorepo",
+            nodeModuleNames = { "pkg-root" },
+            packages = {
+                { fileCount = 1, name = "package-a", nodeModuleNames = { "pkg-a" } },
+                { fileCount = 1, name = "package-b", nodeModuleNames = { "pkg-b" } },
+            },
+        })
+        local session = fixture:Session()
+        local monorepo = fixture:Monorepo()
+        local pkgA = monorepo:Package(0)
+        local pkgB = monorepo:Package(1)
+        local fileA = pkgA:File(0)
+        local fileB = pkgB:File(0)
+
+        -- Open file in package-a, should create buckets for root and package-a node_modules
+        session:DidOpenFile(nil, fileA:URI(), 1, fileA:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, fileA:URI()))
+
+        -- Open file in package-b, should also create buckets for package-b
+        session:DidOpenFile(nil, fileB:URI(), 1, fileB:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, fileB:URI()))
+        local stats = autoImportStats(session)
+        assert.are.equal(3, #stats.nodeModulesBuckets)
+        assert.are.equal(2, #stats.projectBuckets)
+
+        -- Close file in package-a, package-a's node_modules bucket and project bucket should be removed
+        session:DidCloseFile(nil, fileA:URI())
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, fileB:URI()))
+        stats = autoImportStats(session)
+        assert.are.equal(2, #stats.nodeModulesBuckets)
+        assert.are.equal(1, #stats.projectBuckets)
+        session:Close()
+    end)
+
+    it("deleting node_modules leaves the registry prepared for importing", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local sessionUtils = fixture:Utils()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        local preferences = defaultPreferences()
+
+        -- Build auto-imports once so both buckets are clean and prepared.
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        local snapshot = session:Snapshot()
+        local defaultProject = snapshot:GetDefaultProject(mainFile:URI())
+        assert.is_not_nil(defaultProject)
+        local projectPath = defaultProject:ConfigFilePath()
+        assert.is_true(snapshot:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, preferences))
+        assert.are.equal(1, #autoImportStats(session).nodeModulesBuckets)
+
+        -- Simulate the user deleting node_modules: remove the directory from disk
+        -- and notify the session of the deletion, which marks the node_modules
+        -- bucket dirty.
+        local nodeModulesDir = tspath.CombinePaths(proj:Root(), "node_modules")
+        assert.is_nil(sessionUtils:FS():Remove(nodeModulesDir))
+        session:DidChangeWatchedFiles(nil, {
+            { type = lsproto.FileChangeType.Deleted, uri = lsconv.FileNameToDocumentURI(nodeModulesDir) },
+        })
+
+        -- Re-preparing auto-imports must succeed and leave the registry prepared.
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        snapshot = session:Snapshot()
+        assert.is_true(snapshot:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, preferences),
+            "registry should be prepared after node_modules is deleted")
+        -- The node_modules bucket should be removed entirely, not left behind as an
+        -- empty bucket.
+        assert.are.equal(0, #autoImportStats(session).nodeModulesBuckets)
+        session:Close()
+    end)
+
+    it("deleting node_modules alongside a package.json change removes the bucket", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local sessionUtils = fixture:Utils()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        local packageJSON = proj:PackageJSONFile()
+        local preferences = defaultPreferences()
+
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        local snapshot = session:Snapshot()
+        local defaultProject = snapshot:GetDefaultProject(mainFile:URI())
+        assert.is_not_nil(defaultProject)
+        local projectPath = defaultProject:ConfigFilePath()
+        assert.are.equal(1, #autoImportStats(session).nodeModulesBuckets)
+
+        -- In a single changeset, edit package.json AND delete node_modules. The
+        -- package.json change must not prevent the now-missing node_modules bucket
+        -- from being removed.
+        assert.is_nil(sessionUtils:FS():WriteFile(packageJSON:FileName(), [[{"name": "app", "dependencies": {}}]]))
+        local nodeModulesDir = tspath.CombinePaths(proj:Root(), "node_modules")
+        assert.is_nil(sessionUtils:FS():Remove(nodeModulesDir))
+        session:DidChangeWatchedFiles(nil, {
+            { type = lsproto.FileChangeType.Changed, uri = packageJSON:URI() },
+            { type = lsproto.FileChangeType.Deleted, uri = lsconv.FileNameToDocumentURI(nodeModulesDir) },
+        })
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        snapshot = session:Snapshot()
+        assert.is_true(snapshot:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, preferences))
+        assert.are.equal(0, #autoImportStats(session).nodeModulesBuckets)
+        session:Close()
+    end)
+
+    it("deleting a package directory inside node_modules invalidates the bucket", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local sessionUtils = fixture:Utils()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+        local nodePackage = proj:NodeModules()[1]
+
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        assert.is_true(singleBucket(autoImportStats(session).nodeModulesBuckets).exportCount > 0)
+
+        -- Delete just the package directory, leaving node_modules itself in place. The
+        -- package's files are read transiently by the registry, so they are never tracked
+        -- in diskFiles/diskDirectories; only the directory deletion event is reported, and
+        -- it must survive snapshotfs filtering to invalidate the bucket.
+        assert.is_nil(sessionUtils:FS():Remove(nodePackage.directory))
+        session:DidChangeWatchedFiles(nil, {
+            { type = lsproto.FileChangeType.Deleted, uri = lsconv.FileNameToDocumentURI(nodePackage.directory) },
+        })
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+        assert.are.equal(0, singleBucket(autoImportStats(session).nodeModulesBuckets).exportCount)
+        session:Close()
+    end)
+
+    it("node_modules bucket dependency selection changes with open files", function()
+        local monorepoRoot = "/home/src/monorepo"
+        local packageADir = tspath.CombinePaths(monorepoRoot, "packages", "a")
+        local monorepoIndex = tspath.CombinePaths(monorepoRoot, "index.js")
+        local packageAIndex = tspath.CombinePaths(packageADir, "index.js")
+
+        local fixture = autoimporttestutil.SetupMonorepoLifecycleSession(nil, {
+            root = monorepoRoot,
+            name = "monorepo",
+            nodeModuleNames = { "pkg1", "pkg2", "pkg3" },
+            dependencyNames = { "pkg1" },
+            packages = {
+                { fileCount = 0, name = "a", dependencyNames = { "pkg1", "pkg2" } },
+            },
+            extraFiles = {
+                { path = monorepoIndex, content = "export const monorepoIndex = 1;\n" },
+                { path = packageAIndex, content = "export const pkgA = 2;\n" },
+            },
+        })
+        local session = fixture:Session()
+        local monorepoHandle = fixture:ExtraFile(monorepoIndex)
+        local packageAHandle = fixture:ExtraFile(packageAIndex)
+
+        -- Open monorepo root file: expect dependencies restricted to pkg1
+        session:DidOpenFile(nil, monorepoHandle:URI(), 1, monorepoHandle:Content(), JavaScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, monorepoHandle:URI()))
+        local stats = autoImportStats(session)
+        assert.is_true(singleBucket(stats.nodeModulesBuckets).dependencyNames:Equals(collections.NewSetFromItems("pkg1")))
+
+        -- Open package-a file: pkg2 should be added to existing bucket
+        session:DidOpenFile(nil, packageAHandle:URI(), 1, packageAHandle:Content(), JavaScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, packageAHandle:URI()))
+        stats = autoImportStats(session)
+        assert.is_true(singleBucket(stats.nodeModulesBuckets).dependencyNames:Equals(collections.NewSetFromItems("pkg1", "pkg2")))
+
+        -- Close package-a file; only monorepo bucket should remain
+        session:DidCloseFile(nil, packageAHandle:URI())
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, monorepoHandle:URI()))
+        stats = autoImportStats(session)
+        assert.is_true(singleBucket(stats.nodeModulesBuckets).dependencyNames:Equals(collections.NewSetFromItems("pkg1")))
+
+        -- Close monorepo file; no node_modules buckets should remain
+        session:DidCloseFile(nil, monorepoHandle:URI())
+        session:DidOpenFile(nil, "untitled:Untitled-1", 0, "", TypeScript)
+        noError(session:GetLanguageService(nil, "untitled:Untitled-1"))
+        stats = autoImportStats(session)
+        assert.are.equal(0, #stats.nodeModulesBuckets)
+        session:Close()
+    end)
+
+    it("node_modules bucket includes resolved packages from all projects", function()
+        -- This test verifies that when multiple projects share a node_modules directory,
+        -- the node_modules bucket includes resolved package names from ALL projects,
+        -- not just the currently requested file's project.
+        local monorepoRoot = "/home/src/cross-project-deps"
+        local packageADir = tspath.CombinePaths(monorepoRoot, "packages", "a")
+        local packageBDir = tspath.CombinePaths(monorepoRoot, "packages", "b")
+        local packageAIndex = tspath.CombinePaths(packageADir, "index.ts")
+        local packageBIndex = tspath.CombinePaths(packageBDir, "index.ts")
+
+        local fixture = autoimporttestutil.SetupMonorepoLifecycleSession(nil, {
+            root = monorepoRoot,
+            name = "monorepo",
+            -- Both pkg-listed and pkg-unlisted exist in node_modules
+            nodeModuleNames = { "pkg-listed", "pkg-unlisted" },
+            -- But only pkg-listed is in the root package.json dependencies
+            dependencyNames = { "pkg-listed" },
+            packages = {
+                -- package-a only lists pkg-listed in its package.json
+                { fileCount = 0, name = "a", dependencyNames = { "pkg-listed" } },
+                -- package-b also only lists pkg-listed in its package.json
+                { fileCount = 0, name = "b", dependencyNames = { "pkg-listed" } },
+            },
+            extraFiles = {
+                -- project-a directly imports pkg-unlisted (not in package.json)
+                { path = packageAIndex, content = "import { pkg_unlisted_value } from \"pkg-unlisted\";\nexport const a = pkg_unlisted_value;\n" },
+                -- project-b does not import pkg-unlisted
+                { path = packageBIndex, content = "export const b = 1;\n" },
+            },
+        })
+        local session = fixture:Session()
+        local packageAHandle = fixture:ExtraFile(packageAIndex)
+        local packageBHandle = fixture:ExtraFile(packageBIndex)
+
+        -- Open file in project-a (which imports pkg-unlisted)
+        session:DidOpenFile(nil, packageAHandle:URI(), 1, packageAHandle:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, packageAHandle:URI()))
+
+        -- Open file in project-b (which does not import pkg-unlisted)
+        session:DidOpenFile(nil, packageBHandle:URI(), 1, packageBHandle:Content(), TypeScript)
+        -- Request auto-imports for project-b
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, packageBHandle:URI()))
+
+        local stats = autoImportStats(session)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.is_true(nodeModulesBucket.dependencyNames:Has("pkg-listed"), "pkg-listed should be in dependencies")
+        assert.is_true(nodeModulesBucket.dependencyNames:Has("pkg-unlisted"), "pkg-unlisted should be in dependencies because project-a imports it")
+        session:Close()
+    end)
+
+    it("symlinked monorepo invalidates on source file change", function()
+        local monorepoRoot = "/home/src/symlinked-monorepo-invalidation"
+        local projectADir = tspath.CombinePaths(monorepoRoot, "packages", "project-a")
+        local projectBDir = tspath.CombinePaths(monorepoRoot, "packages", "project-b")
+        local projectAIndex = tspath.CombinePaths(projectADir, "src", "index.ts")
+        local projectBSrcIndex = tspath.CombinePaths(projectBDir, "src", "index.ts")
+        local projectBDistIndex = tspath.CombinePaths(projectBDir, "dist", "index.d.ts")
+        local otherPkgDir = tspath.CombinePaths(projectADir, "node_modules", "other-pkg")
+
+        local files = {
+            -- project-b: the library package
+            [tspath.CombinePaths(projectBDir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"composite": true,
+					"outDir": "./dist",
+					"rootDir": "./src",
+					"declaration": true,
+					"module": "esnext",
+					"strict": true
+				},
+				"include": ["src"]
+			}]],
+            [tspath.CombinePaths(projectBDir, "package.json")] = [[{
+				"name": "project-b",
+				"version": "1.0.0",
+				"main": "dist/index.js",
+				"types": "dist/index.d.ts"
+			}]],
+            [projectBSrcIndex] = "export function projectBFunction(): string { return \"hello\"; }\nexport const projectBValue: number = 42;",
+            [projectBDistIndex] = "export declare function projectBFunction(): string;\nexport declare const projectBValue: number;",
+            -- other-pkg: a regular (non-symlinked) package
+            [tspath.CombinePaths(otherPkgDir, "package.json")] = [[{
+				"name": "other-pkg",
+				"version": "1.0.0",
+				"main": "index.js",
+				"types": "index.d.ts"
+			}]],
+            [tspath.CombinePaths(otherPkgDir, "index.d.ts")] = "export declare function otherFunction(): void;\nexport declare const otherValue: string;",
+            -- project-a: the consumer package
+            [tspath.CombinePaths(projectADir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"strict": true,
+					"outDir": "./dist",
+					"rootDir": "./src"
+				},
+				"include": ["src"],
+				"references": [{ "path": "../project-b" }]
+			}]],
+            [tspath.CombinePaths(projectADir, "package.json")] = [[{
+				"name": "project-a",
+				"dependencies": { "project-b": "*", "other-pkg": "*" }
+			}]],
+            [projectAIndex] = "console.log(\"hello\");\n",
+            -- Symlink: project-b is accessible via node_modules
+            [tspath.CombinePaths(projectADir, "node_modules", "project-b")] = vfstest.Symlink(projectBDir),
+        }
+
+        local session = projecttestutil.Setup(files)
+
+        -- Open project-a's index file and get initial auto-imports
+        local projectAURI = lsconv.FileNameToDocumentURI(projectAIndex)
+        session:DidOpenFile(nil, projectAURI, 1, files[projectAIndex], TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, projectAURI))
+
+        -- Verify initial state: bucket is clean with files
+        local stats = autoImportStats(session)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        local initialFileCount = nodeModulesBucket.fileCount
+        assert.are.equal(false, nodeModulesBucket.state:Dirty(), "bucket should be clean initially")
+        assert.is_true(initialFileCount > 0, "bucket should have files initially")
+
+        -- Open project-b's source file
+        local projectBURI = lsconv.FileNameToDocumentURI(projectBSrcIndex)
+        session:DidOpenFile(nil, projectBURI, 1, files[projectBSrcIndex], TypeScript)
+
+        -- Modify the file (delete one export)
+        session:DidChangeFile(nil, projectBURI, 2, wholeDocument("export const projectBValue: number = 42;"))
+
+        -- Check that the node_modules bucket is now dirty
+        noError(session:GetLanguageService(nil, projectAURI))
+        stats = autoImportStats(session)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(true, nodeModulesBucket.state:Dirty(), "bucket should be dirty after source file change")
+
+        -- Verify that only project-b is marked for update, not other-pkg.
+        local dirtyPackages = nodeModulesBucket.state:DirtyPackages()
+        assert.is_not_nil(dirtyPackages, "dirty packages should be tracked")
+        assert.is_true(dirtyPackages:Has("project-b"), "project-b should be in dirty packages")
+        assert.is_false(dirtyPackages:Has("other-pkg"), "other-pkg should NOT be in dirty packages")
+        assert.are.equal(1, dirtyPackages:Len(), "only one package should be dirty")
+
+        -- Rebuild by requesting auto-imports again.
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, projectAURI))
+
+        -- Verify bucket is clean again after rebuild
+        stats = autoImportStats(session)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty(), "bucket should be clean after rebuild")
+        session:Close()
+    end)
+
+    it("pnpm-style symlinks only grant granular updates to workspace packages", function()
+        local monorepoRoot = "/home/src/pnpm-monorepo"
+        local projectADir = tspath.CombinePaths(monorepoRoot, "packages", "project-a")
+        local projectBDir = tspath.CombinePaths(monorepoRoot, "packages", "project-b")
+        local projectAIndex = tspath.CombinePaths(projectADir, "src", "index.ts")
+        local projectBSrcIndex = tspath.CombinePaths(projectBDir, "src", "index.ts")
+        local projectBDistIndex = tspath.CombinePaths(projectBDir, "dist", "index.d.ts")
+        -- Simulated pnpm virtual store for a registry package (inside project-a's node_modules).
+        local pnpmStoreDir = tspath.CombinePaths(projectADir, "node_modules", ".pnpm-store", "other-pkg@1.0.0")
+        local otherPkgIndex = tspath.CombinePaths(pnpmStoreDir, "index.d.ts")
+
+        local files = {
+            -- project-b: a local workspace package
+            [tspath.CombinePaths(projectBDir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"composite": true,
+					"outDir": "./dist",
+					"rootDir": "./src",
+					"declaration": true,
+					"module": "esnext",
+					"strict": true
+				},
+				"include": ["src"]
+			}]],
+            [tspath.CombinePaths(projectBDir, "package.json")] = [[{
+				"name": "project-b",
+				"version": "1.0.0",
+				"main": "dist/index.js",
+				"types": "dist/index.d.ts"
+			}]],
+            [projectBSrcIndex] = "export function projectBFunction(): string { return \"hello\"; }\nexport const projectBValue: number = 42;",
+            [projectBDistIndex] = "export declare function projectBFunction(): string;\nexport declare const projectBValue: number;",
+            -- other-pkg: a registry package in pnpm's virtual store
+            [tspath.CombinePaths(pnpmStoreDir, "package.json")] = [[{
+				"name": "other-pkg",
+				"version": "1.0.0",
+				"main": "index.js",
+				"types": "index.d.ts"
+			}]],
+            [otherPkgIndex] = "export declare function otherFunction(): void;\nexport declare const otherValue: string;",
+            -- project-a: the consumer package
+            [tspath.CombinePaths(projectADir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"strict": true,
+					"outDir": "./dist",
+					"rootDir": "./src"
+				},
+				"include": ["src"],
+				"references": [{ "path": "../project-b" }]
+			}]],
+            [tspath.CombinePaths(projectADir, "package.json")] = [[{
+				"name": "project-a",
+				"dependencies": { "project-b": "*", "other-pkg": "*" }
+			}]],
+            [projectAIndex] = "console.log(\"hello\");\n",
+            -- Symlink: local workspace package (realpath outside node_modules)
+            [tspath.CombinePaths(projectADir, "node_modules", "project-b")] = vfstest.Symlink(projectBDir),
+            -- Symlink: pnpm-style registry package (realpath inside node_modules/.pnpm)
+            [tspath.CombinePaths(projectADir, "node_modules", "other-pkg")] = vfstest.Symlink(pnpmStoreDir),
+        }
+
+        local session = projecttestutil.SetupWithOptions(files, project.NewSessionOptions({
+            currentDirectory = monorepoRoot,
+            defaultLibraryPath = bundled.LibPath(),
+            positionEncoding = lsproto.PositionEncodingKind.UTF8,
+            watchEnabled = true,
+            loggingEnabled = true,
+            pushDiagnosticsEnabled = true,
+        }))
+
+        -- Open project-a's index file and build auto-imports
+        local projectAURI = lsconv.FileNameToDocumentURI(projectAIndex)
+        session:DidOpenFile(nil, projectAURI, 1, files[projectAIndex], TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, projectAURI))
+
+        -- Verify initial state: bucket is clean
+        local stats = autoImportStats(session)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty(), "bucket should be clean initially")
+
+        -- Modify project-b's source file (local workspace package)
+        local projectBURI = lsconv.FileNameToDocumentURI(projectBSrcIndex)
+        session:DidOpenFile(nil, projectBURI, 1, files[projectBSrcIndex], TypeScript)
+        session:DidChangeFile(nil, projectBURI, 2, wholeDocument("export const projectBValue: number = 42;"))
+
+        -- project-b should get a granular update (tracked in dirtyPackages)
+        noError(session:GetLanguageService(nil, projectAURI))
+        stats = autoImportStats(session)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(true, nodeModulesBucket.state:Dirty(), "bucket should be dirty after workspace package change")
+        local dirtyPackages = nodeModulesBucket.state:DirtyPackages()
+        assert.is_not_nil(dirtyPackages, "dirty packages should be tracked for workspace package")
+        assert.is_true(dirtyPackages:Has("project-b"), "project-b should be in dirty packages")
+        assert.are.equal(1, dirtyPackages:Len(), "only project-b should be dirty")
+
+        -- Rebuild to clear dirty state
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, projectAURI))
+        stats = autoImportStats(session)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, nodeModulesBucket.state:Dirty(), "bucket should be clean after rebuild")
+
+        -- Now modify other-pkg (pnpm registry package, realpath inside node_modules/.pnpm)
+        local otherPkgURI = lsconv.FileNameToDocumentURI(otherPkgIndex)
+        session:DidOpenFile(nil, otherPkgURI, 1, files[otherPkgIndex], TypeScript)
+        session:DidChangeFile(nil, otherPkgURI, 2, wholeDocument("export declare function otherFunction(): void;"))
+
+        -- other-pkg should trigger a full rebuild (multipleFilesDirty), not a granular update.
+        local _, err = session:WithLanguageServiceAndSnapshot(nil, projectAURI, function(_, snapshot)
+            stats = snapshot:AutoImportRegistry():GetCacheStats()
+            return nil, nil
+        end)
+        assert.is_nil(err)
+        nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(true, nodeModulesBucket.state:Dirty(), "bucket should be dirty after registry package change")
+        dirtyPackages = nodeModulesBucket.state:DirtyPackages()
+        -- A full rebuild means dirtyPackages is nil (multipleFilesDirty takes precedence)
+        -- or dirtyPackages doesn't contain "other-pkg" as a granular entry
+        if dirtyPackages ~= nil then
+            assert.is_false(dirtyPackages:Has("other-pkg"), "other-pkg should NOT be in dirty packages (should trigger full rebuild)")
+        end
+        session:Close()
+    end)
+
+    it("circular workspace symlinks do not exclude local project files", function()
+        local monorepoRoot = "/home/src/circular-workspaces"
+        local packageADir = tspath.CombinePaths(monorepoRoot, "packages", "pkg-a")
+        local packageBDir = tspath.CombinePaths(monorepoRoot, "packages", "pkg-b")
+        local consumerA = tspath.CombinePaths(packageADir, "consumer.ts")
+        local helperA = tspath.CombinePaths(packageADir, "helper.ts")
+
+        local files = {
+            [tspath.CombinePaths(packageADir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"strict": true
+				}
+			}]],
+            [tspath.CombinePaths(packageADir, "package.json")] = [[{
+				"name": "pkg-a",
+				"dependencies": { "pkg-b": "*" }
+			}]],
+            [tspath.CombinePaths(packageADir, "index.ts")] = "import { b } from \"pkg-b\";\nexport const a = b;\n",
+            [consumerA] = "export const usesHelper = uniqueHelperValueFromHelperA;\n",
+            [helperA] = "export const uniqueHelperValueFromHelperA = 1;\n",
+            [tspath.CombinePaths(packageBDir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"strict": true
+				}
+			}]],
+            [tspath.CombinePaths(packageBDir, "package.json")] = [[{
+				"name": "pkg-b",
+				"dependencies": { "pkg-a": "*" }
+			}]],
+            [tspath.CombinePaths(packageBDir, "index.ts")] = "import { a } from \"pkg-a\";\nexport const b = a;\n",
+            -- Circular workspace links
+            [tspath.CombinePaths(packageADir, "node_modules", "pkg-b")] = vfstest.Symlink(packageBDir),
+            [tspath.CombinePaths(packageBDir, "node_modules", "pkg-a")] = vfstest.Symlink(packageADir),
+        }
+
+        local session = projecttestutil.Setup(files)
+        local consumerAURI = lsconv.FileNameToDocumentURI(consumerA)
+        session:DidOpenFile(nil, consumerAURI, 1, files[consumerA], TypeScript)
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, consumerAURI))
+
+        local stats = autoImportStats(session)
+        local projectBucket = singleBucket(stats.projectBuckets)
+        assert.are.equal(3, projectBucket.fileCount, "expected all pkg-a project files despite circular workspace symlinks")
+        session:Close()
+    end)
+
+    it("changed fileExcludePatterns triggers bucket rebuild", function()
+        local fixture = autoimporttestutil.SetupLifecycleSession(nil, lifecycleProjectRoot, 1)
+        local session = fixture:Session()
+        local proj = fixture:SingleProject()
+        local mainFile = proj:File(0)
+
+        -- Open file and build auto-imports initially
+        session:DidOpenFile(nil, mainFile:URI(), 1, mainFile:Content(), TypeScript)
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        -- Verify buckets are clean after initial build
+        local stats = autoImportStats(session)
+        local projectBucket = singleBucket(stats.projectBuckets)
+        local nodeModulesBucket = singleBucket(stats.nodeModulesBuckets)
+        assert.are.equal(false, projectBucket.state:Dirty())
+        assert.are.equal(false, nodeModulesBucket.state:Dirty())
+
+        -- IsPreparedForImportingFile should return true with no exclude patterns
+        local snapshot = session:Snapshot()
+        local defaultProject = snapshot:GetDefaultProject(mainFile:URI())
+        assert.is_not_nil(defaultProject)
+        local projectPath = defaultProject:ConfigFilePath()
+        local preferences = defaultPreferences()
+        assert.is_true(snapshot:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, preferences))
+
+        -- Change the file exclude patterns preference
+        local newPreferences = defaultPreferences()
+        newPreferences.autoImportFileExcludePatterns = { "**/node_modules/**/*.d.ts" }
+        session:Configure(newPreferences)
+
+        -- IsPreparedForImportingFile should return false since exclude patterns changed
+        local snapshot2 = session:Snapshot()
+        assert.is_false(snapshot2:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, newPreferences))
+
+        -- After GetCurrentLanguageServiceWithAutoImports, buckets should be rebuilt
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, mainFile:URI()))
+
+        -- IsPreparedForImportingFile should return true now that buckets are rebuilt
+        local snapshot3 = session:Snapshot()
+        assert.is_true(snapshot3:AutoImportRegistry():IsPreparedForImportingFile(mainFile:FileName(), projectPath, newPreferences),
+            "IsPreparedForImportingFile should return true after bucket rebuild with new fileExcludePatterns")
+        session:Close()
+    end)
+
+    it("dedupes packages that resolve to same realpath across ancestor node_modules buckets", function()
+        local repoRoot = "/home/src/autoimport-realpath-dedupe"
+        local appDir = tspath.CombinePaths(repoRoot, "apps", "web")
+        local sharedPkgDir = tspath.CombinePaths(repoRoot, "node_modules", "shared")
+        local appIndex = tspath.CombinePaths(appDir, "src", "index.ts")
+
+        local files = {
+            [tspath.CombinePaths(repoRoot, "package.json")] = [[{
+				"name": "repo-root",
+				"private": true,
+				"dependencies": { "shared": "*" }
+			}]],
+            [tspath.CombinePaths(repoRoot, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"target": "esnext",
+					"strict": true
+				},
+				"include": ["apps/**/*"]
+			}]],
+            [tspath.CombinePaths(appDir, "package.json")] = [[{
+				"name": "web",
+				"private": true,
+				"dependencies": { "shared": "*" }
+			}]],
+            [tspath.CombinePaths(appDir, "tsconfig.json")] = [[{
+				"compilerOptions": {
+					"module": "esnext",
+					"target": "esnext",
+					"strict": true
+				},
+				"include": ["src"]
+			}]],
+            [appIndex] = "export const app = 1;\n",
+            [tspath.CombinePaths(sharedPkgDir, "package.json")] = [[{
+				"name": "shared",
+				"version": "1.0.0",
+				"types": "index.d.ts"
+			}]],
+            [tspath.CombinePaths(sharedPkgDir, "index.d.ts")] = "export declare const sharedValue: 1;\n",
+            [tspath.CombinePaths(appDir, "node_modules", "shared")] = vfstest.Symlink(sharedPkgDir),
+        }
+
+        local session = projecttestutil.Setup(files)
+
+        local appURI = lsconv.FileNameToDocumentURI(appIndex)
+        session:DidOpenFile(nil, appURI, 1, files[appIndex], TypeScript)
+
+        noError(session:GetCurrentLanguageServiceWithAutoImports(nil, appURI))
+
+        local stats = autoImportStats(session)
+        assert.are.equal(2, #stats.nodeModulesBuckets, "expected both app and repo node_modules buckets")
+        assert.are.equal(1, stats.uniquePackageCount, "expected one unique package after realpath dedup")
+        session:Close()
+    end)
+end)

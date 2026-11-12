@@ -115,7 +115,7 @@ function autoimport.getDefaultLikeExportNameFromDeclaration(symbol)
     for _, d in ipairs(symbol.declarations or {}) do
         -- "export default" in this case. See `ExportAssignment`for more details.
         if ast.IsExportAssignment(d) then
-            local innerExpression = ast.SkipOuterExpressions(d:Expression(), OEK.All)
+            local innerExpression = ast.SkipOuterExpressions(d:Expression(), OEK.OEKAll)
             if ast.IsIdentifier(innerExpression) then
                 return innerExpression:Text()
             end
