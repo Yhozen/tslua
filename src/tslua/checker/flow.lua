@@ -1422,7 +1422,7 @@ function Checker:getTypeAtFlowLoopLabel(f, flow)
     -- a non-empty in-process array for the outer loop and eventually terminate because
     -- the first antecedent of a loop junction is always the non-looping control flow
     -- path that leads to the top.
-    for _, loopInfo in ipairs(self.flowLoopStack) do
+    for _, loopInfo in ipairs(self.flowLoopStack or {}) do
         if loopInfo.key == key and #loopInfo.types ~= 0 then
             return self:newFlowType(self:getUnionOrEvolvingArrayType(f, loopInfo.types, UnionReduction.Literal), true --[[incomplete]])
         end
@@ -1444,7 +1444,7 @@ function Checker:getTypeAtFlowLoopLabel(f, flow)
             -- All but the first antecedent are the looping control flow paths that lead
             -- back to the loop junction. We track these on the flow loop stack.
             -- (Go stores a slice header: the stacked entry sees the types gathered so far.)
-            self.flowLoopStack[#self.flowLoopStack + 1] = checker.FlowLoopInfo_new({ key = key, types = core.Slice(antecedentTypes, 0, #antecedentTypes) })
+            self.flowLoopStack = core.Append(self.flowLoopStack, checker.FlowLoopInfo_new({ key = key, types = core.Slice(antecedentTypes, 0, #antecedentTypes) }))
             local saveFlowTypeCache = self.flowTypeCache
             self.flowTypeCache = nil
             flowType = self:getTypeAtFlowNode(f, list.flow)
