@@ -16,6 +16,8 @@ options:
   --passing             run the cases listed in tests/passing/tsc.txt and fail on any regression
   --update-passing      add the newly passing cases to tests/passing/tsc.txt
   --filter <pattern>    only cases whose id contains <pattern> (plain text, or a Lua pattern)
+  --unit                run the imperative tests of contentmapper_watch_test.go instead of the
+                        baseline scenarios (positional arguments filter the test names)
   --include-skipped     also run out-of-scope scenarios (showConfig, generateTrace)
   --jobs N              run cases in N parallel `lua` subprocesses (default 1: in-process)
   --batch K             cases per subprocess with --jobs (default 4)
@@ -116,6 +118,8 @@ do
             opts.updatePassing = true
         elseif a == "--filter" then
             opts.filters[#opts.filters + 1] = value(a)
+        elseif a == "--unit" then
+            opts.unit = true
         elseif a == "--include-skipped" then
             opts.includeSkipped = true
         elseif a == "--jobs" or a == "-j" then
@@ -148,6 +152,51 @@ end
 -- Loading the scenarios
 
 require("tslua.execute.tsctests")
+
+-- --unit: the Go-style tests of contentmapper_watch_test.go (no baselines).
+if opts.unit then
+    local testutil = require("tslua.testutil")
+    local tsctests = require("tslua.execute.tsctests.contentmapper_watch_test")
+    local passed, failed = 0, 0
+    for _, name in ipairs(tsctests.contentMapperWatchTests) do
+        local selectedName = #opts.cases == 0
+        for _, a in ipairs(opts.cases) do
+            if string.find(name, a, 1, true) then
+                selectedName = true
+            end
+        end
+        if selectedName then
+            local t = testutil.NewT(name, nil)
+            testutil.runProtected(t, tsctests[name])
+            local function collect(tt, out)
+                for _, m in ipairs(tt.messages) do
+                    out[#out + 1] = m
+                end
+                for _, c in ipairs(tt.children) do
+                    if c.failed then
+                        out[#out + 1] = "--- " .. c.fullName
+                    end
+                    collect(c, out)
+                end
+                return out
+            end
+            local ok = not t.failed
+            if ok then
+                passed = passed + 1
+            else
+                failed = failed + 1
+            end
+            io.write(string.format("%-4s %s\n", ok and "ok" or "FAIL", name))
+            if not ok and opts.verbose then
+                for _, m in ipairs(collect(t, {})) do
+                    io.write("      " .. string.gsub(m, "\n", "\n      ") .. "\n")
+                end
+            end
+        end
+    end
+    io.write(string.format("\n%d passed, %d failed\n", passed, failed))
+    os.exit(failed == 0 and 0 or 1)
+end
 
 local function idOf(input, scenario)
     return input:getBaselineSubFolder() .. "/" .. scenario .. "/" .. string.gsub(input.subScenario, " ", "-")

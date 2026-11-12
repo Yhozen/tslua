@@ -68,21 +68,28 @@ function recordingContentMapperSpawner:Spawn(command, dir, stderr)
     return tsctests.newRecordingContentMapperProcess(process, self, self.closed), nil
 end
 
--- recordingContentMapperProcess embeds io.ReadWriteCloser; Close runs once.
+-- recordingContentMapperProcess embeds io.ReadWriteCloser (the ipc stream: read, Write, Close, ...);
+-- Close runs once, the other methods are promoted from the embedded stream.
 local recordingContentMapperProcess = {}
-recordingContentMapperProcess.__index = recordingContentMapperProcess
+recordingContentMapperProcess.__index = function(self, key)
+    local own = rawget(recordingContentMapperProcess, key)
+    if own ~= nil then
+        return own
+    end
+    local inner = rawget(self, "readWriteCloser")
+    local v = inner[key]
+    if type(v) == "function" then
+        return function(_, ...)
+            return v(inner, ...)
+        end
+    end
+    return v
+end
 tsctests.recordingContentMapperProcess = recordingContentMapperProcess
 
 function tsctests.newRecordingContentMapperProcess(rwc, counters, closed)
-    return setmetatable({ readWriteCloser = rwc, counters = counters, closed = closed, once = false }, recordingContentMapperProcess)
-end
-
-function recordingContentMapperProcess:Read(...)
-    return self.readWriteCloser:Read(...)
-end
-
-function recordingContentMapperProcess:Write(...)
-    return self.readWriteCloser:Write(...)
+    -- closed is false (not nil) when absent so that it does not fall through to the embedded stream
+    return setmetatable({ readWriteCloser = rwc, counters = counters, closed = closed or false, once = false }, recordingContentMapperProcess)
 end
 
 function recordingContentMapperProcess:Close()
@@ -91,7 +98,7 @@ function recordingContentMapperProcess:Close()
         self.once = true
         self.counters.closes = self.counters.closes + 1
         err = self.readWriteCloser:Close()
-        if self.closed ~= nil then
+        if self.closed then
             self.closed.pending = self.closed.pending + 1
         end
     end
