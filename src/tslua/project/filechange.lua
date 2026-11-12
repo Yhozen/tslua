@@ -64,3 +64,9 @@ function project.mergeFileChangeSummary(dst, src)
     end
 end
 
+
+-- NewFileChangeSummary returns the zero FileChangeSummary (Go FileChangeSummary{}), for callers
+-- outside the package (e.g. the API server's APIUpdate).
+function project.NewFileChangeSummary()
+    return project.newFileChangeSummary()
+end
