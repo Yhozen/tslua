@@ -96,7 +96,7 @@ function autoimport.newAutoImportFix(init)
     for k, v in pairs(init or {}) do
         f[k] = v
     end
-    return f
+    return lsproto.AutoImportFix(f)
 end
 
 -- addToExistingImportFix { importClauseOrBindingPattern, defaultImport, namedImport }
