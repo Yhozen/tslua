@@ -1128,3 +1128,24 @@ lsproto.defineCustom("NoParams", {
         return true
     end,
 })
+
+-- Go type aliases of structs and unions (TelemetryEvent, the <Method>Response aliases) can be
+-- used like the aliased type: lsproto.<Alias> is the class of the target type (for `= *T`
+-- aliases too). Called once all types are defined.
+function lsproto.bindAliases()
+    for name, goType in pairs(lsproto.aliasSpecs) do
+        local target = goType
+        if string.sub(target, 1, 1) == "*" then
+            target = string.sub(target, 2)
+        end
+        while lsproto.aliasSpecs[target] ~= nil do
+            target = lsproto.aliasSpecs[target]
+        end
+        local spec = lsproto.structSpecs[target] or lsproto.unionSpecs[target]
+        if spec ~= nil and rawget(lsproto, name) == nil then
+            lsproto[name] = spec.class
+        elseif target == "Null" and rawget(lsproto, name) == nil then
+            lsproto[name] = lsproto.Null
+        end
+    end
+end

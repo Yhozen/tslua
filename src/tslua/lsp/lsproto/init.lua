@@ -8,5 +8,6 @@ require("tslua.lsp.lsproto.structcodec")
 require("tslua.lsp.lsproto.baseproto")
 require("tslua.lsp.lsproto.jsonrpc")
 require("tslua.lsp.lsproto.lsp_generated")
+lsproto.bindAliases()
 require("tslua.lsp.lsproto.util")
 return lsproto
