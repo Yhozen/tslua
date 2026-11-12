@@ -4,8 +4,7 @@ for k, v in pairs(require("tslua.transformers.estransforms.consts_generated")) d
     estransforms[k] = v
 end
 require("tslua.transformers.estransforms.async")
-require("tslua.transformers.estransforms.classfields_1")
-require("tslua.transformers.estransforms.classfields_2")
+require("tslua.transformers.estransforms.classfields")
 require("tslua.transformers.estransforms.classthis")
 require("tslua.transformers.estransforms.esdecorator")
 require("tslua.transformers.estransforms.exponentiation")
