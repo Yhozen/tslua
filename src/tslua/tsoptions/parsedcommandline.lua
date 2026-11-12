@@ -370,7 +370,7 @@ end
 -- config's content mappers.
 function ParsedCommandLine:ContentMapperExtensions()
     return core.FlatMap(self:ContentMappers(), function(m)
-        return m.definition.extensions
+        return m.extensions
     end)
 end
 
@@ -380,7 +380,7 @@ function ParsedCommandLine:GetContentMapperForFileName(fileName)
     local ignoreCase = not self:UseCaseSensitiveFileNames()
     local extension = tspath.GetLongestExtensionFromPath(fileName, self:ContentMapperExtensions(), ignoreCase)
     for _, mapper in ipairs(self:ContentMappers() or {}) do
-        if core.Some(mapper.definition.extensions, function(mapperExtension)
+        if core.Some(mapper.extensions, function(mapperExtension)
             return extension == mapperExtension or ignoreCase and strings.EqualFold(extension, mapperExtension)
         end) then
             return mapper

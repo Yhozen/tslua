@@ -1,14 +1,14 @@
 local tsoptions = require("tslua.tsoptions")
 local ast = require("tslua.ast")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local module = require("tslua.module")
 local packagejson = require("tslua.packagejson")
 local tspath = require("tslua.tspath")
 
--- contentmapper.Manifest: { name, version, exec, compilerOptions, dynamicConfig }
 local function emptyManifest()
-    return { name = "", version = "", exec = nil, compilerOptions = nil, dynamicConfig = false }
+    return contentmapper.NewManifest()
 end
 
 -- resolveContentMapperManifest locates packageName in node_modules (walking up from the directory of
@@ -53,5 +53,5 @@ function tsoptions.resolveContentMapperManifest(host, containingFile, packageNam
     end
     local compilerOptions = cm.compilerOptions:GetValue()
     local dynamicConfig = cm.dynamicConfig:GetValue()
-    return { name = name, version = version, exec = exec, compilerOptions = compilerOptions, dynamicConfig = dynamicConfig }, packageDirectory, nil
+    return contentmapper.NewManifest({ name = name, version = version, exec = exec, compilerOptions = compilerOptions, dynamicConfig = dynamicConfig }), packageDirectory, nil
 end

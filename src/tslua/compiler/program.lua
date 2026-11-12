@@ -350,8 +350,16 @@ function Program:ReuseProgram(changedFilePath, newHost, createCheckerPool)
     local newSupplementalFiles = nil
     if oldFile:ContentMapper() ~= "" then
         -- Content-mapped files are produced by running an external transform, which a plain reparse can't
-        -- reproduce.
-        error("not implemented: Program.ReuseProgram for content-mapped files")
+        -- reproduce. Re-run the transform through the host; any failure (or a missing file) falls back to
+        -- a full rebuild so the file loader's failure policy runs.
+        local mapper = newOpts.config:GetContentMapperForFileName(oldFile:FileName())
+        local files, transformErr = newHost:GetContentMappedSourceFiles(oldFile:ParseOptions(), mapper)
+        newFile = files.canonical
+        if transformErr ~= nil then
+            return nil, nil, false
+        end
+        oldSupplementalFiles = oldFile:SupplementalSourceFiles()
+        newSupplementalFiles = files.supplemental
     else
         newFile = newHost:GetSourceFile(oldFile:ParseOptions())
     end
@@ -379,6 +387,19 @@ function Program:ReuseProgram(changedFilePath, newHost, createCheckerPool)
     if core.Len(oldSupplementalFiles) ~= core.Len(newSupplementalFiles) then
         return nil, newFile, false
     end
+    for i1, oldSupplemental in ipairs(oldSupplementalFiles or {}) do
+        local newSupplemental = newSupplementalFiles[i1]
+        if oldSupplemental:Path() ~= newSupplemental:Path() or
+            not self:canReplaceFileInProgram(oldSupplemental, newSupplemental) then
+            return nil, newFile, false
+        end
+        if (self.importHelpersImportSpecifiers ~= nil and self.importHelpersImportSpecifiers[oldSupplemental:Path()] ~= nil) or self:needsImportHelpersImportSpecifier(newSupplemental) then
+            return nil, newFile, false
+        end
+        if (self.jsxRuntimeImportSpecifiers ~= nil and self.jsxRuntimeImportSpecifiers[oldSupplemental:Path()] ~= nil) or self:jsxRuntimeImportSpecifier(newSupplemental) ~= "" then
+            return nil, newFile, false
+        end
+    end
     -- TODO: reverify compiler options when config has changed?
     local result = newProgramTable(newOpts)
     result.comparePathsOptions = self.comparePathsOptions
@@ -402,6 +423,14 @@ function Program:ReuseProgram(changedFilePath, newHost, createCheckerPool)
     end
     result.filesByPath = filesByPath
     result.filesByPath[newFile:Path()] = newFile
+    if core.Len(oldSupplementalFiles) ~= 0 then
+        for i1, oldSupplemental in ipairs(oldSupplementalFiles) do
+            local newSupplemental = newSupplementalFiles[i1]
+            local supplementalIndex = core.FindIndex(result.files, function(file) return file == oldSupplemental end)
+            result.files[supplementalIndex + 1] = newSupplemental
+            result.filesByPath[newSupplemental:Path()] = newSupplemental
+        end
+    end
     compiler.updateFileIncludeProcessor(result)
     return result, newFile, true
 end

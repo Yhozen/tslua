@@ -1,6 +1,7 @@
 local tsoptions = require("tslua.tsoptions")
 local ast = require("tslua.ast")
 local collections = require("tslua.collections")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local tspath = require("tslua.tspath")
@@ -136,16 +137,10 @@ function tsoptions.parseProjectReference(json)
     return nil
 end
 
--- contentmapper.Mapper: { package = string, packageDirectory = string, definition = { extensions = []string },
--- options = JSON text of the options object (Go json.Marshal output) or nil, manifest = contentmapper.Manifest }
+-- contentmapper.Mapper (see tslua.contentmapper): options is the JSON text of the options object (Go
+-- json.Marshal output) or nil.
 function tsoptions.newContentMapper()
-    return {
-        package = "",
-        packageDirectory = "",
-        definition = { extensions = nil },
-        options = nil,
-        manifest = { name = "", version = "", exec = nil, compilerOptions = nil, dynamicConfig = false },
-    }
+    return contentmapper.NewMapper()
 end
 
 -- Returns mapper, errors.
@@ -171,7 +166,7 @@ function tsoptions.parseContentMapper(value)
     if ok then
         local strs, isStringArray = tsoptions.parseStringArrayStrict(extensions)
         if isStringArray then
-            mapper.definition.extensions = strs
+            mapper.extensions = strs
         else
             errors = core.Append(errors, ast.NewCompilerDiagnostic(diagnostics.Compiler_option_0_requires_a_value_of_type_1, "contentMapper.extensions", "string[]"))
         end

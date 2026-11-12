@@ -1381,7 +1381,7 @@ function tsoptions.parseJsonConfigFileContentWorker(
     local nativeExtensions = core.Flatten(tspath.AllSupportedExtensionsWithJson)
     for j1, mapper in ipairs(contentMappers or {}) do
         local validExtensions = {}
-        for _, ext in ipairs(mapper.definition.extensions or {}) do
+        for _, ext in ipairs(mapper.extensions or {}) do
             local extNode = tsoptions.getContentMapperExtensionSyntax(contentMapperSourceFile, contentMapperIndices[j1], ext)
             if not strings.HasPrefix(ext, ".") then
                 errors = core.Append(errors, tsoptions.setContentMapperDiagnosticLocation(ast.NewCompilerDiagnostic(diagnostics.Content_mapper_file_extension_0_must_begin_with_a, ext), contentMapperSourceFile, extNode))
@@ -1397,7 +1397,7 @@ function tsoptions.parseJsonConfigFileContentWorker(
                 end
             end
         end
-        mapper.definition.extensions = validExtensions
+        mapper.extensions = validExtensions
     end
     if core.Len(contentMappers) > 0 and not (parsedConfig.options ~= nil and core.Tristate_IsTrue(parsedConfig.options.runExternalCode)) then
         errors = core.Append(errors, tsoptions.setContentMapperDiagnosticLocation(ast.NewCompilerDiagnostic(diagnostics.Content_mappers_require_the_runExternalCode_command_line_flag_to_be_enabled), contentMapperSourceFile, tsoptions.getContentMappersKeySyntax(contentMapperSourceFile)))
@@ -1419,13 +1419,13 @@ function tsoptions.parseJsonConfigFileContentWorker(
             if diagnostic ~= nil then
                 errors = core.Append(errors, tsoptions.setContentMapperDiagnosticLocation(diagnostic, contentMapperSourceFile, tsoptions.getContentMapperSyntax(contentMapperSourceFile, contentMapperIndices[j1], "package")))
             else
-                mapper.manifest = manifest
+                mapper:SetManifest(manifest)
                 resolvedContentMappers[#resolvedContentMappers + 1] = mapper
             end
         end
         contentMappers = resolvedContentMappers
         contentMapperExtensions = core.FlatMap(contentMappers, function(m)
-            return m.definition.extensions
+            return m.extensions
         end)
     end
 

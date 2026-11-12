@@ -1,4 +1,5 @@
 local compiler = require("tslua.compiler")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local parser = require("tslua.parser")
 local tsoptions = require("tslua.tsoptions")
@@ -58,8 +59,22 @@ function compilerHost:GetSourceFile(opts)
     return parser.ParseSourceFile(opts, text, core.EnsureScriptKindFromFileName(opts.fileName))
 end
 
+-- GetContentMappedSourceFiles returns (contentmapper.SourceFiles, err).
 function compilerHost:GetContentMappedSourceFiles(parseOptions, mapper)
-    error("not implemented: compilerHost.GetContentMappedSourceFiles (content mappers)")
+    if self.contentMapperProject == nil then
+        return contentmapper.NewSourceFiles(), contentmapper.ErrProjectUnavailable
+    end
+    local content, ok = self:FS():ReadFile(parseOptions.fileName)
+    if not ok then
+        return contentmapper.NewSourceFiles(), nil
+    end
+    local files, err = contentmapper.TransformAndParse(parseOptions, content, mapper, self.contentMapperProject)
+    if err == nil then
+        err = contentmapper.CheckSupplementalFileNameCollisions(files, function(fileName)
+            return self:FS():FileExists(fileName)
+        end)
+    end
+    return files, err
 end
 
 function compilerHost:ContentMapperProject()

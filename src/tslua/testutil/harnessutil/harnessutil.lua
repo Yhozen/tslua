@@ -3,14 +3,17 @@ local ast = require("tslua.ast")
 local bundled = require("tslua.bundled")
 local collections = require("tslua.collections")
 local compiler = require("tslua.compiler")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local incremental = require("tslua.execute.incremental")
+local locale = require("tslua.locale")
 local outputpaths = require("tslua.outputpaths")
 local parser = require("tslua.parser")
 local repo = require("tslua.repo")
 local sourcemap = require("tslua.sourcemap")
 local testutil = require("tslua.testutil")
+local contentmappertest = require("tslua.testutil.contentmappertest")
 local tsoptions = require("tslua.tsoptions")
 local tspath = require("tslua.tspath")
 local vfs = require("tslua.vfs")
@@ -224,8 +227,9 @@ function harnessutil.CompileFilesEx(t, inputFiles, otherFiles, harnessOptions, c
 
     -- Content mappers, when trusted, are served in-process by the test mapper (see contentmappertest).
     -- The host is shared by the pre- and post-emit programs and torn down when this compilation finishes.
+    local contentMapperHost = nil
     if core.Tristate_IsTrue(compilerOptions.runExternalCode) and core.Len(contentMappers) > 0 then
-        error("not implemented: contentmapper.NewHost (content mappers are out of scope)", 0)
+        contentMapperHost = contentmapper.NewHost(nil, contentmappertest.NewSpawner(), locale.Default)
     end
 
     local configFile = nil
@@ -240,8 +244,22 @@ function harnessutil.CompileFilesEx(t, inputFiles, otherFiles, harnessOptions, c
         errors
     )
     local contentMapperProject = nil
+    if contentMapperHost ~= nil then
+        contentMapperProject = contentMapperHost:Project({
+            configFileName = config:ConfigName(),
+            mappers = config:ContentMappers(),
+            compilerOptions = config:CompilerOptions(),
+        })
+    end
     local host = harnessutil.createCompilerHost(fs, bundled.LibPath(), currentDirectory, contentMapperProject)
     local result = harnessutil.compileFilesWithHost(host, config, harnessOptions)
+    -- deferred: contentMapperProject.Close(), then contentMapperHost.Close()
+    if contentMapperProject ~= nil then
+        contentMapperProject:Close()
+    end
+    if contentMapperHost ~= nil then
+        contentMapperHost:Close()
+    end
     result.symlinks = symlinks
     result.trace = host.tracer:String()
     result.repeat_ = function(testConfig)

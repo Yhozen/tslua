@@ -47,7 +47,7 @@ function tsbaseline.getContentMapperBaseline(program, diags)
     local b = core.NewStringBuilder()
     for _, file in ipairs(files) do
         local mapper = mapped[file:FileName()]
-        b:WriteString("//// [" .. tsbaseline.removeTestPathPrefixes(file:FileName(), false) .. "] (ScriptKind: " .. core.ScriptKind_String(file.scriptKind) .. ", ContentMapper: " .. formatStringSlice(mapper.definition.extensions) .. ")\n")
+        b:WriteString("//// [" .. tsbaseline.removeTestPathPrefixes(file:FileName(), false) .. "] (ScriptKind: " .. core.ScriptKind_String(file.scriptKind) .. ", ContentMapper: " .. formatStringSlice(mapper.extensions) .. ")\n")
         b:WriteString("--- Original ---\n")
         b:WriteString(tsbaseline.ensureTrailingNewline(file:OriginalText()))
         b:WriteString("--- Transformed ---\n")

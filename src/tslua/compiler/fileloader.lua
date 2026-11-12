@@ -1,8 +1,10 @@
 local compiler = require("tslua.compiler")
 local ast = require("tslua.ast")
+local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local module = require("tslua.module")
+local spanmap = require("tslua.spanmap")
 local tsoptions = require("tslua.tsoptions")
 local tspath = require("tslua.tspath")
 
@@ -333,18 +335,128 @@ function fileLoader:parseSourceFile(t)
 end
 
 -- parseContentMappedFile produces a content-mapped virtual source file via the host's content
--- mapper. Content mapper extensions only reach the parser when content mappers are configured.
+-- mapper, preserving the original file name and retaining the untransformed text on the
+-- source file. Content mapper extensions only reach the parser when content mappers are configured.
+--
+-- When initialization fails, one program diagnostic is reported and the mapper is not attempted for
+-- subsequent files. Other failures produce per-file diagnostics and count toward a failure budget; after
+-- maxContentMapperFailures, one program diagnostic reports that the mapper was disabled and subsequent
+-- files are silently substituted with empty files. It returns nil only if the file cannot be read.
 function fileLoader:parseContentMappedFile(opts)
-    error("not implemented: fileLoader.parseContentMappedFile (content mappers)")
+    local mapper = self.opts.config:GetContentMapperForFileName(opts.fileName)
+    local label = mapper:DiagnosticName()
+    local transformIdentity = self:getContentMapperTransformIdentity(mapper)
+    if self:contentMapperUnavailable(mapper) then
+        -- The mapper failed initialization or exceeded its failure budget; add the file empty without re-reporting.
+        return self:emptyContentMappedFile(opts, mapper:Identity(), transformIdentity)
+    end
+    local files, err = self.opts.host:GetContentMappedSourceFiles(opts, mapper)
+    if err ~= nil then
+        local sourceFile = self:emptyContentMappedFile(opts, mapper:Identity(), transformIdentity)
+        local transformError, ok = contentmapper.ErrorsAsType(err, contentmapper.TransformError)
+        if ok and transformError.kind == contentmapper.TransformErrorKind.Initialize then
+            self:recordContentMapperInitializationFailure(mapper, label, transformError)
+            return sourceFile
+        end
+        if self:recordContentMapperFailure(mapper, label) then
+            local diagnostic
+            local problem, isMappingError = contentmapper.ErrorsAsType(err, spanmap.MappingError)
+            if isMappingError then
+                diagnostic = compiler.contentMapperMappingDiagnostic(sourceFile, label, problem)
+            else
+                diagnostic = compiler.contentMapperTransformDiagnostic(sourceFile, label, err)
+            end
+            sourceFile:SetDiagnostics(core.Append(core.Slice(sourceFile:Diagnostics(), 0), diagnostic))
+        end
+        return sourceFile
+    end
+    return files.canonical
 end
 
 function compiler.contentMapperTransformDiagnostic(file, label, err)
-    error("not implemented: contentMapperTransformDiagnostic (content mappers)")
+    local collision, isCollision = contentmapper.ErrorsAsType(err, contentmapper.SupplementalFileCollisionError)
+    if isCollision then
+        return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.Content_mapper_supplemental_output_file_0_conflicts_with_an_existing_file, collision.fileName)
+    end
+    local transformError, ok = contentmapper.ErrorsAsType(err, contentmapper.TransformError)
+    if ok then
+        local TransformErrorKind = contentmapper.TransformErrorKind
+        local kind = transformError.kind
+        if kind == TransformErrorKind.Initialize then
+            local initializeError, isInitializeError = contentmapper.ErrorsAsType(transformError, contentmapper.InitializeError)
+            if isInitializeError then
+                local InitializeErrorKind = contentmapper.InitializeErrorKind
+                local ikind = initializeError.kind
+                if ikind == InitializeErrorKind.ProtocolVersion then
+                    return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_uses_unsupported_protocol_version_0_expected_version_1, initializeError.protocolVersion, contentmapper.ProtocolVersion)
+                elseif ikind == InitializeErrorKind.PositionEncoding then
+                    return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_selected_unsupported_position_encoding_0, initializeError.positionEncoding)
+                elseif ikind == InitializeErrorKind.EmptyDiagnosticSource then
+                    return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_diagnostic_source_must_not_be_empty)
+                elseif ikind == InitializeErrorKind.ReservedDiagnosticSource then
+                    return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_diagnostic_source_0_is_reserved_by_TypeScript, initializeError.diagnosticSource)
+                end
+            end
+            return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_process_could_not_be_started_or_initialized)
+        elseif kind == TransformErrorKind.Project then
+            return compiler.contentMapperTransformDiagnosticChain(file, label, compiler.ContentMapperProjectErrorDiagnostic(transformError))
+        elseif kind == TransformErrorKind.Request then
+            return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_process_failed_while_handling_the_transform_request)
+        elseif kind == TransformErrorKind.Response then
+            local extensionError, isExtensionError = contentmapper.ErrorsAsType(transformError, contentmapper.InvalidVirtualExtensionError)
+            if isExtensionError then
+                return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_returned_an_output_with_unsupported_virtual_extension_0, extensionError.extension)
+            end
+            local directiveError, isDirectiveError = contentmapper.ErrorsAsType(transformError, contentmapper.DiagnosticDirectiveError)
+            if isDirectiveError then
+                local DiagnosticDirectiveErrorKind = contentmapper.DiagnosticDirectiveErrorKind
+                local dkind = directiveError.kind
+                local detail = nil
+                if dkind == DiagnosticDirectiveErrorKind.InvalidRange then
+                    detail = ast.NewCompilerDiagnostic(diagnostics.Diagnostic_directive_0_returned_by_the_content_mapper_has_an_invalid_range, directiveError.index)
+                elseif dkind == DiagnosticDirectiveErrorKind.InvalidPolicy then
+                    detail = ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_returned_a_diagnostic_directive_with_invalid_policy_0, directiveError.policy)
+                elseif dkind == DiagnosticDirectiveErrorKind.ExpectMissingUnusedDiagnostic then
+                    detail = ast.NewCompilerDiagnostic(diagnostics.Diagnostic_directive_0_returned_by_the_content_mapper_must_specify_unusedExpectDirectiveIndex_when_there_is_not_exactly_one_unusedExpectDirectiveDiagnostics_entry, directiveError.index)
+                elseif dkind == DiagnosticDirectiveErrorKind.InvalidUnusedDiagnosticIndex then
+                    detail = ast.NewCompilerDiagnostic(diagnostics.Diagnostic_directive_0_returned_by_the_content_mapper_has_an_invalid_unusedExpectDirectiveIndex, directiveError.index)
+                elseif dkind == DiagnosticDirectiveErrorKind.Overlap then
+                    detail = ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_returned_diagnostic_directives_with_overlapping_virtual_ranges)
+                end
+                if detail ~= nil then
+                    if directiveError.supplementalIndex >= 0 then
+                        detail = ast.NewDiagnosticChain(detail, diagnostics.The_invalid_diagnostic_directive_is_in_supplemental_output_0_returned_by_the_content_mapper, directiveError.supplementalIndex)
+                    end
+                    return compiler.contentMapperTransformDiagnosticWithDetail(file, label, detail)
+                end
+            end
+            return compiler.contentMapperTransformDiagnosticChain(file, label, diagnostics.The_content_mapper_returned_an_invalid_transform_response)
+        elseif kind == TransformErrorKind.Mappings then
+            return ast.NewDiagnostic(file, core.NewTextRange(0, 0), diagnostics.The_content_mapper_0_did_not_provide_the_required_position_mappings, label)
+        end
+    end
+    return ast.NewDiagnostic(file, core.NewTextRange(0, 0), diagnostics.The_content_mapper_0_failed_to_transform_this_file, label)
 end
 
 -- ContentMapperProjectErrorDiagnostic returns the localized diagnostic message for a project setup error.
 function compiler.ContentMapperProjectErrorDiagnostic(err)
-    error("not implemented: ContentMapperProjectErrorDiagnostic (content mappers)")
+    local projectError, ok = contentmapper.ErrorsAsType(err, contentmapper.ProjectError)
+    if ok then
+        local ProjectErrorKind = contentmapper.ProjectErrorKind
+        local kind = projectError.kind
+        if kind == ProjectErrorKind.MalformedResponse then
+            return diagnostics.The_content_mapper_returned_a_project_response_that_could_not_be_decoded
+        elseif kind == ProjectErrorKind.MissingConfigIdentity then
+            return diagnostics.The_content_mapper_did_not_return_configIdentity_which_is_required_when_the_content_mapper_has_dynamicConfig_Colon_true_in_its_package_json
+        elseif kind == ProjectErrorKind.NonAbsoluteWatchedFile then
+            return diagnostics.The_content_mapper_returned_a_non_absolute_path_in_watchedFiles
+        elseif kind == ProjectErrorKind.UnexpectedConfigIdentity then
+            return diagnostics.The_content_mapper_returned_configIdentity_which_is_only_allowed_when_it_declares_dynamicConfig_Colon_true_in_its_package_json
+        elseif kind == ProjectErrorKind.UnexpectedWatchedFiles then
+            return diagnostics.The_content_mapper_returned_watchedFiles_which_is_only_allowed_when_it_declares_dynamicConfig_Colon_true_in_its_package_json
+        end
+    end
+    return diagnostics.The_content_mapper_process_failed_while_handling_the_project_request
 end
 
 function compiler.contentMapperTransformDiagnosticChain(file, label, message, ...)
@@ -361,27 +473,95 @@ function compiler.contentMapperTransformDiagnosticWithDetail(file, label, detail
 end
 
 -- contentMapperMappingDiagnostic builds the diagnostic reported against a mapper that produced an
--- invalid span map.
+-- invalid span map, including the offsets involved so the mapper's author can locate the problem.
 function compiler.contentMapperMappingDiagnostic(file, label, problem)
-    error("not implemented: contentMapperMappingDiagnostic (content mappers)")
+    local loc = core.NewTextRange(0, 0)
+    local MappingErrorKind = spanmap.MappingErrorKind
+    local kind = problem.kind
+    if kind == MappingErrorKind.Overlap then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_overlapping_or_out_of_order_position_mappings_near_virtual_offset_1, label, problem.virtualPos)
+    elseif kind == MappingErrorKind.OutOfBounds then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_a_position_mapping_that_points_outside_the_original_content_original_offset_1, label, problem.originalPos)
+    elseif kind == MappingErrorKind.VerbatimMismatch then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_a_verbatim_mapping_that_does_not_match_the_original_content_virtual_offset_1_original_offset_2, label, problem.virtualPos, problem.originalPos)
+    elseif kind == MappingErrorKind.Kind then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_a_position_mapping_with_an_invalid_kind_near_virtual_offset_1, label, problem.virtualPos)
+    elseif kind == MappingErrorKind.OriginalOverlap then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_overlapping_original_position_mappings_that_are_not_identical_near_original_offset_1, label, problem.originalPos)
+    elseif kind == MappingErrorKind.Feature then
+        return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_produced_invalid_mapping_features_near_original_offset_1, label, problem.originalPos)
+    end
+    return ast.NewDiagnostic(file, loc, diagnostics.The_content_mapper_0_did_not_provide_the_required_position_mappings, label)
 end
 
+-- emptyContentMappedFile produces an empty TypeScript source file for a content-mapped file whose
+-- transform could not be used, retaining the original content for diagnostics. Importers see it as an
+-- empty module rather than triggering a "cannot find module" error. It is still marked as content-mapped
+-- so it is excluded from emit like a successfully mapped file.
 function fileLoader:getContentMapperTransformIdentity(mapper)
-    error("not implemented: fileLoader.getContentMapperTransformIdentity (content mappers)")
+    local project = self.opts.host:ContentMapperProject()
+    if project ~= nil then
+        local identity, err = project:Identity(mapper)
+        if err == nil then
+            return identity
+        end
+    end
+    return mapper:TransformIdentity(self.opts.config:CompilerOptions()):Hex()
 end
 
 function fileLoader:emptyContentMappedFile(opts, mapperIdentity, transformIdentity)
-    error("not implemented: fileLoader.emptyContentMappedFile (content mappers)")
+    local content = self.opts.host:FS():ReadFile(opts.fileName)
+    local sourceFile = require("tslua.parser").ParseSourceFile(opts, "", core.ScriptKind.TS)
+    sourceFile:SetContentMapperInfo({
+        contentMapper = mapperIdentity,
+        transformIdentity = transformIdentity,
+        parseOptions = opts,
+        virtualFileName = opts.fileName .. tspath.ExtensionTs,
+        originalText = content or "",
+    })
+    return sourceFile
 end
 
 -- ContentMapperInitializationDiagnostic returns a fileless diagnostic for a mapper initialization failure.
 function compiler.ContentMapperInitializationDiagnostic(label, err)
-    error("not implemented: ContentMapperInitializationDiagnostic (content mappers)")
+    local initializeError, ok = contentmapper.ErrorsAsType(err, contentmapper.InitializeError)
+    if ok and label == "" then
+        label = initializeError.mapperName
+    end
+    local diagnostic = ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_0_could_not_be_initialized, label)
+    if ok then
+        local InitializeErrorKind = contentmapper.InitializeErrorKind
+        local kind = initializeError.kind
+        if kind == InitializeErrorKind.ProcessStart then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_command_0_could_not_be_started_Colon_1, initializeError.command, initializeError.detail))
+        elseif kind == InitializeErrorKind.ProcessExit then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_process_exited_before_responding_to_the_initialize_request_exit_code_0, initializeError.exitCode))
+        elseif kind == InitializeErrorKind.NoResponse then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_did_not_respond_to_the_initialize_request_within_0_seconds, initializeError.timeoutSeconds))
+        elseif kind == InitializeErrorKind.InvalidResponse then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_returned_an_initialize_response_that_could_not_be_decoded_Colon_0, initializeError.detail))
+        elseif kind == InitializeErrorKind.Request then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_s_initialize_request_failed_Colon_0, initializeError.detail))
+        elseif kind == InitializeErrorKind.ProtocolVersion then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_uses_unsupported_protocol_version_0_expected_version_1, initializeError.protocolVersion, contentmapper.ProtocolVersion))
+        elseif kind == InitializeErrorKind.PositionEncoding then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_selected_unsupported_position_encoding_0, initializeError.positionEncoding))
+        elseif kind == InitializeErrorKind.EmptyDiagnosticSource then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_diagnostic_source_must_not_be_empty))
+        elseif kind == InitializeErrorKind.ReservedDiagnosticSource then
+            return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_diagnostic_source_0_is_reserved_by_TypeScript, initializeError.diagnosticSource))
+        end
+    end
+    return diagnostic:AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.The_content_mapper_process_could_not_be_started_or_initialized))
 end
 
 -- ContentMapperProjectDiagnostic returns a fileless diagnostic for project setup or mapper initialization.
 function compiler.ContentMapperProjectDiagnostic(err)
-    error("not implemented: ContentMapperProjectDiagnostic (content mappers)")
+    local _, ok = contentmapper.ErrorsAsType(err, contentmapper.InitializeError)
+    if ok then
+        return compiler.ContentMapperInitializationDiagnostic("", err)
+    end
+    return ast.NewCompilerDiagnostic(compiler.ContentMapperProjectErrorDiagnostic(err))
 end
 
 -- contentMapperUnavailable reports whether mapper failed initialization or exceeded its failure budget.

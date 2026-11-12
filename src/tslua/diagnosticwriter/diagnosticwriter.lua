@@ -3,6 +3,7 @@ local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local scanner = require("tslua.scanner")
+local spanmap = require("tslua.spanmap")
 local tspath = require("tslua.tspath")
 
 -- Go io.Writer -> any object with a WriteString(s) method (e.g. core.StringBuilder).
@@ -71,9 +72,6 @@ function ASTDiagnostic:Len() return self:resolve().loc:Len() end
 --   useOriginal -- render against the file's original, untransformed text
 --   synthesized -- the range is in virtual code with no corresponding original location
 
--- spanmap.FidelityNone (the spanmap package is not ported; content mappers are out of scope).
-local spanmapFidelityNone = 0
-
 -- resolve determines where and against which text a diagnostic should be reported. A content mapper's
 -- own diagnostics already carry original ranges. A compiler diagnostic on a content-mapped file has its
 -- virtual range mapped back to the original; if it falls entirely within synthesized code, there is no
@@ -88,7 +86,7 @@ function ASTDiagnostic:resolve()
         return { loc = loc, useOriginal = true, synthesized = false }
     elseif file.SpanMap ~= nil and file:SpanMap() ~= nil then
         local mapped, fidelity = file:SpanMap():VirtualToOriginalSpan(loc)
-        if fidelity == spanmapFidelityNone then
+        if fidelity == spanmap.Fidelity.None then
             return { loc = loc, useOriginal = false, synthesized = true }
         end
         return { loc = mapped, useOriginal = true, synthesized = false }
