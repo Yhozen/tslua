@@ -468,8 +468,8 @@ end
 
 function fourslash.formatCallHierarchyItem(t, f, file, result, callHierarchyItem, direction, seen, prefix)
     local key = { uri = callHierarchyItem.uri, range_ = callHierarchyItem.range, direction = direction }
-    local alreadySeen = (seen[key] or false)
-    seen[key] = true
+    local alreadySeen = (seen[gort.Key(key)] or false)
+    seen[gort.Key(key)] = true
     local incomingCalls = { skip = false, seen = false }
     local outgoingCalls = { skip = false, seen = false }
     if direction == fourslash.callHierarchyItemDirection.Outgoing then
@@ -1635,7 +1635,7 @@ function FourslashTest:verifyBaselineRename(t, preferences, markerOrRanges)
                 for i229, edit in gort.ipairs(edits) do
                     local span = { uri = uri, textSpan = edit.range }
                     fileToSpan:Add(uri, span)
-                    spanToText[span] = edit.newText
+                    spanToText[gort.Key(span)] = edit.newText
                 end
             end
             local renameOptions = gort.NewBuilder()
@@ -1652,7 +1652,7 @@ function FourslashTest:verifyBaselineRename(t, preferences, markerOrRanges)
                     markerName = "/*RENAME*/",
                     endMarker = "RENAME|]",
                     startMarkerPrefix = function(span)
-                        local text = (spanToText[span] or "")
+                        local text = (spanToText[gort.Key(span)] or "")
                         local prefixAndSuffix = gort.strings.Split(text, "?")
                         if prefixAndSuffix[1] ~= "" then
                             return "/*START PREFIX*/" .. prefixAndSuffix[1]
@@ -1660,7 +1660,7 @@ function FourslashTest:verifyBaselineRename(t, preferences, markerOrRanges)
                         return nil
                     end,
                     endMarkerSuffix = function(span)
-                        local text = (spanToText[span] or "")
+                        local text = (spanToText[gort.Key(span)] or "")
                         local prefixAndSuffix = gort.strings.Split(text, "?")
                         if prefixAndSuffix[2] ~= "" then
                             return prefixAndSuffix[2] .. "/*END SUFFIX*/"
@@ -2113,9 +2113,9 @@ function FourslashTest:VerifyBaselineLinkedEditing(t)
                         position = self.converters:PositionToLineAndCharacter(self:getScriptInfo(file:FileName()), i),
                     })
                 local result = fourslash.sendRequest(t, self, lsproto.TextDocumentLinkedEditingRangeInfo, params)
-                if ((result.linkedEditingRanges ~= nil) and (gort.len(result.linkedEditingRanges.ranges) > 0)) and (not (found[result.linkedEditingRanges.ranges[1]] or false)) then
+                if ((result.linkedEditingRanges ~= nil) and (gort.len(result.linkedEditingRanges.ranges) > 0)) and (not (found[gort.Key(result.linkedEditingRanges.ranges[1])] or false)) then
                     results = gort.append(results, result.linkedEditingRanges)
-                    found[result.linkedEditingRanges.ranges[1]] = true
+                    found[gort.Key(result.linkedEditingRanges.ranges[1])] = true
                 end
             end
             if gort.len(results) == 0 then
@@ -2489,10 +2489,10 @@ end
 function fourslash.verifyIncludesSymbols(t, actual, includes, prefix)
     local nameAndLocToActualSymbol = {}
     for i288, sym in gort.ipairs(actual) do
-        nameAndLocToActualSymbol[{ name = sym.name, loc = sym.location }] = sym
+        nameAndLocToActualSymbol[gort.Key({ name = sym.name, loc = sym.location })] = sym
     end
     for i290, sym in gort.ipairs(includes) do
-        local actualSym, ok = gort.MapLookup(nameAndLocToActualSymbol, { name = sym.name, loc = sym.location }, nil)
+        local actualSym, ok = gort.MapLookup(nameAndLocToActualSymbol, gort.Key({ name = sym.name, loc = sym.location }), nil)
         if not ok then
             t:Fatalf("%s: Expected symbol '%s' at location '%v' not found", prefix, sym.name, sym.location)
         end
@@ -2513,12 +2513,13 @@ function FourslashTest:VerifyBaselineDocumentSymbol(t)
         end
     end
     local spans = gort.makeSlice(0, function() return { uri = "", textSpan = lsproto.Range({}) } end)
-    for key, symbol in gort.pairs(symbolBySpan) do
+    for k294, symbol in gort.pairs(symbolBySpan) do
+        local key = gort.Unkey(k294)
         spans = gort.append(spans, { uri = key.uri, textSpan = key.textSpan, contextSpan = symbol.range })
     end
     self:addResultToBaseline(t, fourslash.baselineCommand.documentSymbolsCmd, self:getBaselineForSpansWithFileContents(spans, {
         getLocationData = function(span)
-            local symbol = symbolBySpan[{ uri = span.uri, textSpan = span.textSpan, contextSpan = span.contextSpan }]
+            local symbol = symbolBySpan[gort.Key({ uri = span.uri, textSpan = span.textSpan, contextSpan = span.contextSpan })]
             return gort.fmt.Sprintf("{| name: %s, kind: %s |}", symbol.name, lsproto.SymbolKind_String(symbol.kind))
         end,
         markerName = "",
@@ -2544,9 +2545,9 @@ end
 function fourslash.collectDocumentSymbolSpans(uri, symbol, symbolBySpan)
     local key = { uri = uri, textSpan = symbol.selectionRange, contextSpan = symbol.range }
     do
-        local _, ok = gort.MapLookup(symbolBySpan, key, nil)
+        local _, ok = gort.MapLookup(symbolBySpan, gort.Key(key), nil)
         if not ok then
-            symbolBySpan[key] = symbol
+            symbolBySpan[gort.Key(key)] = symbol
         end
     end
     if symbol.children ~= nil then
@@ -2767,5 +2768,6 @@ fourslash.autoImportIgnoreOpts = fourslash.ignorePaths(".Kind", ".SortText", ".F
 fourslash.diagnosticsIgnoreOpts = fourslash.ignorePaths(".Severity", ".Source", ".RelatedInformation")
 fourslash._ = nil
 fourslash._ = nil
-fourslash.AnyTextEdits = nil
-fourslash.NoTextEdits = nil
+-- Go: new([]*lsproto.TextEdit) — distinct sentinels compared by identity
+fourslash.AnyTextEdits = {}
+fourslash.NoTextEdits = {}

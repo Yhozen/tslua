@@ -446,7 +446,7 @@ func (g *gen) index(e *ast.IndexExpr) string {
 	xt := g.info.TypeOf(e.X)
 	switch u := xt.Underlying().(type) {
 	case *types.Map:
-		v := g.recvExpr(e.X) + "[" + g.expr(e.Index) + "]"
+		v := g.recvExpr(e.X) + "[" + g.mapKey(u, e.Index) + "]"
 		if z := g.scalarZero(u.Elem()); z != "" {
 			return "(" + v + " or " + z + ")"
 		}
@@ -464,7 +464,20 @@ func (g *gen) lookupCall(e *ast.IndexExpr, m *types.Map) string {
 	if z == "" {
 		z = "nil"
 	}
-	return g.gort() + ".MapLookup(" + g.expr(e.X) + ", " + g.expr(e.Index) + ", " + z + ")"
+	return g.gort() + ".MapLookup(" + g.expr(e.X) + ", " + g.mapKey(m, e.Index) + ", " + z + ")"
+}
+
+// mapKey converts a map key; struct keys are encoded into strings (gort.Key, gort.Unkey).
+func (g *gen) mapKey(m *types.Map, k ast.Expr) string {
+	if isStructKey(m) {
+		return g.gort() + ".Key(" + g.expr(k) + ")"
+	}
+	return g.expr(k)
+}
+
+func isStructKey(m *types.Map) bool {
+	_, ok := m.Key().Underlying().(*types.Struct)
+	return ok
 }
 
 // scalarZero returns the Lua zero value of a basic type, or "" for types whose zero is nil.
@@ -679,6 +692,9 @@ func (g *gen) builtin(e *ast.CallExpr, name string) string {
 	case "min", "max":
 		return "math." + name + "(" + strings.Join(g.args(e), ", ") + ")"
 	case "delete":
+		if m, ok := g.info.TypeOf(e.Args[0]).Underlying().(*types.Map); ok && isStructKey(m) {
+			return g.gort() + ".delete(" + g.expr(e.Args[0]) + ", " + g.mapKey(m, e.Args[1]) + ")"
+		}
 		return g.gort() + ".delete(" + strings.Join(g.args(e), ", ") + ")"
 	case "copy":
 		if se, ok := ast.Unparen(e.Args[0]).(*ast.SliceExpr); ok && se.High == nil && !isStringType(g.info.TypeOf(se.X)) {

@@ -130,27 +130,50 @@ function M.len(x)
     return n
 end
 
--- append(s, x...) appends in place to a non-nil s and returns it (the `xs = append(xs, x)` idiom;
--- Go may alias too). A nil s starts a new array.
+-- append(s, x...). Go appends in place only when s has spare capacity, which slice literals and
+-- make([]T, n) do not have but arrays grown by append do: arrays created by append are tracked
+-- (weakly) and appended to in place; any other array is copied first, so appending to a shared
+-- slice (e.g. a package-level expectation list) never modifies it.
+local grown = setmetatable({}, { __mode = "k" })
+
+local function growable(s)
+    if s == nil then
+        local r = {}
+        grown[r] = true
+        return r
+    end
+    if grown[s] then
+        return s
+    end
+    local r = table.move(s, 1, #s, 1, {})
+    grown[r] = true
+    return r
+end
+
 function M.append(s, ...)
-    local result = s or {}
-    local n = #result
-    for i = 1, select("#", ...) do
-        result[n + i] = select(i, ...)
+    local n = select("#", ...)
+    if n == 0 then
+        return s
+    end
+    local result = growable(s)
+    local len = #result
+    for i = 1, n do
+        result[len + i] = select(i, ...)
     end
     return result
 end
 
 function M.appendSlice(s, other)
-    local result = s or {}
-    if other ~= nil then
-        if type(other) == "string" then
-            for i = 1, #other do
-                result[#result + 1] = string.byte(other, i)
-            end
-        else
-            table.move(other, 1, #other, #result + 1, result)
+    if other == nil or (type(other) ~= "string" and #other == 0) or other == "" then
+        return s
+    end
+    local result = growable(s)
+    if type(other) == "string" then
+        for i = 1, #other do
+            result[#result + 1] = string.byte(other, i)
         end
+    else
+        table.move(other, 1, #other, #result + 1, result)
     end
     return result
 end
@@ -216,6 +239,51 @@ function M.Embed(t, ...)
         end
     end
     return t
+end
+
+-- Struct map keys (docs/PORTING.md: struct keys are encoded into a string key). Key encodes a
+-- struct value field-wise (nested structs by value); Unkey returns a struct for an encoded key.
+local keyValues = {}
+
+local function encodeKey(v, out)
+    local tv = type(v)
+    if tv == "table" then
+        local keys = {}
+        for k in pairs(v) do
+            keys[#keys + 1] = k
+        end
+        table.sort(keys, function(a, b)
+            return tostring(a) < tostring(b)
+        end)
+        out[#out + 1] = "{"
+        for _, k in ipairs(keys) do
+            out[#out + 1] = tostring(k)
+            out[#out + 1] = "="
+            encodeKey(v[k], out)
+            out[#out + 1] = ";"
+        end
+        out[#out + 1] = "}"
+    elseif tv == "string" then
+        out[#out + 1] = string.format("%q", v)
+    elseif tv == "number" then
+        out[#out + 1] = (math.type(v) == "integer" and "i" or "f") .. tostring(v)
+    else
+        out[#out + 1] = tostring(v)
+    end
+end
+
+function M.Key(v)
+    local out = {}
+    encodeKey(v, out)
+    local k = table.concat(out)
+    if keyValues[k] == nil then
+        keyValues[k] = M.CloneStruct(v)
+    end
+    return k
+end
+
+function M.Unkey(k)
+    return keyValues[k]
 end
 
 -- Go struct value copy (shallow; keeps the metatable).

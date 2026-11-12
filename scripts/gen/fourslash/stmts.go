@@ -392,7 +392,7 @@ func (g *gen) lvalue(e ast.Expr) string {
 		x := g.expr(e.X)
 		switch g.info.TypeOf(e.X).Underlying().(type) {
 		case *types.Map:
-			return x + "[" + g.expr(e.Index) + "]"
+			return x + "[" + g.mapKey(g.info.TypeOf(e.X).Underlying().(*types.Map), e.Index) + "]"
 		default:
 			return x + "[" + g.plusOne(e.Index) + "]"
 		}
@@ -563,7 +563,14 @@ func (g *gen) rangeStmt(s *ast.RangeStmt, label string) {
 		g.line("for %s, %s in %s.ipairs(%s) do", idx, v, g.gort(), g.expr(s.X))
 	case *types.Map:
 		k, v := key, val
-		if keyAssign {
+		if isStructKey(u) && key != "_" {
+			k = g.newTmp("k")
+			if keyAssign {
+				pre = append(pre, key+" = "+g.gort()+".Unkey("+k+")")
+			} else {
+				pre = append(pre, "local "+key+" = "+g.gort()+".Unkey("+k+")")
+			}
+		} else if keyAssign {
 			k = g.newTmp("k")
 			pre = append(pre, key+" = "+k)
 		}

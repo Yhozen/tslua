@@ -84,7 +84,7 @@ func (g *gen) compositeLit(e *ast.CompositeLit, _ types.Type) string {
 		g.ind++
 		for _, el := range e.Elts {
 			kv := el.(*ast.KeyValueExpr)
-			elems = append(elems, "["+g.expr(kv.Key)+"] = "+g.expr(kv.Value))
+			elems = append(elems, "["+g.mapKey(u, kv.Key)+"] = "+g.expr(kv.Value))
 		}
 		g.ind--
 		return g.table(elems)

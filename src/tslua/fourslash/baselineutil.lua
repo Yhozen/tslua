@@ -796,7 +796,7 @@ function FourslashTest:getBaselineContentForFile(fileName, content, spansInFile,
             if sw28 == fourslash.detailKind.TextStart then
                 local text = ""
                 do
-                    local contextId, ok = gort.MapLookup(spanToContextId, detail.span, 0)
+                    local contextId, ok = gort.MapLookup(spanToContextId, gort.Key(detail.span), 0)
                     if ok then
                         local isAfterContextStart = false
                         do
@@ -829,7 +829,7 @@ function FourslashTest:getBaselineContentForFile(fileName, content, spansInFile,
                 end
             elseif sw28 == fourslash.detailKind.ContextStart then
                 if canDetermineContextIdInline then
-                    spanToContextId[detail.span] = gort.len(spanToContextId)
+                    spanToContextId[gort.Key(detail.span)] = gort.len(spanToContextId)
                 end
             end
         end

@@ -145,7 +145,7 @@ function fourslash.printSlicesWithDiffTable(w, header, newSlice, getOldSlice, op
     if topChange == "*modified*" then
         oldSlice = getOldSlice()
     end
-    local table_ = setmetatable({ options = options, diff = { _ = setmetatable({}, collections.noCopy) } }, fourslash.diffTable)
+    local table_ = setmetatable({ options = options, diff = collections.NewOrderedMap() }, fourslash.diffTable)
     for i6, entry in gort.ipairs(newSlice) do
         local entryChange = ""
         if (isDefault ~= nil) and isDefault(entry) then
@@ -185,7 +185,7 @@ function FourslashTest:printStateDiff(t, w)
     if not self.stateBaseline.isInitialized then
         return
     end
-    local session = self.client.server:Session()
+    local session = self.client.Server:Session()
     local snapshot = session:Snapshot()
     self:printProjectsDiff(t, snapshot, w)
     self:printOpenFilesDiff(t, snapshot, w)
@@ -219,7 +219,7 @@ function FourslashTest:printProjectsDiff(t, snapshot, w)
         end
         projectsDiffTable:add(project_:Name(), function(w)
                 gort.fmt.Fprintf(w, "  [%s] %s\n", project_:Name(), projectChange)
-                local subDiff = setmetatable({ options = options, diff = { _ = setmetatable({}, collections.noCopy) } }, fourslash.diffTable)
+                local subDiff = setmetatable({ options = options, diff = collections.NewOrderedMap() }, fourslash.diffTable)
                 if program ~= nil then
                     for i13, file in gort.ipairs(program:GetSourceFiles()) do
                         local fileDiff = ""
@@ -262,7 +262,7 @@ function FourslashTest:printProjectsDiff(t, snapshot, w)
                 projectsDiffTable:setHasChange()
                 projectsDiffTable:add(projectName, function(w)
                         gort.fmt.Fprintf(w, "  [%s] *deleted*\n", projectName)
-                        local subDiff = setmetatable({ options = options, diff = { _ = setmetatable({}, collections.noCopy) } }, fourslash.diffTable)
+                        local subDiff = setmetatable({ options = options, diff = collections.NewOrderedMap() }, fourslash.diffTable)
                         if info ~= nil then
                             for i18, file in gort.ipairs(info:GetSourceFiles()) do
                                 do
@@ -416,7 +416,7 @@ function FourslashTest:printConfigFileRegistryDiff(t, snapshot, w)
                 end
             end
             gort.fmt.Fprintf(w, "    NearestConfigFileName: %s%s\n", entry.nearestConfigFileName, nearestConfigFileNameModified)
-            local ancestorDiff = setmetatable({ options = options, diff = { _ = setmetatable({}, collections.noCopy) } }, fourslash.diffTable)
+            local ancestorDiff = setmetatable({ options = options, diff = collections.NewOrderedMap() }, fourslash.diffTable)
             for config, ancestorOfConfig in gort.pairs(entry.ancestors) do
                 local ancestorChange = ""
                 if configFileNamesChange == "*modified*" then

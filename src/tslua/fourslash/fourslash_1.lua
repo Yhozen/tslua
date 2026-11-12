@@ -2485,11 +2485,11 @@ function FourslashTest:VerifyBaselineWorkspaceSymbol(t, query)
         local uri = symbol.location.uri
         local span = fourslash.locationToSpan(symbol.location)
         groupedRanges:Add(uri, span)
-        locationToText[span] = symbol
+        locationToText[gort.Key(span)] = symbol
     end
     self:addResultToBaseline(t, "workspaceSymbol", self:getBaselineForGroupedSpansWithFileContents(groupedRanges, {
         getLocationData = function(span)
-            return fourslash.symbolInformationToData(locationToText[span])
+            return fourslash.symbolInformationToData(locationToText[gort.Key(span)])
         end,
         markerName = "",
         endMarker = "",
