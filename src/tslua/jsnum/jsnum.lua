@@ -19,6 +19,15 @@ local function float64frombits(b)
 end
 
 jsnum.float64bits = float64bits
+
+-- Converts a Lua integer to a float; floats (including -0) are returned unchanged (x + 0.0 would
+-- turn -0 into +0).
+local function tofloat(x)
+    if math.type(x) == "integer" then
+        return x + 0.0
+    end
+    return x
+end
 jsnum.float64frombits = float64frombits
 
 function jsnum.NaN()
@@ -139,7 +148,7 @@ end
 
 -- Go math.Trunc
 function jsnum.mathTrunc(x)
-    x = x + 0.0
+    x = tofloat(x)
     if x ~= x or x == math.huge or x == -math.huge or x == 0 then
         return x
     end
@@ -160,7 +169,7 @@ function jsnum.Number_trunc(x)
 end
 
 function jsnum.Number_Floor(x)
-    x = x + 0.0
+    x = tofloat(x)
     if x ~= x or x == math.huge or x == -math.huge or x == 0 then
         return x
     end
@@ -280,7 +289,7 @@ end
 
 -- Port of Go's math.Pow (pure Go on amd64). Exp/Log of the fractional part use the C library.
 function jsnum.mathPow(x, y)
-    x, y = x + 0.0, y + 0.0
+    x, y = tofloat(x), tofloat(y)
     if y == 0 or x == 1 then
         return 1.0
     elseif y == 1 then
@@ -489,8 +498,8 @@ function jsnum.Number_Exponentiate(base, exponent)
         return jsnum.NaN()
     end
 
-    local b = base + 0.0
-    local e = exponent + 0.0
+    local b = tofloat(base)
+    local e = tofloat(exponent)
 
     -- For integer base ** integer exponent where the result exceeds 53 bits,
     -- math.Pow can be off by multiple ULPs vs JS engines. Use exact big.Int
