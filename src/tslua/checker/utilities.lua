@@ -132,7 +132,7 @@ function checker.isCompoundLikeAssignment(assignment)
 end
 
 function checker.isConstTypeReference(node)
-    return ast.IsTypeReferenceNode(node) and #node:TypeArguments() == 0 and ast.IsIdentifier(node:AsTypeReferenceNode().typeName) and node:AsTypeReferenceNode().typeName:Text() == "const"
+    return ast.IsTypeReferenceNode(node) and core.Len(node:TypeArguments()) == 0 and ast.IsIdentifier(node:AsTypeReferenceNode().typeName) and node:AsTypeReferenceNode().typeName:Text() == "const"
 end
 
 -- isConstTypeReferenceName reports whether node is the `const` type name of a `const`
