@@ -1,5 +1,6 @@
 -- luacheck: ignore 211 421 423 431 432
 local fourslash = require("tslua.fourslash")
+local json = require("tslua.json")
 local core = require("tslua.core")
 local stringutil = require("tslua.stringutil")
 local collections = require("tslua.collections")
@@ -953,6 +954,28 @@ function textWithContext:readableJsoncBaseline(text)
         self.readableContents:WriteString("// ")
         self.readableContents:WriteString(line)
     end
+end
+
+-- markerAndItem[T]: { marker, item }; Lua-only MarshalJSON keeps Go field order.
+local markerAndItem = {}
+markerAndItem.__index = markerAndItem
+fourslash.markerAndItem = markerAndItem
+
+function fourslash.newMarkerAndItem(marker, item)
+    return setmetatable({ marker = marker, item = item }, markerAndItem)
+end
+
+function markerAndItem:MarshalJSON()
+    local m, err = json.Marshal(self.marker)
+    if err ~= nil then
+        return nil, err
+    end
+    local i
+    i, err = json.Marshal(self.item)
+    if err ~= nil then
+        return nil, err
+    end
+    return "{\"marker\":" .. m .. ",\"item\":" .. i .. "}", nil
 end
 
 function fourslash.annotateContentWithTooltips(t, f, markersAndItems, opName, getRange, getTooltipLines)

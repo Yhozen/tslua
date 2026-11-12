@@ -69,6 +69,41 @@ function Marker:MakerWithSymlink(fileName)
     }, Marker)
 end
 
+-- Lua-only: Go encodes the exported fields in declaration order (Position, LSPosition, Name, Data;
+-- a nil Data map encodes as {}).
+function Marker:MarshalJSON()
+    local parts = {
+        "{\"Position\":", json.formatNumber(self.position),
+        ",\"LSPosition\":", (lsproto.MarshalAs("Position", self.lsPosition)),
+        ",\"Name\":", self.name ~= nil and json.QuoteString(self.name) or "null",
+        ",\"Data\":",
+    }
+    if self.data == nil then
+        parts[#parts + 1] = "{}"
+    else
+        local raw, err = json.Marshal(self.data)
+        if err ~= nil then
+            return nil, err
+        end
+        parts[#parts + 1] = raw
+    end
+    parts[#parts + 1] = "}"
+    return table.concat(parts), nil
+end
+
+-- Lua-only: Go encodes Range (core.TextRange: no exported fields), LSRange, Marker.
+function RangeMarker:MarshalJSON()
+    local m = "null"
+    if self.marker ~= nil then
+        local raw, err = self.marker:MarshalJSON()
+        if err ~= nil then
+            return nil, err
+        end
+        m = raw
+    end
+    return "{\"Range\":{},\"LSRange\":" .. lsproto.MarshalAs("Range", self.lsRange) .. ",\"Marker\":" .. m .. "}", nil
+end
+
 -- MarkerOrRange interface: FileName(), LSPos(), GetName(). Lua-only helpers for Go type switches.
 function fourslash.IsMarker(v)
     return type(v) == "table" and getmetatable(v) == Marker
@@ -449,7 +484,7 @@ function fourslash.parseFileContent(fileName, content, fileOptions)
     for _, rangeMarker in ipairs(rangeMarkers) do
         rangeMarker.lsRange = {
             start = converters:PositionToLineAndCharacter(testFileInfo, rangeMarker.range:Pos()),
-            ["end"] = converters:PositionToLineAndCharacter(testFileInfo, rangeMarker.range:End()),
+            end_ = converters:PositionToLineAndCharacter(testFileInfo, rangeMarker.range:End()),
         }
     end
 

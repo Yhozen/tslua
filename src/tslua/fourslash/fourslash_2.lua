@@ -6,6 +6,7 @@ local diagnostics = require("tslua.diagnostics")
 local project = require("tslua.project")
 local repo = require("tslua.repo")
 local core = require("tslua.core")
+local collections = require("tslua.collections")
 local lsproto = require("tslua.lsp.lsproto")
 local ls = require("tslua.ls")
 local json = require("tslua.json")
@@ -39,7 +40,7 @@ function FourslashTest:VerifyBaselineHover(t)
             position = marker.lsPosition,
         })
         local result = fourslash.sendRequest(t, self, lsproto.TextDocumentHoverInfo, params)
-        return { marker = marker, item = result.hover }, true
+        return fourslash.newMarkerAndItem(marker, result.hover), true
     end)
     local getRange = function(item)
         if (item == nil) or (item.range == nil) then
@@ -90,7 +91,7 @@ function FourslashTest:VerifyBaselineVSHover(t)
             position = marker.lsPosition,
         })
         local result = fourslash.sendRequest(t, self, lsproto.TextDocumentHoverInfo, params)
-        return { marker = marker, item = result.hover }, true
+        return fourslash.newMarkerAndItem(marker, result.hover), true
     end)
     local getRange = function(item)
         if (item == nil) or (item.range == nil) then
@@ -198,7 +199,7 @@ At marker %q: verbosity level %d response differs from level %d, but level %d ha
                         end
                     end
                 end
-                markersAndItems = gort.append(markersAndItems, { marker = marker, item = item })
+                markersAndItems = gort.append(markersAndItems, fourslash.newMarkerAndItem(marker, item))
             end
         end
         ::continue146::
@@ -256,7 +257,7 @@ function FourslashTest:VerifyBaselineSignatureHelp(t)
             position = marker.lsPosition,
         })
         local result = fourslash.sendRequest(t, self, lsproto.TextDocumentSignatureHelpInfo, params)
-        return { marker = marker, item = result.signatureHelp }, true
+        return fourslash.newMarkerAndItem(marker, result.signatureHelp), true
     end)
     local getRange = function(item)
         return nil
@@ -1148,7 +1149,7 @@ function FourslashTest:VerifyBaselineClosingTags(t)
             vsCh = ">",
         })
         local result = fourslash.sendRequest(t, self, lsproto.TextDocumentVSOnAutoInsertInfo, params)
-        return { marker = marker, item = result.vsOnAutoInsertResponseItem }, true
+        return fourslash.newMarkerAndItem(marker, result.vsOnAutoInsertResponseItem), true
     end)
     local getRange = function(item)
         return nil
@@ -1630,7 +1631,7 @@ function FourslashTest:verifyBaselineRename(t, preferences, markerOrRanges)
                 changes = result.workspaceEdit.changes
             end
             local spanToText = {}
-            local fileToSpan = {}
+            local fileToSpan = collections.NewMultiMap()
             for uri, edits in gort.pairs(changes) do
                 for i229, edit in gort.ipairs(edits) do
                     local span = { uri = uri, textSpan = edit.range }
@@ -2015,7 +2016,7 @@ function FourslashTest:GetRangesByText()
     if self.rangesByText ~= nil then
         return self.rangesByText
     end
-    local rangesByText = {}
+    local rangesByText = collections.NewMultiMap()
     for i261, r in gort.ipairs(self.testData.ranges) do
         local rangeText = self:getRangeText(r)
         rangesByText:Add(rangeText, r)

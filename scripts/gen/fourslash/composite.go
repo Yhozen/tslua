@@ -51,6 +51,10 @@ func (g *gen) compositeLit(e *ast.CompositeLit, _ types.Type) string {
 	if named, ok := t.(*types.Named); ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "strings" && named.Obj().Name() == "Builder" {
 		return g.gort() + ".NewBuilder()"
 	}
+	if named, ok := t.(*types.Named); ok && named.TypeArgs().Len() > 0 && len(e.Elts) == 0 && named.Obj().Pkg().Path() == modulePrefix+"collections" {
+		// zero value of a generic collection: its constructor
+		return g.pkgAlias(named.Obj().Pkg()) + ".New" + named.Obj().Name() + "()"
+	}
 	switch u := t.Underlying().(type) {
 	case *types.Struct:
 		if _, isNamed := t.(*types.Named); u.NumFields() == 0 && !isNamed {
@@ -200,6 +204,9 @@ func isExternalNamed(t types.Type, testPkg *types.Package) (*types.Named, bool) 
 }
 
 func (g *gen) structLit(t types.Type, st *types.Struct, entries []fieldEntry, at ast.Node) string {
+	if named, ok := t.(*types.Named); ok && named.TypeArgs().Len() > 0 && len(entries) == 0 && named.Obj().Pkg().Path() == modulePrefix+"collections" {
+		return g.pkgAlias(named.Obj().Pkg()) + ".New" + named.Obj().Name() + "()"
+	}
 	var embeds []string
 	var kept []fieldEntry
 	for _, e := range entries {

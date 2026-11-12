@@ -6,6 +6,7 @@ local diagnostics = require("tslua.diagnostics")
 local project = require("tslua.project")
 local repo = require("tslua.repo")
 local core = require("tslua.core")
+local collections = require("tslua.collections")
 local lsproto = require("tslua.lsp.lsproto")
 local ls = require("tslua.ls")
 local json = require("tslua.json")
@@ -2476,7 +2477,7 @@ function FourslashTest:VerifyBaselineWorkspaceSymbol(t, query)
     t:Helper()
     local result = fourslash.sendRequest(t, self, lsproto.WorkspaceSymbolInfo, lsproto.WorkspaceSymbolParams({ query = query }))
     local locationToText = {}
-    local groupedRanges = {}
+    local groupedRanges = collections.NewMultiMap()
     local symbolInformations = nil
     if result.symbolInformations ~= nil then
         symbolInformations = result.symbolInformations
