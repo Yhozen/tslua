@@ -1141,7 +1141,7 @@ function Checker:getPropertyOfTypeEx(t, name, skipObjectFunctionPropertyAugment,
     t = self:getReducedApparentType(t)
     if t.flags & TypeFlags.Object ~= 0 then
         local resolved = self:resolveStructuredTypeMembers(t)
-        local symbol = resolved.members[name]
+        local symbol = resolved.members ~= nil and resolved.members[name] or nil
         if symbol ~= nil then
             if not includeTypeOnlyMembers and t.symbol ~= nil and t.symbol.flags & SymbolFlags.ValueModule ~= 0 then
                 local typeOnlyExportStarMap = self.moduleSymbolLinks:Get(t.symbol).typeOnlyExportStarMap
