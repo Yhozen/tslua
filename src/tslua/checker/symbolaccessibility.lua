@@ -168,7 +168,7 @@ function Checker:getWithAlternativeContainers(container, symbol, enclosingDeclar
         self:getDeclaredTypeOfSymbol(container).flags & TypeFlags.Object ~= 0 then
         self:someSymbolTableInScope(enclosingDeclaration, function(t, _, _, _, _)
             local found = false
-            for _, s in pairs(t) do
+            for _, s in pairs(t or {}) do
                 if s.flags & leftMeaning ~= 0 and self:getTypeOfSymbol(s) == self:getDeclaredTypeOfSymbol(container) then
                     variableMatches = core.Append(variableMatches, s)
                     found = true
@@ -556,7 +556,7 @@ function Checker:getSymbolTableAliases(symbols, tableId)
         end
     end
     local aliases
-    for _, sym in pairs(symbols) do
+    for _, sym in pairs(symbols or {}) do
         if sym.flags & SymbolFlags.Alias ~= 0 then
             aliases = core.Append(aliases, sym)
         end
@@ -573,7 +573,7 @@ end
 function Checker:trySymbolTable(ctx, symbols, tableId, ignoreQualification, isLocalNameLookup)
     local isGlobals = tableId == checker.stKindGlobals
     -- If symbol is directly available by its name in the symbol table
-    local res = symbols[ctx.symbol.name]
+    local res = symbols ~= nil and symbols[ctx.symbol.name] or nil
     if res ~= nil and self:isAccessible(ctx, res, nil --[[resolvedAliasSymbol]], ignoreQualification) then
         return { ctx.symbol }
     end
@@ -709,7 +709,7 @@ function Checker:needsQualification(symbol, enclosingDeclaration, meaning)
     local qualify = false
     self:someSymbolTableInScope(enclosingDeclaration, function(symbolTable, _, _, _, _)
         -- If symbol of this name is not available in the symbol table we are ok
-        local res = symbolTable[symbol.name]
+        local res = symbolTable ~= nil and symbolTable[symbol.name] or nil
         if res == nil then
             return false
         end
