@@ -1,0 +1,557 @@
+#!/usr/bin/env lua
+-- tslua-tsctest: runs the command-line scenarios of typescript-go's internal/execute/tsctests
+-- (tsc, tsc -b, tsc --watch, tsc -b --watch; ported to src/tslua/execute/tsctests) and compares each
+-- scenario's baseline with vendor/typescript-go/testdata/baselines/reference/<subfolder>/<scenario>/.
+-- Local outputs go to tests/out/<subfolder>/<scenario>/ (only for baselines that differ).
+
+local USAGE = [[
+usage: bin/tslua-tsctest [options] [<case-id-or-pattern>...]
+
+A case id is <subfolder>/<scenario>/<name>, the reference baseline path without ".js", e.g.
+tsc/commandLine/help or tsbuild/sample/builds-correctly-when-outDir-is-specified. With no case
+arguments (and no --passing), every scenario runs. A case argument that is not an id selects the
+cases whose id contains it (like --filter).
+
+options:
+  --passing             run the cases listed in tests/passing/tsc.txt and fail on any regression
+  --update-passing      add the newly passing cases to tests/passing/tsc.txt
+  --filter <pattern>    only cases whose id contains <pattern> (plain text, or a Lua pattern)
+  --include-skipped     also run out-of-scope scenarios (showConfig, generateTrace)
+  --jobs N              run cases in N parallel `lua` subprocesses (default 1: in-process)
+  --batch K             cases per subprocess with --jobs (default 4)
+  --timeout S           per-case timeout in seconds (default 300; 0 disables)
+  --list                only list the selected case ids
+  -v, --verbose         print failure messages
+  -q, --quiet           only print failures and the summary
+]]
+
+local scriptPath = arg and arg[0] or "bin/tslua-tsctest"
+local scriptDir = string.match(scriptPath, "^(.*)/[^/]*$") or "."
+local root = scriptDir .. "/.."
+package.path = root .. "/src/?.lua;" .. root .. "/src/?/init.lua;" .. package.path
+
+local interpreter = "lua"
+do
+    local i = -1
+    while arg and arg[i] ~= nil do
+        interpreter = arg[i]
+        i = i - 1
+    end
+end
+
+local SUBFOLDERS = { "tsc", "tsbuild", "tscWatch", "tsbuildWatch" }
+local SCENARIO_MODULES = { "scenarios_tsc", "scenarios_tscbuild", "scenarios_tscwatch", "scenarios_showconfig" }
+
+-- Scenarios that are out of scope of the port (see docs/PORTING.md): reported as skipped.
+local OUT_OF_SCOPE = {
+    TestShowConfig = "out of scope: --showConfig scenarios",
+    TestGenerateTrace = "out of scope: --generateTrace",
+}
+
+local function shellQuote(s)
+    return "'" .. string.gsub(s, "'", "'\\''") .. "'"
+end
+
+local function readFile(path)
+    local f = io.open(path, "rb")
+    if f == nil then
+        return nil
+    end
+    local s = f:read("a")
+    f:close()
+    return s
+end
+
+local function writeFile(path, data)
+    local dir = string.match(path, "^(.*)/[^/]*$")
+    if dir ~= nil then
+        os.execute("mkdir -p " .. shellQuote(dir))
+    end
+    local f = assert(io.open(path, "wb"))
+    f:write(data)
+    f:close()
+end
+
+local function sortedKeys(t)
+    local keys = {}
+    for k in pairs(t) do
+        keys[#keys + 1] = k
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- Argument parsing
+
+local opts = {
+    passing = false,
+    updatePassing = false,
+    filters = {},
+    includeSkipped = false,
+    jobs = 1,
+    batch = 4,
+    timeout = 300,
+    list = false,
+    verbose = false,
+    quiet = false,
+    worker = false,
+    cases = {},
+}
+
+do
+    local i = 1
+    local function value(name)
+        i = i + 1
+        if arg[i] == nil then
+            io.stderr:write("missing value for " .. name .. "\n")
+            os.exit(2)
+        end
+        return arg[i]
+    end
+    while i <= #arg do
+        local a = arg[i]
+        if a == "--passing" then
+            opts.passing = true
+        elseif a == "--update-passing" then
+            opts.updatePassing = true
+        elseif a == "--filter" then
+            opts.filters[#opts.filters + 1] = value(a)
+        elseif a == "--include-skipped" then
+            opts.includeSkipped = true
+        elseif a == "--jobs" or a == "-j" then
+            opts.jobs = math.tointeger(tonumber(value(a))) or 1
+        elseif a == "--batch" then
+            opts.batch = math.tointeger(tonumber(value(a))) or 4
+        elseif a == "--timeout" then
+            opts.timeout = tonumber(value(a)) or 300
+        elseif a == "--list" then
+            opts.list = true
+        elseif a == "-v" or a == "--verbose" then
+            opts.verbose = true
+        elseif a == "-q" or a == "--quiet" then
+            opts.quiet = true
+        elseif a == "--worker" then
+            opts.worker = true
+        elseif a == "-h" or a == "--help" then
+            io.write(USAGE)
+            os.exit(0)
+        elseif string.sub(a, 1, 2) == "--" then
+            io.stderr:write("unknown option " .. a .. "\n" .. USAGE)
+            os.exit(2)
+        else
+            opts.cases[#opts.cases + 1] = a
+        end
+        i = i + 1
+    end
+end
+
+-- Loading the scenarios
+
+require("tslua.execute.tsctests")
+
+local function idOf(input, scenario)
+    return input:getBaselineSubFolder() .. "/" .. scenario .. "/" .. string.gsub(input.subScenario, " ", "-")
+end
+
+-- All cases in Go source order: { id, goTest, scenario, input, skip (reason or nil) }.
+local allCases = {}
+local caseById = {}
+
+for _, modName in ipairs(SCENARIO_MODULES) do
+    local tests = require("tslua.execute.tsctests." .. modName)
+    for _, test in ipairs(tests) do
+        local ok, cases = xpcall(test.cases, debug.traceback)
+        if not ok then
+            io.stderr:write("error evaluating the cases of " .. test.name .. ": " .. tostring(cases) .. "\n")
+            os.exit(1)
+        end
+        for _, input in ipairs(cases) do
+            local id = idOf(input, test.scenario)
+            local c = { id = id, goTest = test.name, scenario = test.scenario, input = input, skip = OUT_OF_SCOPE[test.name] }
+            allCases[#allCases + 1] = c
+            caseById[id] = c
+        end
+    end
+end
+
+-- Passing list: tests/passing/tsc.txt, one case id per line ('#' comments allowed).
+local passingFile = root .. "/tests/passing/tsc.txt"
+
+local function readPassingList()
+    local set = {}
+    local content = readFile(passingFile)
+    if content ~= nil then
+        for line in string.gmatch(content, "[^\n]+") do
+            line = string.match(line, "^%s*(.-)%s*$")
+            if line ~= "" and string.sub(line, 1, 1) ~= "#" then
+                set[line] = true
+            end
+        end
+    end
+    return set
+end
+
+local PASSING_HEADER = "# tsctests scenarios (tsc, tsc -b, --watch) whose baselines match the reference.\n"
+    .. "# Maintained by `bin/tslua-tsctest --update-passing`; checked by `bin/tslua-tsctest --passing`.\n"
+
+local function writePassingList(set)
+    local lines = { PASSING_HEADER }
+    for _, id in ipairs(sortedKeys(set)) do
+        lines[#lines + 1] = id .. "\n"
+    end
+    writeFile(passingFile, table.concat(lines))
+end
+
+local passingList = readPassingList()
+
+local function matches(id, pattern)
+    if string.find(id, pattern, 1, true) then
+        return true
+    end
+    local ok, m = pcall(string.find, id, pattern)
+    return ok and m ~= nil
+end
+
+local function idMatchesFilters(id)
+    for _, f in ipairs(opts.filters) do
+        if not matches(id, f) then
+            return false
+        end
+    end
+    return true
+end
+
+-- Running cases
+
+local testutil, baseline
+
+local TIMEOUT_MARKER = "tslua-tsctest: case timed out"
+
+local function collectMessages(t, out)
+    for _, m in ipairs(t.messages) do
+        out[#out + 1] = m
+    end
+    for _, c in ipairs(t.children) do
+        collectMessages(c, out)
+    end
+    return out
+end
+
+local function hasPanic(t)
+    if t.panicked ~= nil then
+        return true
+    end
+    for _, c in ipairs(t.children) do
+        if hasPanic(c) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Runs one case in-process. Returns { id, status (pass|fail|crash|timeout|skip), messages }.
+local function runCaseInProcess(c)
+    if c.skip ~= nil and not opts.includeSkipped then
+        return { id = c.id, status = "skip", messages = { c.skip } }
+    end
+    if testutil == nil then
+        testutil = require("tslua.testutil")
+        baseline = require("tslua.testutil.baseline")
+    end
+    local rootT = testutil.NewT("", nil)
+    local baselineMatched = nil
+    baseline.comparisonHook = function(_, _, _, matched)
+        baselineMatched = matched
+    end
+    local deadline = math.huge
+    if opts.timeout ~= nil and opts.timeout > 0 then
+        deadline = os.clock() + opts.timeout
+        debug.sethook(function()
+            if os.clock() > deadline then
+                deadline = math.huge
+                error(TIMEOUT_MARKER, 0)
+            end
+        end, "", 1000000)
+    end
+    local ok, err = xpcall(function()
+        c.input:run(rootT, c.scenario)
+    end, debug.traceback)
+    debug.sethook()
+    baseline.comparisonHook = nil
+
+    local messages = collectMessages(rootT, {})
+    if not ok then
+        messages[#messages + 1] = tostring(err)
+    end
+    local status
+    local joined = table.concat(messages, "\n")
+    if string.find(joined, TIMEOUT_MARKER, 1, true) then
+        status = "timeout"
+    elseif not ok or hasPanic(rootT) then
+        status = "crash"
+    elseif rootT.children[1] ~= nil and rootT.children[1].failed then
+        status = "fail"
+        if baselineMatched then
+            -- the baseline matches but the run reported other errors (e.g. unexpected incremental diffs)
+            messages[#messages + 1] = "(baseline matches the reference)"
+        end
+    else
+        status = "pass"
+    end
+    local crashPath = baseline.localRoot() .. "/" .. c.id .. ".crash.txt"
+    if status == "crash" or status == "timeout" then
+        writeFile(crashPath, joined .. "\n")
+    else
+        os.remove(crashPath)
+    end
+    return { id = c.id, status = status, messages = messages }
+end
+
+-- Worker protocol (one line per record, tab separated; messages are escaped).
+local function escape(s)
+    return (string.gsub(s, "[\\\t\n\r]", { ["\\"] = "\\\\", ["\t"] = "\\t", ["\n"] = "\\n", ["\r"] = "\\r" }))
+end
+
+local function unescape(s)
+    return (string.gsub(s, "\\(.)", { ["\\"] = "\\", t = "\t", n = "\n", r = "\r" }))
+end
+
+if opts.worker then
+    for _, id in ipairs(opts.cases) do
+        local c = caseById[id]
+        local r
+        if c == nil then
+            r = { id = id, status = "crash", messages = { "unknown case id " .. id } }
+        else
+            local ok, res = pcall(runCaseInProcess, c)
+            if ok then
+                r = res
+            else
+                r = { id = id, status = "crash", messages = { tostring(res) } }
+            end
+        end
+        local resultFile = os.tmpname()
+        writeFile(resultFile, table.concat({ "@@RESULT", r.id, r.status, escape(table.concat(r.messages, "\n")) }, "\t") .. "\n")
+        io.stdout:write("@@DONE\t" .. id .. "\t" .. resultFile .. "\n")
+        io.stdout:flush()
+    end
+    os.exit(0)
+end
+
+-- Build the selection.
+
+local selected = {}
+local selectedList = {}
+
+local function selectCase(c)
+    if not selected[c.id] then
+        selected[c.id] = true
+        selectedList[#selectedList + 1] = c
+    end
+end
+
+if opts.passing then
+    for _, id in ipairs(sortedKeys(passingList)) do
+        if caseById[id] ~= nil then
+            selectCase(caseById[id])
+        else
+            io.stderr:write("warning: passing list entry " .. id .. " does not name a scenario\n")
+        end
+    end
+end
+
+for _, a in ipairs(opts.cases) do
+    local c = caseById[a] or caseById[(string.gsub(a, "%.js$", ""))]
+    if c ~= nil then
+        selectCase(c)
+    else
+        local found = false
+        for _, cand in ipairs(allCases) do
+            if matches(cand.id, a) then
+                selectCase(cand)
+                found = true
+            end
+        end
+        if not found then
+            io.stderr:write("no scenario matches " .. a .. "\n")
+            os.exit(2)
+        end
+    end
+end
+
+if #opts.cases == 0 and not opts.passing then
+    for _, c in ipairs(allCases) do
+        selectCase(c)
+    end
+end
+
+do
+    local filtered = {}
+    for _, c in ipairs(selectedList) do
+        if idMatchesFilters(c.id) then
+            filtered[#filtered + 1] = c
+        end
+    end
+    -- keep Go source order
+    local order = {}
+    for i, c in ipairs(allCases) do
+        order[c.id] = i
+    end
+    table.sort(filtered, function(a, b)
+        return order[a.id] < order[b.id]
+    end)
+    selectedList = filtered
+end
+
+if opts.list then
+    for _, c in ipairs(selectedList) do
+        print(c.id .. (c.skip and ("  (skip: " .. c.skip .. ")") or ""))
+    end
+    os.exit(0)
+end
+
+-- Run.
+
+local results = {}
+local startTime = os.time()
+local done = 0
+
+local function report(r)
+    done = done + 1
+    results[#results + 1] = r
+    local failed = r.status ~= "pass" and r.status ~= "skip"
+    if not opts.quiet or failed then
+        local label = r.status == "pass" and "ok" or r.status
+        io.write(string.format("[%d/%d] %-7s %s\n", done, #selectedList, string.upper(label), r.id))
+        if opts.verbose and failed then
+            for _, m in ipairs(r.messages) do
+                io.write("      " .. string.gsub(m, "\n", "\n      ") .. "\n")
+            end
+        end
+        io.stdout:flush()
+    end
+end
+
+if opts.jobs <= 1 then
+    for _, c in ipairs(selectedList) do
+        local ok, r = pcall(runCaseInProcess, c)
+        if not ok then
+            r = { id = c.id, status = "crash", messages = { tostring(r) } }
+        end
+        report(r)
+    end
+else
+    local listFile = os.tmpname()
+    local lines = {}
+    local pending = {}
+    for _, c in ipairs(selectedList) do
+        lines[#lines + 1] = c.id
+        pending[c.id] = c
+    end
+    writeFile(listFile, table.concat(lines, "\n") .. "\n")
+    local hardTimeout = ""
+    if opts.timeout > 0 then
+        hardTimeout = "timeout -k 5 " .. tostring(math.floor(opts.timeout * opts.batch + 30)) .. " "
+    end
+    local extra = opts.includeSkipped and " --include-skipped" or ""
+    local cmd = "xargs -d '\\n' -P " .. opts.jobs .. " -n " .. opts.batch .. " " .. hardTimeout
+        .. shellQuote(interpreter) .. " " .. shellQuote(scriptPath) .. " --worker --timeout " .. tostring(opts.timeout)
+        .. extra .. " < " .. shellQuote(listFile) .. " 2>&1"
+    local p = assert(io.popen(cmd))
+    for line in p:lines() do
+        local id, resultFile = string.match(line, "^@@DONE\t(.*)\t([^\t]*)$")
+        if id ~= nil then
+            pending[id] = nil
+            local content = readFile(resultFile) or ""
+            os.remove(resultFile)
+            local rid, status, msg = string.match(content, "^@@RESULT\t([^\t]*)\t([^\t]*)\t(.-)\n?$")
+            if rid ~= nil then
+                report({ id = rid, status = status, messages = { unescape(msg) } })
+            else
+                report({ id = id, status = "crash", messages = { "worker produced no result" } })
+            end
+        elseif opts.verbose then
+            io.stderr:write(line .. "\n")
+        end
+    end
+    p:close()
+    os.remove(listFile)
+    -- Cases whose worker died (hard timeout or crash of the interpreter).
+    for _, id in ipairs(sortedKeys(pending)) do
+        report({ id = id, status = "timeout", messages = { "worker process died or was killed" } })
+    end
+end
+
+-- Summary.
+
+local counts = {}
+for _, sub in ipairs(SUBFOLDERS) do
+    counts[sub] = { pass = 0, fail = 0, crash = 0, timeout = 0, skip = 0 }
+end
+local total = { pass = 0, fail = 0, crash = 0, timeout = 0, skip = 0 }
+local passingNow = {}
+for _, r in ipairs(results) do
+    local sub = string.match(r.id, "^[^/]+")
+    local c = counts[sub]
+    if c ~= nil then
+        c[r.status] = (c[r.status] or 0) + 1
+    end
+    total[r.status] = (total[r.status] or 0) + 1
+    if r.status == "pass" then
+        passingNow[r.id] = true
+    end
+end
+
+io.write(string.format("\n%d scenarios in %ds\n", #selectedList, os.time() - startTime))
+io.write(string.format("%-14s %7s %7s %7s %7s %7s\n", "subfolder", "pass", "fail", "crash", "timeout", "skip"))
+for _, sub in ipairs(SUBFOLDERS) do
+    local c = counts[sub]
+    io.write(string.format("%-14s %7d %7d %7d %7d %7d\n", sub, c.pass, c.fail, c.crash, c.timeout, c.skip))
+end
+io.write(string.format("%-14s %7d %7d %7d %7d %7d\n", "total", total.pass, total.fail, total.crash, total.timeout, total.skip))
+
+local exitCode = 0
+
+if opts.passing then
+    local regressions = {}
+    local seen = {}
+    for _, r in ipairs(results) do
+        seen[r.id] = true
+        if passingList[r.id] and r.status ~= "pass" then
+            regressions[#regressions + 1] = r
+        end
+    end
+    for _, id in ipairs(sortedKeys(passingList)) do
+        if not seen[id] and idMatchesFilters(id) then
+            regressions[#regressions + 1] = { id = id, status = "missing" }
+        end
+    end
+    if #regressions > 0 then
+        io.write(string.format("\n%d regression(s):\n", #regressions))
+        table.sort(regressions, function(a, b)
+            return a.id < b.id
+        end)
+        for _, r in ipairs(regressions) do
+            io.write(string.format("  %s %s\n", r.id, r.status))
+        end
+        exitCode = 1
+    else
+        io.write("\nno regressions\n")
+    end
+end
+
+if opts.updatePassing then
+    local added = 0
+    for id in pairs(passingNow) do
+        if not passingList[id] then
+            passingList[id] = true
+            added = added + 1
+        end
+    end
+    if added > 0 or readFile(passingFile) == nil then
+        writePassingList(passingList)
+    end
+    io.write(string.format("%d newly passing scenario(s) added to tests/passing/tsc.txt\n", added))
+end
+
+os.exit(exitCode)
