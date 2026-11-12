@@ -48,6 +48,9 @@ func (g *gen) compositeLit(e *ast.CompositeLit, _ types.Type) string {
 	if p, ok := t.Underlying().(*types.Pointer); ok {
 		t = p.Elem()
 	}
+	if named, ok := t.(*types.Named); ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "strings" && named.Obj().Name() == "Builder" {
+		return g.gort() + ".NewBuilder()"
+	}
 	switch u := t.Underlying().(type) {
 	case *types.Struct:
 		if _, isNamed := t.(*types.Named); u.NumFields() == 0 && !isNamed {
@@ -117,7 +120,13 @@ func (g *gen) structEntries(e *ast.CompositeLit, st *types.Struct) []fieldEntry 
 				entries = append(entries, g.structEntries(inner, ist)...)
 				continue
 			}
-			entries = append(entries, fieldEntry{"_", g.fail(el, "embedded field value that is not a literal")})
+			// flattened embedded struct given as a value: its fields are copied in (gort.Embed)
+			entries = append(entries, fieldEntry{"__embed", g.expr(val)})
+			if ok2 {
+				for j := 0; j < ist.NumFields(); j++ {
+					entries = append(entries, fieldEntry{"__embedField", fieldLuaName(ist, ist.Field(j))})
+				}
+			}
 			continue
 		}
 		v := g.expr(val)
@@ -191,9 +200,44 @@ func isExternalNamed(t types.Type, testPkg *types.Package) (*types.Named, bool) 
 }
 
 func (g *gen) structLit(t types.Type, st *types.Struct, entries []fieldEntry, at ast.Node) string {
+	var embeds []string
+	var kept []fieldEntry
+	for _, e := range entries {
+		switch e.key {
+		case "__embed":
+			embeds = append(embeds, e.value)
+		case "__embedField":
+			kept = append(kept, fieldEntry{e.value, ""})
+		default:
+			kept = append(kept, e)
+		}
+	}
+	if len(embeds) > 0 {
+		// embedded fields come from the values: keep them out of the zero fill
+		var real []fieldEntry
+		set := map[string]bool{}
+		for _, e := range kept {
+			if e.value == "" {
+				set[e.key] = true
+			} else {
+				real = append(real, e)
+			}
+		}
+		g.ind++
+		inner := g.structLitNoEmbed(t, st, real, at, set)
+		g.ind--
+		return g.gort() + ".Embed(" + inner + ", " + strings.Join(embeds, ", ") + ")"
+	}
+	return g.structLitNoEmbed(t, st, kept, at, nil)
+}
+
+func (g *gen) structLitNoEmbed(t types.Type, st *types.Struct, entries []fieldEntry, at ast.Node, skip map[string]bool) string {
 	var parts []string
 	for _, e := range entries {
 		parts = append(parts, e.key+" = "+e.value)
+	}
+	for k := range skip {
+		entries = append(entries, fieldEntry{k, ""})
 	}
 	if named, ok := isExternalNamed(t, g.pkg.Types); ok && named.Obj().Pkg().Path() == modulePrefix+"lsp/lsproto" {
 		// lsproto structs and unions: the class call fills zero values and sets the metatable
@@ -218,6 +262,9 @@ func (g *gen) structLit(t types.Type, st *types.Struct, entries []fieldEntry, at
 			return "zero." + key + "(" + g.table(parts) + ")"
 		}
 		return g.table(parts)
+	}
+	if named, ok := isExternalNamed(t, g.pkg.Types); ok && g.isPkg && hasMethods(named) {
+		return "setmetatable(" + g.table(g.fillZero(st, parts, entries, at)) + ", " + g.pkgAlias(named.Obj().Pkg()) + "." + named.Obj().Name() + ")"
 	}
 	return g.table(g.fillZero(st, parts, entries, at))
 }

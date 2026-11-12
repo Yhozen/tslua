@@ -639,6 +639,15 @@ func (g *gen) builtin(e *ast.CallExpr, name string) string {
 		return "math." + name + "(" + strings.Join(g.args(e), ", ") + ")"
 	case "delete":
 		return g.gort() + ".delete(" + strings.Join(g.args(e), ", ") + ")"
+	case "copy":
+		if se, ok := ast.Unparen(e.Args[0]).(*ast.SliceExpr); ok && se.High == nil && !isStringType(g.info.TypeOf(se.X)) {
+			lo := "0"
+			if se.Low != nil {
+				lo = g.expr(se.Low)
+			}
+			return g.gort() + ".copyInto(" + g.expr(se.X) + ", " + lo + ", " + g.expr(e.Args[1]) + ")"
+		}
+		return g.gort() + ".copyInto(" + g.expr(e.Args[0]) + ", 0, " + g.expr(e.Args[1]) + ")"
 	case "cap":
 		return g.gort() + ".len(" + g.expr(e.Args[0]) + ")"
 	}

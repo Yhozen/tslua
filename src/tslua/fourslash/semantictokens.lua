@@ -1,3 +1,4 @@
+-- luacheck: ignore 211 421 423 431 432
 local fourslash = require("tslua.fourslash")
 local lsproto = require("tslua.lsp.lsproto")
 local lsconv = require("tslua.ls.lsconv")

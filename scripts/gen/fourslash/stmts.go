@@ -361,6 +361,12 @@ func (g *gen) assignTo(s *ast.AssignStmt, rhs string) {
 		}
 		g.line("local %s", strings.Join(news, ", "))
 	}
+	for _, l := range lhs {
+		if l == "_" && !(s.Tok == token.DEFINE && allNew) {
+			g.line("local _")
+			break
+		}
+	}
 	allBlank := true
 	for _, l := range lhs {
 		if l != "_" {
@@ -842,6 +848,9 @@ func (g *gen) typeCheck(x string, t types.Type, at ast.Node) string {
 			return "type(" + x + ") == \"number\""
 		}
 	case *types.Pointer:
+		if _, isStruct := u.Elem().Underlying().(*types.Struct); !isStruct {
+			return g.typeCheck(x, u.Elem(), at)
+		}
 		if named, ok := u.Elem().(*types.Named); ok {
 			if mod, ok := luaModule(named.Obj().Pkg().Path()); ok {
 				return g.gort() + ".IsStruct(" + x + ", " + luaQuote(mod) + ", " + luaQuote(named.Obj().Name()) + ")"
