@@ -3355,13 +3355,13 @@ function Checker:resolveUnionTypeMembers(t)
         if u == self.globalFunctionType then
             return { self.unknownSignature }
         end
-        return self:getSignaturesOfType(u, SignatureKind.Call)
+        return self:getSignaturesOfType(u, SignatureKind.Call) or {} -- Lua arrays cannot hold nil slices
     end))
     if core.Len(callSignatures) == 0 then
         callSignatures = self:getArrayMemberCallSignatures(t)
     end
     local constructSignatures = self:getUnionSignatures(core.Map(t:Types(), function(u)
-        return self:getSignaturesOfType(u, SignatureKind.Construct)
+        return self:getSignaturesOfType(u, SignatureKind.Construct) or {}
     end))
     local indexInfos = self:getUnionIndexInfos(t:Types())
     self:setStructuredTypeMembers(t, nil, callSignatures, constructSignatures, indexInfos)
