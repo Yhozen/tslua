@@ -401,7 +401,29 @@ end
 
 local encode
 
+-- jsontext limits the nesting of objects and arrays.
+lsproto.maxNestingDepth = 10000
+local encodeDepth = 0
+
+local function enterNesting()
+    encodeDepth = encodeDepth + 1
+    if encodeDepth > lsproto.maxNestingDepth then
+        return "jsontext: exceeded max depth of " .. tostring(lsproto.maxNestingDepth)
+    end
+    return nil
+end
+
 local function encodeStruct(buf, spec, v)
+    local derr = enterNesting()
+    if derr ~= nil then
+        return derr
+    end
+    local err = lsproto.encodeStructFields(buf, spec, v)
+    encodeDepth = encodeDepth - 1
+    return err
+end
+
+function lsproto.encodeStructFields(buf, spec, v)
     if spec.marshal ~= nil then
         return spec.marshal(buf, v or {})
     end
@@ -476,6 +498,10 @@ function encode(buf, t, v)
         end
         return encode(buf, t.elem, v)
     elseif k == "slice" or k == "array" then
+        local derr = enterNesting()
+        if derr ~= nil then
+            return derr
+        end
         buf[#buf + 1] = "["
         local n = k == "array" and t.n or (v ~= nil and #v or 0)
         for i = 1, n do
@@ -492,6 +518,7 @@ function encode(buf, t, v)
             end
         end
         buf[#buf + 1] = "]"
+        encodeDepth = encodeDepth - 1
         return nil
     elseif k == "map" then
         buf[#buf + 1] = "{"
@@ -561,7 +588,12 @@ lsproto.encode = encode
 -- json.Marshal of a value of the given Go type (Lua-only API). Returns (string, err).
 function lsproto.MarshalAs(goType, v)
     local buf = {}
-    local err = encode(buf, goType, v)
+    local savedDepth = encodeDepth
+    local ok, err = pcall(encode, buf, goType, v)
+    encodeDepth = savedDepth
+    if not ok then
+        error(err, 0)
+    end
     if err ~= nil then
         return nil, err
     end
