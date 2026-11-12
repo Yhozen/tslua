@@ -174,7 +174,8 @@ end
 function WatchedFiles:Watchers()
     if not self.computeWatchersOnce then
         self.computeWatchersOnce = true
-        local result = self.computeGlobPatterns(self.input)
+        -- A nil result is the zero PatternsAndIgnored (core.Identity of a zero input).
+        local result = self.computeGlobPatterns(self.input) or project.NewPatternsAndIgnored(nil, nil, nil)
         local globs = project.sortedCompact(result.patternsInsideWorkspace)
 
         local ignored = result.ignored

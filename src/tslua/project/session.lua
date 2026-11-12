@@ -205,7 +205,7 @@ end
 
 -- Gets copy of current configuration
 function Session:Config()
-    return self.workspaceUserPreferences
+    return project.copyValue(self.workspaceUserPreferences)
 end
 
 function Session:backgroundContext()
@@ -1590,7 +1590,7 @@ function Session:flushChanges(ctx)
     local fileChanges, overlays = self:flushChangesLocked(ctx)
     local newPrefs = nil
     if self.pendingUserConfigChanges then
-        newPrefs = self.workspaceUserPreferences
+        newPrefs = project.copyValue(self.workspaceUserPreferences)
     end
     self.pendingUserConfigChanges = false
     return fileChanges, overlays, pendingATAChanges, newPrefs

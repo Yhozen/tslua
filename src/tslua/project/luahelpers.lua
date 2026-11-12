@@ -334,3 +334,16 @@ function project.errorf(format, ...)
     local msg = logging.Sprintf((string.gsub(format, "%%w", "%%v")), ...)
     return setmetatable({ msg = msg, wrapped = wrapped }, errorValue)
 end
+
+-- copyValue copies a Go value struct (e.g. lsutil.UserPreferences) including its nested value
+-- structs and slices, keeping metatables.
+function project.copyValue(v)
+    if type(v) ~= "table" then
+        return v
+    end
+    local c = {}
+    for k, x in pairs(v) do
+        c[k] = project.copyValue(x)
+    end
+    return setmetatable(c, getmetatable(v))
+end
