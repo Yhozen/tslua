@@ -232,18 +232,32 @@ end
 
 local cwd = nil
 
--- os.Getwd
+-- os.Getwd: like Go, prefer $PWD only when it names the current directory (it can be stale
+-- when a parent process changed directory without updating the environment).
+local function popenLine(cmd)
+    local p = io.popen(cmd)
+    if p == nil then
+        return nil
+    end
+    local line = p:read("l")
+    p:close()
+    if line == "" then
+        return nil
+    end
+    return line
+end
+
 function osvfs.Getwd()
     if cwd == nil then
-        cwd = os.getenv("PWD")
-        if cwd == nil or cwd == "" then
-            local p = io.popen("pwd")
-            if p ~= nil then
-                cwd = p:read("l")
-                p:close()
+        local physical = popenLine("pwd -P 2>/dev/null")
+        local env = os.getenv("PWD")
+        if env ~= nil and env ~= "" and env:sub(1, 1) == "/" then
+            local quoted = "'" .. env:gsub("'", "'\\''") .. "'"
+            if physical == nil or popenLine("cd -P -- " .. quoted .. " 2>/dev/null && pwd -P") == physical then
+                cwd = env
             end
         end
-        cwd = cwd or "/"
+        cwd = cwd or physical or "/"
     end
     return cwd
 end
