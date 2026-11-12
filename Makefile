@@ -5,7 +5,8 @@ GO_PKGS := ./internal/ast ./internal/core ./internal/checker ./internal/binder .
 	./internal/outputpaths ./internal/tspath ./internal/collections ./internal/nodebuilder \
 	./internal/sourcemap ./internal/stringutil ./internal/modulespecifiers \
 	./internal/pseudochecker ./internal/ls ./internal/ls/lsutil ./internal/ls/lsconv ./internal/ls/change \
-	./internal/project ./internal/project/dirty ./internal/project/logging ./internal/project/background
+	./internal/project ./internal/project/dirty ./internal/project/logging ./internal/project/background \
+	./internal/jsonrpc ./internal/lsp ./internal/lsp/lsproto
 
 LUA_PATH_ENV := LUA_PATH="src/?.lua;src/?/init.lua;;"
 
@@ -20,6 +21,7 @@ generate:
 	cd scripts/gen/goconsts && go run . $(abspath $(UPSTREAM)) $(abspath src/tslua) $(GO_PKGS)
 	node scripts/gen/diagnostics.mjs $(UPSTREAM)
 	node scripts/gen/ast.mjs $(UPSTREAM)
+	node scripts/gen/lsproto.mjs $(UPSTREAM)
 
 lint:
 	luacheck src spec tests bin
