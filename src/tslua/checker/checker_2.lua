@@ -1755,7 +1755,9 @@ function Checker:checkInheritedPropertiesAreIdentical(t, typeNode)
 end
 
 function Checker:isPropertyIdenticalTo(sourceProp, targetProp)
-    return self:compareProperties(sourceProp, targetProp, self.compareTypesIdentical) ~= checker.Ternary.False
+    return self:compareProperties(sourceProp, targetProp, function(s, t)
+        return self:compareTypesIdentical(s, t)
+    end) ~= checker.Ternary.False
 end
 
 function Checker:checkEnumDeclaration(node)

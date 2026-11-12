@@ -1165,7 +1165,7 @@ function Checker:resolveExternalModule(location, moduleReference, moduleNotFound
             return v.pattern
         end, moduleReference)
         if pattern ~= nil then
-            local augmentation = self.patternAmbientModuleAugmentations[moduleReference]
+            local augmentation = (self.patternAmbientModuleAugmentations or {})[moduleReference]
             if augmentation ~= nil then
                 return self:getMergedSymbol(augmentation)
             end

@@ -16,7 +16,7 @@ local TypeMapper = defineStruct("TypeMapper", nil, nil)
 -- Factory functions
 
 function checker.newTypeMapper(sources, targets)
-    if #sources == 1 then
+    if core.Len(sources) == 1 then
         return checker.newSimpleTypeMapper(sources[1], targets[1])
     end
     return checker.newArrayTypeMapper(sources, targets)

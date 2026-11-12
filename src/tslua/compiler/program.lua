@@ -2329,7 +2329,7 @@ function Program:GetSymlinkCache()
                     goto continue
                 end
 
-                for dep in info:GetContents():GetRuntimeDependencyNames():Keys() do
+                for dep in pairs(info:GetContents():GetRuntimeDependencyNames():Keys() or {}) do
                     -- Skip work in common case: we already saved a symlink for this package directory
                     -- in the node_modules adjacent to this package.json
                     local possibleDirectoryPath = self:toPath(tspath.CombinePaths(meta.packageJsonDirectory, "node_modules", dep))

@@ -59,6 +59,8 @@ function configFileSpecs:matchesExclude(fileName, comparePathsOptions)
 end
 
 function configFileSpecs:getMatchedIncludeSpec(fileName, comparePathsOptions)
+    -- Go passes tspath.ComparePathsOptions by value; nil is its zero value.
+    comparePathsOptions = comparePathsOptions or { currentDirectory = "", useCaseSensitiveFileNames = false }
     if core.Len(self.validatedIncludeSpecs) == 0 then
         return ""
     end
