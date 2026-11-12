@@ -649,9 +649,18 @@ func (g *gen) conversion(e *ast.CallExpr, to types.Type) string {
 		return x
 	}
 	if tok && tb.Info()&types.IsString != 0 {
-		if _, isSlice := from.Underlying().(*types.Slice); isSlice {
+		if sl, isSlice := from.Underlying().(*types.Slice); isSlice {
+			if b, ok := sl.Elem().Underlying().(*types.Basic); ok && b.Kind() == types.Int32 {
+				return g.gort() + ".runesToString(" + x + ")"
+			}
 			return g.gort() + ".bytesToString(" + x + ")"
 		}
+	}
+	if sl, isSlice := to.Underlying().(*types.Slice); isSlice && fok && fb.Info()&types.IsString != 0 {
+		if b, ok := sl.Elem().Underlying().(*types.Basic); ok && b.Kind() == types.Int32 {
+			return g.gort() + ".stringToRunes(" + x + ")"
+		}
+		return g.gort() + ".stringToBytes(" + x + ")"
 	}
 	return x
 }

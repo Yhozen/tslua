@@ -88,6 +88,23 @@ function M.bytesToString(bytes)
     return table.concat(parts)
 end
 
+-- []rune(s), string(runes), []byte(s)
+function M.stringToRunes(s)
+    local runes = {}
+    for _, r in M.runes(s) do
+        runes[#runes + 1] = r
+    end
+    return runes
+end
+
+function M.runesToString(runes)
+    return core.RunesToString(runes or {})
+end
+
+function M.stringToBytes(s)
+    return { string.byte(s, 1, -1) }
+end
+
 -- v, ok := m[k]
 function M.MapLookup(m, k, zero)
     if m == nil then

@@ -363,7 +363,7 @@ function FourslashTest:VerifyBaselineSelectionRanges(t)
             while selectionRange ~= nil do
                 local start = self.converters:LineAndCharacterToPosition(script, selectionRange.range.start)
                 local end_ = self.converters:LineAndCharacterToPosition(script, selectionRange.range.end_)
-                local runes = fileContent
+                local runes = gort.stringToRunes(fileContent)
                 local masked = gort.makeSlice(gort.len(runes), function() return 0 end)
                 for i155, ch in gort.ipairs(runes) do
                     local i = i155 - 1
@@ -383,7 +383,7 @@ function FourslashTest:VerifyBaselineSelectionRanges(t)
                         end
                     end
                 end
-                local maskedStr = gort.bytesToString(masked)
+                local maskedStr = gort.runesToString(masked)
                 maskedStr = gort.strings.ReplaceAll(maskedStr, "\n", "↲\n")
                 maskedStr = gort.strings.ReplaceAll(maskedStr, "\r", "↲\r")
                 local lines = gort.strings.Split(maskedStr, "\n")
@@ -395,7 +395,7 @@ function FourslashTest:VerifyBaselineSelectionRanges(t)
                     end
                 end
                 maskedStr = gort.strings.Join(nonBlankLines, "\n")
-                local maskedRunes = maskedStr
+                local maskedRunes = gort.stringToRunes(maskedStr)
                 local isRealCharacter = function(ch)
                         return ((ch ~= 8226) and (ch ~= 8626)) and (not stringutil.IsWhiteSpaceLike(ch))
                     end
@@ -419,9 +419,9 @@ function FourslashTest:VerifyBaselineSelectionRanges(t)
                     end
                 end
                 if ((leadingWidth ~= (-1)) and (trailingWidth ~= (-1))) and (leadingWidth <= trailingWidth) then
-                    local prefix = gort.bytesToString(gort.slice(maskedRunes, 0, leadingWidth))
-                    local middle = gort.bytesToString(gort.slice(maskedRunes, leadingWidth, trailingWidth + 1))
-                    local suffix = gort.bytesToString(gort.slice(maskedRunes, trailingWidth + 1, nil))
+                    local prefix = gort.runesToString(gort.slice(maskedRunes, 0, leadingWidth))
+                    local middle = gort.runesToString(gort.slice(maskedRunes, leadingWidth, trailingWidth + 1))
+                    local suffix = gort.runesToString(gort.slice(maskedRunes, trailingWidth + 1, nil))
                     middle = gort.strings.ReplaceAll(middle, "•", " ")
                     middle = gort.strings.ReplaceAll(middle, "↲", "")
                     maskedStr = (prefix .. middle) .. suffix
