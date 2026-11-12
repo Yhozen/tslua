@@ -454,6 +454,181 @@ describe("lsp server end to end", function()
     end)
 end)
 
+describe("lsp language features end to end", function()
+    local lsutil = require("tslua.ls.lsutil")
+    local lsconv = require("tslua.ls.lsconv")
+
+    local function initClient(files, caps, prefs)
+        local fs = bundled.WrapFS(vfstest.FromMap(files, false))
+        local function onServerRequest(_, req)
+            if req.method == lsproto.Method.WorkspaceConfiguration then
+                return lsproto.NewResponseMessage(req.id, { prefs }, nil)
+            elseif req.method == lsproto.Method.ClientRegisterCapability or req.method == lsproto.Method.ClientUnregisterCapability then
+                return lsproto.NewResponseMessage(req.id, lsproto.Null, nil, "Null")
+            end
+            return nil
+        end
+        local client, closeClient = lsptestutil.NewLSPClient(nil, {
+            err = discard,
+            cwd = "/home/projects",
+            fs = fs,
+            defaultLibraryPath = bundled.LibPath(),
+        }, onServerRequest)
+        local initMsg, _, ok = lsptestutil.SendRequest(nil, client, lsproto.InitializeInfo, lsproto.InitializeParams({
+            capabilities = caps or lsproto.ClientCapabilities({}),
+        }))
+        assert.is_true(ok and initMsg:AsResponse().error == nil)
+        lsptestutil.SendNotification(nil, client, lsproto.InitializedInfo, lsproto.InitializedParams({}))
+        client:Drain()
+        assert.is_true(client.Server:InitComplete())
+        if prefs ~= nil then
+            lsptestutil.SendNotification(nil, client, lsproto.WorkspaceDidChangeConfigurationInfo, lsproto.DidChangeConfigurationParams({
+                settings = { typescript = prefs },
+            }))
+        end
+        return client, closeClient
+    end
+
+    it("semantic tokens with CRLF overlay (TestSemanticTokensCRLF)", function()
+        local fileOnDisk = "var x\nvar x\nvar x\nvar x\nvar x\nvar x\nconst a = 1\n"
+        local fileFromEditor = string.gsub(fileOnDisk, "\n", "\r\n")
+        local files = {
+            ["/home/projects/tsconfig.json"] = "{}",
+            ["/home/projects/test.ts"] = fileOnDisk,
+            ["/home/projects/other.ts"] = "export {}",
+        }
+        local client, closeClient = initClient(files, lsproto.ClientCapabilities({
+            textDocument = lsproto.TextDocumentClientCapabilities({
+                semanticTokens = lsproto.SemanticTokensClientCapabilities({
+                    requests = lsproto.ClientSemanticTokensRequestOptions({
+                        full = lsproto.BooleanOrClientSemanticTokensRequestFullDelta({ boolean = true }),
+                    }),
+                    tokenTypes = { "namespace", "type", "class", "enum", "interface", "struct", "typeParameter", "parameter", "variable", "property", "enumMember", "event", "function", "method", "macro", "keyword", "modifier", "comment", "string", "number", "regexp", "operator", "decorator" },
+                    tokenModifiers = { "declaration", "definition", "readonly", "static", "deprecated", "abstract", "async", "modification", "documentation", "defaultLibrary", "local" },
+                    formats = {},
+                }),
+            }),
+        }))
+        local otherUri = "file:///home/projects/other.ts"
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidOpenInfo, lsproto.DidOpenTextDocumentParams({
+            textDocument = lsproto.TextDocumentItem({ uri = otherUri, languageId = "typescript", text = files["/home/projects/other.ts"] }),
+        }))
+        local msg1 = lsptestutil.SendRequest(nil, client, lsproto.TextDocumentSemanticTokensFullInfo, lsproto.SemanticTokensParams({
+            textDocument = lsproto.TextDocumentIdentifier({ uri = otherUri }),
+        }))
+        assert.is_nil(msg1:AsResponse().error)
+        local uri = "file:///home/projects/test.ts"
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidOpenInfo, lsproto.DidOpenTextDocumentParams({
+            textDocument = lsproto.TextDocumentItem({ uri = uri, languageId = "typescript", text = fileFromEditor }),
+        }))
+        local msg, resp = lsptestutil.SendRequest(nil, client, lsproto.TextDocumentSemanticTokensFullInfo, lsproto.SemanticTokensParams({
+            textDocument = lsproto.TextDocumentIdentifier({ uri = uri }),
+        }))
+        assert.is_nil(msg:AsResponse().error)
+        assert.is_not_nil(resp.semanticTokens)
+        assert.is_nil(closeClient())
+    end)
+
+    it("auto-import completion after file close (TestCompletionAfterFileClose)", function()
+        local prefs = lsutil.NewDefaultUserPreferences()
+        prefs.includeCompletionsForModuleExports = core.Tristate.TSTrue
+        prefs.includeCompletionsForImportStatements = core.Tristate.TSTrue
+        local client, closeClient = initClient({
+            ["/home/projects/tsconfig.json"] = [[{"compilerOptions": {"module": "esnext", "target": "esnext"}}]],
+            ["/home/projects/a.ts"] = "export const someVar = 10;",
+            ["/home/projects/b.ts"] = "s",
+        }, nil, prefs)
+        local aURI = lsconv.FileNameToDocumentURI("/home/projects/a.ts")
+        local bURI = lsconv.FileNameToDocumentURI("/home/projects/b.ts")
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidOpenInfo, lsproto.DidOpenTextDocumentParams({
+            textDocument = lsproto.TextDocumentItem({ uri = aURI, languageId = "typescript", text = "export const someVar = 10;" }),
+        }))
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidOpenInfo, lsproto.DidOpenTextDocumentParams({
+            textDocument = lsproto.TextDocumentItem({ uri = bURI, languageId = "typescript", text = "s" }),
+        }))
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidCloseInfo, lsproto.DidCloseTextDocumentParams({
+            textDocument = lsproto.TextDocumentIdentifier({ uri = bURI }),
+        }))
+        local msg, resp, ok = lsptestutil.SendRequest(nil, client, lsproto.TextDocumentCompletionInfo, lsproto.CompletionParams({
+            textDocument = lsproto.TextDocumentIdentifier({ uri = bURI }),
+            position = lsproto.Position({ line = 0, character = 1 }),
+            context = lsproto.CompletionContext({}),
+        }))
+        assert.is_true(ok)
+        assert.is_nil(msg:AsResponse().error)
+        local items = resp.list ~= nil and resp.list.items or resp.items or {}
+        local item
+        for _, it in ipairs(items) do
+            if it.label == "someVar" then
+                item = it
+            end
+        end
+        assert.is_not_nil(item)
+        assert.is_not_nil(item.data and item.data.autoImport)
+        assert.are.equal("./a", item.data.autoImport.moduleSpecifier)
+        assert.is_nil(closeClient())
+    end)
+end)
+
+describe("lsp progress end to end", function()
+    it("sends progress notifications (TestProgressNotificationsEndToEnd)", function()
+        local fs = bundled.WrapFS(vfstest.FromMap({
+            ["/home/projects/tsconfig.json"] = "{}",
+            ["/home/projects/index.ts"] = "export const x = 1;",
+        }, false))
+        local function onServerRequest(_, req)
+            if req.method == lsproto.Method.ClientRegisterCapability or req.method == lsproto.Method.ClientUnregisterCapability or req.method == lsproto.Method.WindowWorkDoneProgressCreate then
+                return lsproto.NewResponseMessage(req.id, lsproto.Null, nil, "Null")
+            end
+            return nil
+        end
+        local client, closeClient = lsptestutil.NewLSPClient(nil, {
+            err = discard,
+            cwd = "/home/projects",
+            fs = fs,
+            defaultLibraryPath = bundled.LibPath(),
+        }, onServerRequest)
+        local notifications = {}
+        client.OnServerNotification = function(_, req)
+            if req.method == lsproto.Method.Progress then
+                local params, err = lsproto.UnmarshalParams(lsproto.ProgressInfo.paramsType, req)
+                if err == nil and params ~= nil then
+                    notifications[#notifications + 1] = params
+                end
+            end
+        end
+        local initMsg, _, ok = lsptestutil.SendRequest(nil, client, lsproto.InitializeInfo, lsproto.InitializeParams({
+            capabilities = lsproto.ClientCapabilities({
+                window = lsproto.WindowClientCapabilities({ workDoneProgress = true }),
+            }),
+        }))
+        assert.is_true(ok and initMsg:AsResponse().error == nil)
+        lsptestutil.SendNotification(nil, client, lsproto.InitializedInfo, lsproto.InitializedParams({}))
+        client:Drain()
+        local uri = "file:///home/projects/index.ts"
+        lsptestutil.SendNotification(nil, client, lsproto.TextDocumentDidOpenInfo, lsproto.DidOpenTextDocumentParams({
+            textDocument = lsproto.TextDocumentItem({ uri = uri, languageId = "typescript", text = "export const x = 1;" }),
+        }))
+        local msg, resp, ok2 = lsptestutil.SendRequest(nil, client, lsproto.CustomProjectInfoInfo, lsproto.ProjectInfoParams({
+            textDocument = lsproto.TextDocumentIdentifier({ uri = uri }),
+        }))
+        assert.is_true(ok2)
+        assert.is_nil(msg:AsResponse().error)
+        assert.are.equal("/home/projects/tsconfig.json", resp.configFilePath)
+        client:Drain()
+        assert.is_true(#notifications >= 2)
+        assert.is_not_nil(notifications[1].value.begin)
+        assert.are.equal("Loading", notifications[1].value.begin.title)
+        assert.is_not_nil(notifications[#notifications].value.end_)
+        local firstToken = notifications[1].token.string
+        assert.is_not_nil(firstToken)
+        for _, n in ipairs(notifications) do
+            assert.are.equal(firstToken, n.token.string)
+        end
+        assert.is_nil(closeClient())
+    end)
+end)
+
 describe("lspwatcher", function()
     it("rootFromGlob", function()
         for _, c in ipairs({
