@@ -16,6 +16,7 @@ options:
   --passing             run the tests listed in tests/passing/fourslash.txt and fail on regressions
   --update-passing      add the newly passing tests to tests/passing/fourslash.txt
   --filter <pattern>    only tests whose id contains <pattern> (plain text, or a Lua pattern)
+  --shard I/N           only the I-th (1-based) of N disjoint slices of the selected tests
   --dir <d>             only tests of gen, manual or tests (repeatable)
   --jobs N              run test files in N parallel `lua` subprocesses (default 1: in-process)
   --batch K             test files per subprocess with --jobs (default 8)
@@ -86,6 +87,7 @@ local opts = {
     passing = false,
     updatePassing = false,
     filters = {},
+    shard = nil, -- { index = I, count = N }
     dirs = nil,
     jobs = 1,
     batch = 8,
@@ -117,6 +119,15 @@ do
             opts.updatePassing = true
         elseif a == "--filter" then
             opts.filters[#opts.filters + 1] = value(a)
+        elseif a == "--shard" then
+            local v = value(a)
+            local index, count = string.match(v, "^(%d+)/(%d+)$")
+            index, count = math.tointeger(tonumber(index)), math.tointeger(tonumber(count))
+            if index == nil or count == nil or index < 1 or index > count then
+                io.stderr:write("--shard: expected I/N with 1 <= I <= N, got " .. v .. "\n")
+                os.exit(2)
+            end
+            opts.shard = { index = index, count = count }
         elseif a == "--dir" then
             opts.dirs = opts.dirs or {}
             opts.dirs[value(a)] = true
@@ -160,7 +171,22 @@ local function readPassing()
     return set
 end
 
+-- --shard I/N: a test belongs to slice 1 + (FNV-1a hash of its id) % N.
+local function idInShard(id)
+    if opts.shard == nil then
+        return true
+    end
+    local h = 2166136261
+    for i = 1, #id do
+        h = ((h ~ string.byte(id, i)) * 16777619) & 0xffffffff
+    end
+    return h % opts.shard.count == opts.shard.index - 1
+end
+
 local function idMatchesFilter(id)
+    if not idInShard(id) then
+        return false
+    end
     if #opts.filters == 0 then
         return true
     end

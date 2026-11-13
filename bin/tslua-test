@@ -19,6 +19,8 @@ options:
   --update-passing      add the newly passing cases to tests/passing/<kind>.txt
   --suite <s>           restrict to local, submodule, compiler or conformance (repeatable)
   --filter <pattern>    only cases whose id contains <pattern> (plain text, or a Lua pattern)
+  --shard I/N           only the I-th (1-based) of N disjoint slices of the selected cases (by a
+                        hash of the case file id; all configurations of a file share a slice)
   --baselines <kinds>   comma-separated: errors,js,types,symbols,sourcemap,all
                         (default errors,js,types,symbols)
   --jobs N              run cases in N parallel `lua` subprocesses (default 1: in-process)
@@ -114,6 +116,7 @@ local opts = {
     updatePassing = false,
     suites = nil,
     filter = nil,
+    shard = nil, -- { index = I, count = N }
     kinds = { errors = true, js = true, types = true, symbols = true },
     jobs = 1,
     batch = 4,
@@ -149,6 +152,15 @@ do
             opts.suites[value(a)] = true
         elseif a == "--filter" then
             opts.filter = value(a)
+        elseif a == "--shard" then
+            local v = value(a)
+            local index, count = string.match(v, "^(%d+)/(%d+)$")
+            index, count = math.tointeger(tonumber(index)), math.tointeger(tonumber(count))
+            if index == nil or count == nil or index < 1 or index > count then
+                io.stderr:write("--shard: expected I/N with 1 <= I <= N, got " .. v .. "\n")
+                os.exit(2)
+            end
+            opts.shard = { index = index, count = count }
         elseif a == "--baselines" then
             opts.kinds = {}
             for _, k in ipairs(split(value(a), ",")) do
@@ -495,6 +507,21 @@ local function idMatchesFilter(id)
     return ok and m ~= nil
 end
 
+-- --shard I/N: a case belongs to slice 1 + (FNV-1a hash of its file id) % N. The configuration
+-- part of a configured id ("compiler/foo(target=es5).ts") is ignored, so the selection (file ids)
+-- and the passing-list check (configured ids) agree.
+local function idInShard(id)
+    if opts.shard == nil then
+        return true
+    end
+    local key = string.gsub(id, "%b()", "")
+    local h = 2166136261
+    for i = 1, #key do
+        h = ((h ~ string.byte(key, i)) * 16777619) & 0xffffffff
+    end
+    return h % opts.shard.count == opts.shard.index - 1
+end
+
 -- Running cases
 
 local testutil, testrunner, baseline
@@ -791,7 +818,7 @@ do
     local filtered = {}
     for _, entry in ipairs(selection) do
         local id = idPrefix(entry.suite.variant, entry.suite.suite) .. string.match(entry.path, "[^/]*$")
-        if not isSkipped(entry.path) and idMatchesFilter(id) then
+        if not isSkipped(entry.path) and idMatchesFilter(id) and idInShard(id) then
             filtered[#filtered + 1] = entry
         end
     end
@@ -968,7 +995,7 @@ if opts.passing then
     for _, kind in ipairs(KIND_ORDER) do
         if opts.kinds[kind] then
             for id in pairs(passingLists[kind]) do
-                if not seen[kind .. "\0" .. id] and idMatchesFilter(id) then
+                if not seen[kind .. "\0" .. id] and idMatchesFilter(id) and idInShard(id) then
                     regressions[#regressions + 1] = { id = id, kind = kind, status = "missing", messages = {} }
                 end
             end
