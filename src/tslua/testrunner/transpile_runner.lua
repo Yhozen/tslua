@@ -113,14 +113,10 @@ function testrunner.formatTranspileConfigurationName(name)
     return replaceAll(name, "sourcemap=", "sourceMap=")
 end
 
--- The transpile package (internal/transpile) is not part of the port's scope yet; it is loaded
--- on first use so the rest of the test runner works without it.
+-- tslua.transpile (internal/transpile) is loaded on first use, so the compiler baseline runner
+-- does not pay for it.
 local function requireTranspile()
-    local ok, transpile = pcall(require, "tslua.transpile")
-    if not ok then
-        error("not implemented: transpile.TranspileModule / transpile.TranspileDeclaration (tslua.transpile is missing)", 0)
-    end
-    return transpile
+    return require("tslua.transpile")
 end
 
 function TranspileBaselineRunner:runKind(t, configuredName, extension, units, options, harnessOptions, declaration)

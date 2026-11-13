@@ -995,7 +995,8 @@ if opts.passing then
     for _, kind in ipairs(KIND_ORDER) do
         if opts.kinds[kind] then
             for id in pairs(passingLists[kind]) do
-                if not seen[kind .. "\0" .. id] and idMatchesFilter(id) and idInShard(id) then
+                -- the selection filters file ids, so match the id without its configuration
+                if not seen[kind .. "\0" .. id] and idMatchesFilter((string.gsub(id, "%b()", ""))) and idInShard(id) then
                     regressions[#regressions + 1] = { id = id, kind = kind, status = "missing", messages = {} }
                 end
             end
