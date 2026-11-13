@@ -1291,7 +1291,7 @@ function Session:takeContentMapperTimingDelta()
         return nil
     end
     local current = self.contentMapperHost:Timings()
-    local delta = current:Since(self.contentMapperTimings)
+    local delta = contentmapper.Timings_Since(current, self.contentMapperTimings or { mappers = {}, requestWait = 0 })
     self.contentMapperTimings = current
     return delta
 end
