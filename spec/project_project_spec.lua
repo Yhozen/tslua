@@ -57,7 +57,7 @@ local function hasMessage(diags, text)
     return false
 end
 
-describe("project ProgramUpdateKind", function()
+describe("project ProgramUpdateKind #slow", function()
     it("NewFiles on initial build", function()
         local files = {
             ["/src/tsconfig.json"] = '{ "compilerOptions": { "noLib": true } }',
@@ -171,7 +171,7 @@ describe("project ProgramUpdateKind", function()
     end)
 end)
 
-describe("project push diagnostics", function()
+describe("project push diagnostics #slow", function()
     local tsconfigURI = "file:///src/tsconfig.json"
 
     local function openIndex(session, files)
@@ -355,7 +355,7 @@ describe("project push diagnostics", function()
     end)
 end)
 
-describe("project DisplayName", function()
+describe("project DisplayName #slow", function()
     it("configured project returns relative config path", function()
         local files = {
             ["/home/projects/tsconfig.json"] = '{ "compilerOptions": { "noLib": true } }',
@@ -402,7 +402,7 @@ describe("project DisplayName", function()
     end)
 end)
 
-describe("project progress notifications", function()
+describe("project progress notifications #slow", function()
     local function countProject0(calls)
         local n = 0
         for _, call in ipairs(calls) do

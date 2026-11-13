@@ -51,7 +51,7 @@ local defaultFiles = {
     ["/home/projects/TS/p1/config.ts"] = "let x = 1, y = 2;",
 }
 
-describe("project.Session", function()
+describe("project.Session #slow", function()
     describe("DidOpenFile", function()
         it("create configured project", function()
             local session = projecttestutil.Setup(defaultFiles)

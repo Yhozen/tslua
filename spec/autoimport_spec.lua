@@ -20,7 +20,7 @@ function testEntry:Name()
     return self.name
 end
 
-describe("autoimport Index.Clone", function()
+describe("autoimport Index.Clone #slow", function()
     it("filters entries by package", function()
         local idx = autoimport.NewIndex()
         idx:insertAsWords(newTestEntry("fooBar", "pkg-a"))
@@ -74,7 +74,7 @@ describe("autoimport Index.Clone", function()
     end)
 end)
 
-describe("autoimport Index search", function()
+describe("autoimport Index search #slow", function()
     it("finds case-insensitive and word-prefix matches", function()
         local idx = autoimport.NewIndex()
         idx:insertAsWords(newTestEntry("readFileSync", ""))
@@ -93,7 +93,7 @@ end)
 
 -- util_test.go
 
-describe("autoimport wordIndices", function()
+describe("autoimport wordIndices #slow", function()
     local tests = {
         -- Basic camelCase
         { input = "camelCase", expectedWords = { "camelCase", "Case" } },
@@ -136,7 +136,7 @@ end)
 
 -- TestGetPackageRealpathFuncs_FollowsNodeModulesSymlinks tests that toRealpath correctly
 -- follows symlinks for files outside the package directory (e.g. node_modules entries).
-describe("autoimport getPackageRealpathFuncs", function()
+describe("autoimport getPackageRealpathFuncs #slow", function()
     it("follows node_modules symlinks", function()
         -- Simulate a layout where the package directory is itself a symlink (e.g. Bazel's
         -- convenience symlinks or pnpm's virtual store):
@@ -219,7 +219,7 @@ function fakeCloneHost:GetPackageJson() return nil end
 function fakeCloneHost:GetSourceFile() return nil end
 function fakeCloneHost:Dispose() end
 
-describe("autoimport aliasResolver", function()
+describe("autoimport aliasResolver #slow", function()
     -- Regression test for microsoft/typescript-go#4322.
     --
     -- During auto-import export extraction, the checker is built on top of an
@@ -269,7 +269,7 @@ local hasSession = projecttestutil ~= nil and project ~= nil and projecttestutil
 local lifecycleProjectRoot = "/home/src/autoimport-lifecycle"
 local monorepoProjectRoot = "/home/src/autoimport-monorepo"
 
-describe("autoimport registry lifecycle", function()
+describe("autoimport registry lifecycle #slow", function()
     if not hasSession then
         pending("tslua.project / tslua.testutil.projecttestutil not available")
         return
@@ -1070,12 +1070,6 @@ describe("autoimport registry lifecycle", function()
     end)
 
     it("content-mapped node_modules file uses the project bucket", function()
-        -- Blocked on content mapper support in tslua.project/tsoptions
-        -- (project.collectConfiguredContentMappers: mapper.definition is nil).
-        if os.getenv("TSLUA_CONTENT_MAPPER_TESTS") == nil then
-            pending("content mapper configuration not supported yet")
-            return
-        end
         local contentmappertest = require("tslua.testutil.contentmappertest")
         local files = {
             ["/home/project/tsconfig.json"] = [[{

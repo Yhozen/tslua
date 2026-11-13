@@ -16,7 +16,7 @@ local function getProgram(session, uri)
     return ls:GetProgram()
 end
 
-describe("project lifetime", function()
+describe("project lifetime #slow", function()
     it("configured project", function()
         local config = [[{
 				"compilerOptions": {

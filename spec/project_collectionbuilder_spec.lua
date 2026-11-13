@@ -57,7 +57,7 @@ local function closeAndOpenDummy(session, released)
     end
 end
 
-describe("project.ProjectCollectionBuilder", function()
+describe("project.ProjectCollectionBuilder #slow", function()
     it("when project found is solution referencing default project directly", function()
         local files = filesForSolutionConfigFile({ "./tsconfig-src.json" }, "", nil)
         local session = projecttestutil.Setup(files)
@@ -178,7 +178,7 @@ describe("project.ProjectCollectionBuilder", function()
     end)
 end)
 
-describe("project config file changes", function()
+describe("project config file changes #slow", function()
     local files = {
         ["/tsconfig.more-base.json"] = "{}",
         ["/tsconfig.base.json"] = '{"extends": "../tsconfig.more-base.json", "compilerOptions": {"strict": true}}',

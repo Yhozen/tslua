@@ -36,7 +36,7 @@ local function contains(s, sub)
     return string.find(s, sub, 1, true) ~= nil
 end
 
-describe("format TestFormatNoTrailingSpace", function()
+describe("format TestFormatNoTrailingSpace #slow", function()
     local testCases = {
         { "simple statement without trailing newline", "1;" },
         { "function call without trailing newline", "console.log('hello');" },
@@ -69,7 +69,7 @@ describe("format TestFormatNoTrailingSpace", function()
     end
 end)
 
-describe("format TestFormat", function()
+describe("format TestFormat #slow", function()
     it("format checker.ts", function()
         local ctx = format.WithFormatCodeSettings(nil, settings({
             tabSize = 4,
@@ -96,7 +96,7 @@ describe("format TestFormat", function()
     end)
 end)
 
-describe("format TestGetContainingList_NamedImports", function()
+describe("format TestGetContainingList_NamedImports #slow", function()
     it("returns the named imports list", function()
         local text = 'import type {\n    AAA,\n    BBB,\n} from "./bar";'
         local sourceFile = parse("/test.ts", text, core.ScriptKind.TS)
@@ -124,7 +124,7 @@ describe("format TestGetContainingList_NamedImports", function()
     end)
 end)
 
-describe("format TestGetIndentationForNamedImportsPosition", function()
+describe("format TestGetIndentationForNamedImportsPosition #slow", function()
     it("indents named import specifiers", function()
         local text = 'import {\n    type SomeInterface,\n} from "./exports.js";'
         local sourceFile = parse("/test.ts", text, core.ScriptKind.TS)
@@ -156,7 +156,7 @@ local function formatDocument(ctx, text, fileName, scriptKind)
     return applyBulkEdits(text, format.FormatDocument(ctx, sourceFile))
 end
 
-describe("format TestCommentFormatting", function()
+describe("format TestCommentFormatting #slow", function()
     it("format comment issue reproduction", function()
         local ctx = format.WithFormatCodeSettings(nil, settings({
             tabSize = 4,
@@ -244,7 +244,7 @@ describe("format TestCommentFormatting", function()
     end)
 end)
 
-describe("format TestFormatSelectionPreservesComments", function()
+describe("format TestFormatSelectionPreservesComments #slow", function()
     local function spaceSettings(extra)
         local init = {
             tabSize = 4,
@@ -285,7 +285,7 @@ describe("format TestFormatSelectionPreservesComments", function()
     end)
 end)
 
-describe("format TestSliceBoundsPanic", function()
+describe("format TestSliceBoundsPanic #slow", function()
     it("format code with trailing semicolon should not panic", function()
         local ctx = format.WithFormatCodeSettings(nil, settings({
             tabSize = 4,

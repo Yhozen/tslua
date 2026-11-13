@@ -1,7 +1,6 @@
--- Ported from typescript-go internal/tsoptions/*_test.go (direct assertions; baseline tests are
--- covered by the baseline runner).
+-- Hand-written tsoptions smoke tests. The Go tests of internal/tsoptions/*_test.go are ported in
+-- spec/tsoptions_<file>_spec.lua.
 local core = require("tslua.core")
-local collections = require("tslua.collections")
 local diagnostics = require("tslua.diagnostics")
 local tsoptions = require("tslua.tsoptions")
 local tspath = require("tslua.tspath")
@@ -27,17 +26,6 @@ local function codes(diags)
 end
 
 describe("tsoptions declarations", function()
-    it("TestParseCompilerOptionNoMissingFields", function()
-        local missing = {}
-        for _, field in ipairs(core.CompilerOptions.Fields) do
-            local co = core.NewCompilerOptions()
-            if not tsoptions.parseCompilerOptions(field.json, field.zero, co) then
-                missing[#missing + 1] = field.json
-            end
-        end
-        assert.are.same({}, missing)
-    end)
-
     it("builds name maps", function()
         assert.are.equal("strict", tsoptions.CompilerNameMap:Get("STRICT").name)
         assert.are.equal("help", tsoptions.CompilerNameMap:GetOptionDeclarationFromName("h", true).name)
@@ -75,61 +63,6 @@ describe("ParseCommandLine", function()
         assert.are.same({ diagnostics.Argument_for_0_option_must_be_Colon_1:Code() }, codes(parsed.errors))
         parsed = tsoptions.ParseCommandLine({ "--outDir" }, host)
         assert.are.same({ diagnostics.Compiler_option_0_expects_an_argument:Code() }, codes(parsed.errors))
-    end)
-
-    it("TestResponseFileParsing", function()
-        local host = newHost({ ["/project/args.txt"] = "--strict --outDir dist" }, "/project", true)
-        local parsed = tsoptions.ParseCommandLine({ "@args.txt" }, host)
-        assert.are.equal(0, #parsed.errors)
-        assert.is_true(core.Tristate_IsTrue(parsed:CompilerOptions().strict))
-        assert.are.equal("/project/dist", parsed:CompilerOptions().outDir)
-
-        host = newHost({
-            ["/project/a.txt"] = "@/project/b.txt --strict",
-            ["/project/b.txt"] = "@/project/a.txt --outDir dist",
-        }, "/project", true)
-        parsed = tsoptions.ParseCommandLine({ "@a.txt" }, host)
-        assert.are.equal(0, #parsed.errors)
-        assert.is_true(core.Tristate_IsTrue(parsed:CompilerOptions().strict))
-        assert.are.equal("/project/dist", parsed:CompilerOptions().outDir)
-    end)
-
-    it("TestParseCommandLineTypeRootsRelativePath", function()
-        local host = newHost({ ["/home/project/bug.ts"] = "let x = 1;" }, "/home/project", true)
-        local cmdLine = tsoptions.ParseCommandLine({ "--typeRoots", "t", "bug.ts" }, host)
-        assert.are.same({ "/home/project/t" }, cmdLine:CompilerOptions().typeRoots)
-    end)
-
-    it("TestCustomConditionsNullOverride", function()
-        local files = {
-            ["/project/tsconfig.json"] = '{\n  "compilerOptions": {\n    "customConditions": ["condition1", "condition2"]\n  }\n}',
-            ["/project/index.ts"] = 'console.log("Hello, World!");',
-        }
-        local host = newHost(files, "/project", true)
-        local cmdLine = tsoptions.ParseCommandLine({ "--project", "/project", "--customConditions", "null" }, host)
-        local value, exists = cmdLine.raw:Get("customConditions")
-        assert.is_true(exists)
-        assert.is_nil(value)
-
-        local wrappedRaw = collections.NewOrderedMap()
-        wrappedRaw:Set("compilerOptions", cmdLine.raw)
-        local parsedConfig, errors = tsoptions.GetParsedCommandLineOfConfigFile("/project/tsconfig.json", cmdLine:CompilerOptions(), wrappedRaw, host, nil)
-        assert.is_nil(errors)
-        assert.is_nil(parsedConfig:CompilerOptions().customConditions)
-    end)
-
-    it("TestParseBuildCommandLine", function()
-        local host = newHost({}, "/", true)
-        local parsed = tsoptions.ParseBuildCommandLine({ "--clean", "--force" }, host)
-        assert.are.same({ "." }, parsed.projects)
-        assert.are.same({ diagnostics.Options_0_and_1_cannot_be_combined:Code() }, codes(parsed.errors))
-        parsed = tsoptions.ParseBuildCommandLine({ "--verbose", "--listFiles", "p1" }, host)
-        assert.are.same({}, codes(parsed.errors))
-        assert.is_true(core.Tristate_IsTrue(parsed.buildOptions.verbose))
-        assert.is_true(core.Tristate_IsTrue(parsed.compilerOptions.listFiles))
-        assert.are.same({ "p1" }, parsed.projects)
-        parsed = tsoptions.ParseBuildCommandLine({ "--strict" }, host)
-        assert.are.same({ diagnostics.Compiler_option_0_may_not_be_used_with_build:Code() }, codes(parsed.errors))
     end)
 end)
 
@@ -184,15 +117,6 @@ describe("tsconfig parsing", function()
         assert.are.same({ "/project/main.ts" }, parsed:LiteralFileNames())
     end)
 
-    it("TestParseJsonSourceFileConfigFileContentWithEmptyExtendedConfig", function()
-        local parsed = parseConfig({
-            ["/project/tsconfig.json"] = '{\n  "extends": "./base.json"\n}',
-            ["/project/base.json"] = "",
-            ["/project/main.ts"] = "export const x = 1;",
-        }, "/project/tsconfig.json", "/project")
-        assert.are.same({ "/project/main.ts" }, parsed:FileNames())
-    end)
-
     it("reports unknown compiler options, root compiler options and empty inputs", function()
         local parsed = parseConfig({
             ["/project/tsconfig.json"] = '{ "compilerOptions": { "strictt": true }, "outDir": "x", "include": ["nothing"] }',
@@ -228,39 +152,5 @@ describe("tsconfig parsing", function()
         assert.are.equal("/project/sub", refs[1].path)
         assert.are.equal("./sub", refs[1].originalPath)
         assert.are.same({ "/project/sub/tsconfig.json" }, parsed:ResolvedProjectReferencePaths())
-    end)
-
-    it("TestParseJsonConfigFileContentPreservesRaw", function()
-        local host = newHost({ ["/project/index.ts"] = "export {};" }, "/project", true)
-        local parsed = tsoptions.ParseJsonConfigFileContent(
-            { files = { "index.ts" }, customSetting = { enabled = true }, compileOnSave = true },
-            host, "/project", nil, "/project/tsconfig.json", nil, nil
-        )
-        assert.are.equal(0, core.Len(parsed.errors))
-        assert.is_true(parsed.compileOnSave)
-        assert.are.same({ "compileOnSave", "customSetting", "files" }, core.Collect(parsed.raw:Keys()))
-    end)
-
-    it("TestParseJsonConfigFileContentDefaultsCompileOnSaveToFalse", function()
-        local host = newHost({ ["/project/index.ts"] = "export {};" }, "/project", true)
-        local parsed = tsoptions.ParseJsonConfigFileContent({ files = { "index.ts" } }, host, "/project", nil, "/project/tsconfig.json", nil, nil)
-        assert.is_false(parsed.compileOnSave)
-    end)
-
-    it("TestParseConfigFileTextToJson", function()
-        local config, errors = tsoptions.ParseConfigFileTextToJson("/tsconfig.json", "/tsconfig.json", '{ // Excluded files\n "exclude": [\n // Exclude d.ts\n "file.d.ts"\n ]\n }')
-        assert.is_nil(errors)
-        assert.are.same({ "file.d.ts" }, config:GetOrZero("exclude"))
-    end)
-end)
-
-describe("wildcard directories", function()
-    it("TestGetWildcardDirectories_DotPrefixedIncludeWithDotDirExclude", function()
-        local result = tsoptions.getWildcardDirectories(
-            { "./app/**/*.ts", "./app/**/*.tsx" },
-            { "**/node_modules", "**/.*/", "./build" },
-            tspath.NewComparePathsOptions(true, "/home/projects/monorepo/apps/web")
-        )
-        assert.are.same({ ["/home/projects/monorepo/apps/web/app"] = true }, result)
     end)
 end)

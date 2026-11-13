@@ -1,3 +1,5 @@
+-- Hand-written compiler.Program smoke tests. The Go tests of internal/compiler/*_test.go are
+-- ported in spec/compiler_<file>_spec.lua.
 local ast = require("tslua.ast")
 local bundled = require("tslua.bundled")
 local compiler = require("tslua.compiler")
@@ -74,17 +76,5 @@ describe("compiler.Program", function()
         local d3 = ast.NewCompilerDiagnostic(diagnostics.File_0_not_found, "a")
         local result = compiler.SortAndDeduplicateDiagnostics({ d1, d2, d3 })
         assert.are.equal(2, #result)
-    end)
-end)
-
-describe("compiler checker association", function()
-    it("balances files across checkers", function()
-        local associations = compiler.getCheckerAssociationsInOrder({ 10, 10, 10, 10 }, { {}, {}, {}, {} }, nil, 2, 1)
-        assert.are.same({ 0, 1, 0, 1 }, associations)
-    end)
-
-    it("orders source files before declarations by descending weight", function()
-        local order = compiler.getCheckerAssociationOrder({ 5, 10, 7 }, { true, false, false }, true)
-        assert.are.same({ 1, 2, 0 }, order)
     end)
 end)

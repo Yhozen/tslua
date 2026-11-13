@@ -1,9 +1,13 @@
+-- `busted` (and `make spec`) skips the specs tagged #slow (each takes 40 s or more);
+-- `busted --run=all` (`make spec-all`) runs everything.
 return {
   _all = {
     lpath = "src/?.lua;src/?/init.lua",
-  },
-  default = {
     ROOT = { "spec" },
     pattern = "_spec",
   },
+  default = {
+    ["exclude-tags"] = "slow",
+  },
+  all = {},
 }

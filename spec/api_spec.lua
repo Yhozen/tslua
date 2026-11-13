@@ -36,7 +36,7 @@ local function contains(list, x)
     return false
 end
 
-describe("api proto", function()
+describe("api proto #slow", function()
     it("TestDocumentIdentifierUnmarshalJSON", function()
         local tests = {
             { name = "plain string", input = '"foo.ts"', fileName = "foo.ts" },
@@ -126,7 +126,7 @@ describe("api proto", function()
     end)
 end)
 
-describe("api session", function()
+describe("api session #slow", function()
     local function rpc(session, method, params)
         local raw = nil
         if params ~= nil then
@@ -577,7 +577,7 @@ describe("api session", function()
     end)
 end)
 
-describe("api msgpack protocol", function()
+describe("api msgpack protocol #slow", function()
     local function bin(s)
         assert(#s < 256)
         return string.char(0xC4, #s) .. s

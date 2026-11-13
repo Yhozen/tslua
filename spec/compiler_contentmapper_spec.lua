@@ -86,7 +86,7 @@ local function codesOf(diags)
     return table.concat(codes, ",")
 end
 
-describe("TestContentMapperVirtualExtensionSetsImpliedNodeFormat", function()
+describe("TestContentMapperVirtualExtensionSetsImpliedNodeFormat #slow", function()
     it("TestContentMapperVirtualExtensionSetsImpliedNodeFormat", function()
         local program = newContentMapperProgramWithOptions(
             newFakeContentMapperHost(function(_, _)
@@ -107,7 +107,7 @@ describe("TestContentMapperVirtualExtensionSetsImpliedNodeFormat", function()
     end)
 end)
 
-describe("TestContentMapperInvalidMappings", function()
+describe("TestContentMapperInvalidMappings #slow", function()
     it("TestContentMapperInvalidMappings", function()
         local transformed = "export const x = 1;\n"
         local original = "<template>x</template>\n"
@@ -131,7 +131,7 @@ describe("TestContentMapperInvalidMappings", function()
     end)
 end)
 
-describe("TestContentMapperSourceFileState", function()
+describe("TestContentMapperSourceFileState #slow", function()
     it("successful synthesized empty file", function()
         local program = newContentMapperProgram(newFakeContentMapperHost(function(_, _)
             return contentmapper.NewResult({ text = "export {};", virtualExtension = ".ts", mappings = spanmap.New(nil) }), nil
@@ -171,7 +171,7 @@ describe("TestContentMapperSourceFileState", function()
     end)
 end)
 
-describe("TestContentMapperProjectErrorDiagnostics", function()
+describe("TestContentMapperProjectErrorDiagnostics #slow", function()
     for _, test in ipairs({
         {
             kind = contentmapper.ProjectErrorKind.MissingConfigIdentity,

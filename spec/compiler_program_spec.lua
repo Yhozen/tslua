@@ -210,7 +210,7 @@ local programTestCases = {
         target = core.ScriptTarget.ESNext,
     },
 }
-describe("TestProgram", function()
+describe("TestProgram #slow", function()
     if not bundled.Embedded then
         -- Without embedding, we'd need to read all of the lib files out from disk into the MapFS.
         -- Just skip this for now.
@@ -254,7 +254,7 @@ describe("TestProgram", function()
     end
 end)
 
-describe("TestIncludeProcessorDiagnosticsWithMissingFileCasing", function()
+describe("TestIncludeProcessorDiagnosticsWithMissingFileCasing #slow", function()
     it("TestIncludeProcessorDiagnosticsWithMissingFileCasing", function()
         if not bundled.Embedded then
             pending("bundled files are not embedded")

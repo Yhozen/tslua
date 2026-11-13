@@ -31,7 +31,7 @@ local discard = { Write = function(_, s)
     return #s, nil
 end }
 
-describe("lsp dynamicQueue", function()
+describe("lsp dynamicQueue #slow", function()
     it("is FIFO", function()
         local q = lsp.newDynamicQueue()
         for i = 0, 999 do
@@ -54,7 +54,7 @@ describe("lsp dynamicQueue", function()
     end)
 end)
 
-describe("lsp stack sanitizer", function()
+describe("lsp stack sanitizer #slow", function()
     local dir = "vendor/typescript-go/testdata/baselines/reference/lsp/stackSanitizer/"
     for _, name in ipairs({ "completionsDebugStackTrace.md", "completionsReleaseStackTrace.md", "genericSecretWorkaround.md" }) do
         it(name, function()
@@ -69,7 +69,7 @@ describe("lsp stack sanitizer", function()
 
 end)
 
-describe("lsp progress", function()
+describe("lsp progress #slow", function()
     local function newReporter()
         local ctx, cancel = core.WithCancel(nil)
         local r = { calls = {}, clock = 0, ctx = ctx, cancel = cancel }
@@ -228,7 +228,7 @@ describe("lsp progress", function()
     end)
 end)
 
-describe("lsp server", function()
+describe("lsp server #slow", function()
     local function shutdownTestReader()
         return { Read = function()
             return nil, jsonrpc.EOF
@@ -382,7 +382,7 @@ describe("lsp server", function()
     end)
 end)
 
-describe("lsp server end to end", function()
+describe("lsp server end to end #slow", function()
     local function initProjectInfoClient(files)
         local fs = bundled.WrapFS(vfstest.FromMap(files, false))
         local function onServerRequest(_, req)
@@ -454,7 +454,7 @@ describe("lsp server end to end", function()
     end)
 end)
 
-describe("lsp language features end to end", function()
+describe("lsp language features end to end #slow", function()
     local lsutil = require("tslua.ls.lsutil")
     local lsconv = require("tslua.ls.lsconv")
 
@@ -570,7 +570,7 @@ describe("lsp language features end to end", function()
     end)
 end)
 
-describe("lsp progress end to end", function()
+describe("lsp progress end to end #slow", function()
     it("sends progress notifications (TestProgressNotificationsEndToEnd)", function()
         local fs = bundled.WrapFS(vfstest.FromMap({
             ["/home/projects/tsconfig.json"] = "{}",
@@ -629,7 +629,7 @@ describe("lsp progress end to end", function()
     end)
 end)
 
-describe("lspwatcher", function()
+describe("lspwatcher #slow", function()
     it("rootFromGlob", function()
         for _, c in ipairs({
             { "/abs/path/**/*", "/abs/path" },

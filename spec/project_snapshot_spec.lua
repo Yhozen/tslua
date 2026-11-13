@@ -46,7 +46,7 @@ local function entryFor(session, file)
     return session.parseCache.entries:Load(key.cacheKey)
 end
 
-describe("project.Snapshot", function()
+describe("project.Snapshot #slow", function()
     it("compilerHost gets frozen with snapshot's FS only once", function()
         local files = {
             ["/home/projects/TS/p1/tsconfig.json"] = '{ "compilerOptions": { "noLib": true } }',
@@ -167,7 +167,7 @@ describe("project.Snapshot", function()
     end)
 end)
 
-describe("project parse cache ref counting", function()
+describe("project parse cache ref counting #slow", function()
     -- Configured project with noLib (the Go test uses an inferred project, which loads the full
     -- default lib set; that is slow in the Lua port and does not change what is being tested).
     local files = {
