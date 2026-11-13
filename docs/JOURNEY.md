@@ -124,6 +124,16 @@ tests, API server).
   `go test -overlay` instead of being translated by hand. Race tests that gate goroutines on
   channels run as coroutines under a small cooperative scheduler. These caught a real bug:
   `x + 0.0` as an "int to float" conversion turns `-0` into `+0` (`-0 ** -3` came out `+Inf`).
+- **Translate Go tests with go/types, not regexes.** The 4,343 fourslash test files (+ the
+  tests/util package) are converted by a type-directed Go->Lua translator
+  (scripts/gen/fourslash/): types decide struct vs map vs slice literals, constant naming, methods
+  on scalar types (`<Type>_<Method>`), zero-filled struct literals and Go copy semantics. The same
+  translator in package mode produced a first draft of the 8k-line tslua.fourslash harness, which
+  was then fixed by hand: much faster and more faithful than hand-porting.
+- **Emulate Go `append` capacity.** Appending in place to every array mutates shared slice
+  literals (package-level expectation lists); always copying is quadratic. The goruntime shim
+  appends in place only to arrays it created through append (tracked weakly), like the spare
+  capacity of Go slices grown by append.
 
 ## Roadblocks (and what we did)
 
@@ -155,6 +165,13 @@ tests, API server).
   declarationEmitPrivatePromiseLikeInterface need 2.5-10 s of CPU in Go and 115-170+ s in Lua
   (no loops; diffuse cost in the relater and template literal inference), so they hit the 120 s
   per-case limit while producing correct baselines when run with `--timeout 0`.
+- **Go struct field order in JSON.** Lua tables have no field order and tslua.json sorts keys, so
+  baselines that JSON-encode Go structs (fourslash markers, `markerAndItem`) need Lua-only
+  `MarshalJSON` methods writing fields in Go declaration order (and `null` for nil pointers).
+- **Nil map values.** Go `m[k] = nil` (e.g. a nil `*Program` per project) is an entry; in Lua it
+  deletes the key, so "is it new?" checks flip. Store a sentinel.
+- **A statement starting with `(`** right after a multi-line call is parsed by Lua as a call of
+  the previous expression (`f(...)` newline `(x or y):m()`). Prefix such statements with `;`.
 - **Go map iteration order** is random; where it influenced output order we use sorted or
   first-seen order, and we never rely on `pairs` order.
 - **`$PWD` can be stale** in child processes; `osvfs.Getwd` now trusts it only if it names the
