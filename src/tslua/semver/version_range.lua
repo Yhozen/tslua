@@ -139,9 +139,36 @@ function semver.TryParseVersionRange(text)
     return setmetatable({ alternatives = alternatives }, VersionRange), ok
 end
 
--- strings.TrimSpace
+-- unicode.IsSpace
+local function isSpace(r)
+    if r <= 0xFF then
+        return r == 0x09 or r == 0x0A or r == 0x0B or r == 0x0C or r == 0x0D or r == 0x20 or r == 0x85 or r == 0xA0
+    end
+    return r == 0x1680 or (r >= 0x2000 and r <= 0x200A) or r == 0x2028 or r == 0x2029 or r == 0x202F
+        or r == 0x205F or r == 0x3000
+end
+
+-- strings.TrimSpace: trims leading and trailing Unicode white space, decoding UTF-8 (an invalid
+-- byte is not space, like Go utf8.RuneError).
 local function trimSpace(s)
-    return (string.gsub(string.gsub(s, "^[\t\n\v\f\r \133\160]+", ""), "[\t\n\v\f\r \133\160]+$", ""))
+    local first, last = nil, 0
+    local pos = 1
+    while pos <= #s do
+        local ok, r = pcall(utf8.codepoint, s, pos)
+        local size = 1
+        if ok then
+            size = #utf8.char(r)
+        end
+        if not (ok and isSpace(r)) then
+            first = first or pos
+            last = pos + size - 1
+        end
+        pos = pos + size
+    end
+    if first == nil then
+        return ""
+    end
+    return string.sub(s, first, last)
 end
 
 -- Returns (alternatives, ok).
