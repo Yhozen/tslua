@@ -86,7 +86,8 @@ function LanguageService:getPreparedAutoImportView(fromFile)
     if canonical ~= nil then
         registryFile = canonical
     end
-    if not registry:IsPreparedForImportingFile(registryFile:FileName(), self.projectPath, self:UserPreferences()) then
+    -- Go: nil-receiver method; a nil registry is "not prepared".
+    if not autoimport.Registry.IsPreparedForImportingFile(registry, registryFile:FileName(), self.projectPath, self:UserPreferences()) then
         return nil, ls.ErrNeedsAutoImports
     end
 

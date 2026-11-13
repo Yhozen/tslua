@@ -14,10 +14,12 @@ local PackageJson = setmetatable({}, { __index = packagejson.Fields })
 PackageJson.__index = PackageJson
 packagejson.PackageJson = PackageJson
 
--- NewPackageJson builds &PackageJson{Fields: fields, Parseable: parseable}.
+-- NewPackageJson builds &PackageJson{Fields: fields, Parseable: parseable}. Fields absent from
+-- `fields` (or all of them when `fields` is nil, as in Go's &PackageJson{Parseable: false}) get
+-- their Go zero values, so Expected/JSONValue accessors work on unparseable package.json files.
 function packagejson.NewPackageJson(fields, parseable)
-    local p = setmetatable({}, PackageJson)
-    for k, v in pairs(fields) do
+    local p = setmetatable(packagejson.NewFields(), PackageJson)
+    for k, v in pairs(fields or {}) do
         p[k] = v
     end
     p.parseable = parseable or false

@@ -5,6 +5,7 @@ local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local locale = require("tslua.locale")
 local ls = require("tslua.ls")
+local autoimport = require("tslua.ls.autoimport")
 local lsconv = require("tslua.ls.lsconv")
 local lsutil = require("tslua.ls.lsutil")
 local lsproto = require("tslua.lsp.lsproto")
@@ -1970,7 +1971,7 @@ function Session:warmAutoImportCache(ctx, change, oldSnapshot, newSnapshot)
         if p == nil then
             return
         end
-        if newSnapshot.autoImports:IsPreparedForImportingFile(
+        if autoimport.Registry.IsPreparedForImportingFile(newSnapshot.autoImports,
             lsproto.DocumentUri_FileName(changedFile),
             p.configFilePath,
             prefs
