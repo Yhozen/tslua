@@ -541,7 +541,7 @@ function timingCollector:snapshot()
     if self.activeRequests ~= 0 then
         requestWait = requestWait + (ipc.now() - self.requestWaitStart)
     end
-    local result = { mappers = {}, requestWait = requestWait }
+    local result = contentmapper.NewTimings({ mappers = {}, requestWait = requestWait })
     for identity, timing in pairs(self.mappers) do
         result.mappers[identity] = {
             spawn = timing.spawn:snapshot(),

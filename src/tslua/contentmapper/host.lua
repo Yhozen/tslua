@@ -207,14 +207,28 @@ end
 -- Timings is a cumulative snapshot of content mapper process and protocol activity:
 -- { mappers = map[identity]MapperTimings, requestWait = seconds }.
 
+local Timings = {}
+Timings.__index = Timings
+contentmapper.Timings = Timings
+
+function contentmapper.NewTimings(t)
+    t = t or {}
+    return setmetatable({ mappers = t.mappers or {}, requestWait = t.requestWait or 0 }, Timings)
+end
+
 -- Since returns the non-negative operation delta since previous.
+function Timings:Since(previous)
+    return contentmapper.Timings_Since(self, previous)
+end
+
+-- Timings_Since is Timings.Since callable on plain { mappers, requestWait } tables.
 function contentmapper.Timings_Since(t, previous)
-    local result = {
+    local result = contentmapper.NewTimings({
         mappers = {},
         requestWait = math.max(t.requestWait - previous.requestWait, 0),
-    }
-    for identity, current in pairs(t.mappers) do
-        local before = previous.mappers[identity] or contentmapper.zeroMapperTimings()
+    })
+    for identity, current in pairs(t.mappers or {}) do
+        local before = (previous.mappers or {})[identity] or contentmapper.zeroMapperTimings()
         result.mappers[identity] = {
             spawn = contentmapper.operationTimingSince(current.spawn, before.spawn),
             initialize = contentmapper.operationTimingSince(current.initialize, before.initialize),

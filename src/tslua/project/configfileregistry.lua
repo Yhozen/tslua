@@ -29,7 +29,7 @@ function project.collectConfiguredContentMappers(commandLines)
     local extensions = nil
     for _, commandLine in ipairs(commandLines or {}) do
         for _, mapper in ipairs(commandLine:ContentMappers() or {}) do
-            for _, extension in ipairs(mapper.definition.extensions or {}) do
+            for _, extension in ipairs(mapper.extensions or {}) do
                 if seenExtensions:AddIfAbsent(extension) then
                     extensions = extensions or {}
                     extensions[#extensions + 1] = extension
