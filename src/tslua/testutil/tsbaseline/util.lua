@@ -1,10 +1,13 @@
 local tsbaseline = require("tslua.testutil.tsbaseline")
 local core = require("tslua.core")
+local regexp = require("tslua.regexp")
 local tspath = require("tslua.tspath")
 
--- The Go regexps of this package are ported as small hand-written matchers with the same
--- methods (Split(s, -1), ReplaceAllString(s, repl), MatchString(s)) and RE2 semantics
--- (leftmost-first alternation, greedy quantifiers, \s = [\t\n\f\r ], \S matches one rune).
+-- The Go regexps of this package use tslua.regexp, except the per-line hot paths (lineDelimiter,
+-- nonWhitespace, and codeLinesRegexp/bracketLineRegex in type_symbol_baseline.lua), which are
+-- small hand-written matchers with the same methods (Split(s, -1), ReplaceAllString(s, repl),
+-- MatchString(s)) and RE2 semantics (\s = [\t\n\f\r ], \S matches one rune); the NFA engine is
+-- ~3us/byte in Lua. spec/regexp_standins_spec.lua checks them against tslua.regexp.
 
 local function isRE2Space(b)
     return b == 32 or b == 9 or b == 10 or b == 12 or b == 13
@@ -76,34 +79,9 @@ tsbaseline.nonWhitespace = {
     end,
 }
 
--- tsExtension = regexp.MustCompile(`\.tsx?$`)
-tsbaseline.tsExtension = {
-    ReplaceAllString = function(self, s, repl)
-        if string.sub(s, -3) == ".ts" then
-            return string.sub(s, 1, -4) .. repl
-        elseif string.sub(s, -4) == ".tsx" then
-            return string.sub(s, 1, -5) .. repl
-        end
-        return s
-    end,
-    MatchString = function(self, s)
-        return string.sub(s, -3) == ".ts" or string.sub(s, -4) == ".tsx"
-    end,
-}
-
--- testPathCharacters = regexp.MustCompile(`[\^<>:"|?*%]`)
-tsbaseline.testPathCharacters = {
-    ReplaceAllString = function(self, s, repl)
-        return (string.gsub(s, "[%^<>:\"|?*%%]", repl))
-    end,
-}
-
--- testPathDotDot = regexp.MustCompile(`\.\.\/`)
-tsbaseline.testPathDotDot = {
-    ReplaceAllString = function(self, s, repl)
-        return (string.gsub(s, "%.%./", repl))
-    end,
-}
+tsbaseline.tsExtension = regexp.MustCompile("\\.tsx?$")
+tsbaseline.testPathCharacters = regexp.MustCompile("[\\^<>:\"|?*%]")
+tsbaseline.testPathDotDot = regexp.MustCompile("\\.\\.\\/")
 
 tsbaseline.libFolder = "built/local/"
 tsbaseline.builtFolder = "/.ts"

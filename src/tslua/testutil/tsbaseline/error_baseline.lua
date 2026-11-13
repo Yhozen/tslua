@@ -4,6 +4,7 @@ local baseline = require("tslua.testutil.baseline")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
 local diagnosticwriter = require("tslua.diagnosticwriter")
+local regexp = require("tslua.regexp")
 local testutil = require("tslua.testutil")
 local tspath = require("tslua.tspath")
 
@@ -17,108 +18,8 @@ tsbaseline.formatOpts = {
     useCaseSensitiveFileNames = false,
 }
 
-local function lowerAt(s, i, lit)
-    return string.lower(string.sub(s, i, i + #lit - 1)) == lit
-end
-
--- Matches `\d+` at position i (1-based); returns the position after the digits or nil.
-local function digitsAt(s, i)
-    local _, e = string.find(s, "^%d+", i)
-    if e == nil then
-        return nil
-    end
-    return e + 1
-end
-
--- diagnosticsLocationPrefix = regexp.MustCompile(`(?im)^(lib.*\.d\.ts)\(\d+,\d+\)`)
-tsbaseline.diagnosticsLocationPrefix = {
-    -- Returns the end (exclusive, 1-based) of group 1 and of the whole match for a match starting
-    -- at line start i, or nil.
-    matchAt = function(s, i, lineEnd)
-        if not lowerAt(s, i, "lib") then
-            return nil
-        end
-        -- greedy `.*`: try the rightmost ".d.ts" first
-        local k = lineEnd - 5
-        while k >= i + 3 do
-            if lowerAt(s, k, ".d.ts") and string.sub(s, k + 5, k + 5) == "(" then
-                local p = digitsAt(s, k + 6)
-                if p ~= nil and string.sub(s, p, p) == "," then
-                    local q = digitsAt(s, p + 1)
-                    if q ~= nil and string.sub(s, q, q) == ")" then
-                        return k + 5, q + 1
-                    end
-                end
-            end
-            k = k - 1
-        end
-        return nil
-    end,
-    -- repl is "$1(--,--)"
-    ReplaceAllString = function(self, s, repl)
-        local out = {}
-        local pos = 1
-        local n = #s
-        local lineStart = 1
-        while lineStart <= n do
-            local nl = string.find(s, "\n", lineStart, true)
-            local lineEnd = nl or (n + 1)
-            local g1End, mEnd = self.matchAt(s, lineStart, lineEnd)
-            if g1End ~= nil then
-                out[#out + 1] = string.sub(s, pos, g1End - 1)
-                out[#out + 1] = string.sub(repl, 3)
-                pos = mEnd
-            end
-            if nl == nil then
-                break
-            end
-            lineStart = nl + 1
-        end
-        out[#out + 1] = string.sub(s, pos)
-        return table.concat(out)
-    end,
-}
-
--- diagnosticsLocationPattern = regexp.MustCompile(`(?i)(lib.*\.d\.ts):\d+:\d+`)
-tsbaseline.diagnosticsLocationPattern = {
-    -- repl is "$1:--:--"
-    ReplaceAllString = function(self, s, repl)
-        local out = {}
-        local pos = 1
-        local i = 1
-        local n = #s
-        while i <= n - 2 do
-            local matched = false
-            if lowerAt(s, i, "lib") then
-                local nl = string.find(s, "\n", i, true)
-                local lineEnd = nl or (n + 1)
-                local k = lineEnd - 5
-                while k >= i + 3 do
-                    if lowerAt(s, k, ".d.ts") and string.sub(s, k + 5, k + 5) == ":" then
-                        local p = digitsAt(s, k + 6)
-                        if p ~= nil and string.sub(s, p, p) == ":" then
-                            local q = digitsAt(s, p + 1)
-                            if q ~= nil then
-                                out[#out + 1] = string.sub(s, pos, k + 4)
-                                out[#out + 1] = string.sub(repl, 3)
-                                pos = q
-                                i = q
-                                matched = true
-                                break
-                            end
-                        end
-                    end
-                    k = k - 1
-                end
-            end
-            if not matched then
-                i = i + 1
-            end
-        end
-        out[#out + 1] = string.sub(s, pos)
-        return table.concat(out)
-    end,
-}
+tsbaseline.diagnosticsLocationPrefix = regexp.MustCompile("(?im)^(lib.*\\.d\\.ts)\\(\\d+,\\d+\\)")
+tsbaseline.diagnosticsLocationPattern = regexp.MustCompile("(?i)(lib.*\\.d\\.ts):\\d+:\\d+")
 
 function tsbaseline.DoErrorBaseline(t, baselinePath, inputFiles, errors, pretty, opts)
     baselinePath = tsbaseline.tsExtension:ReplaceAllString(baselinePath, ".errors.txt")

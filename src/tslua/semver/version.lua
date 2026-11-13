@@ -1,7 +1,5 @@
 local semver = require("tslua.semver")
-
--- The Go regular expressions of this file are implemented by hand-written matchers below
--- (Go RE2 semantics: (?i), ASCII \d).
+local regexp = require("tslua.regexp")
 
 -- https://semver.org/#spec-item-2
 -- > A normal version number MUST take the form X.Y.Z where X, Y, and Z are non-negative
@@ -11,75 +9,9 @@ local semver = require("tslua.semver")
 -- NOTE: We differ here in that we allow X and X.Y, with missing parts having the default
 -- value of `0`.
 --
--- versionRegexp: (?i)^(0|[1-9]\d*)(?:\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*)(?:-([a-z0-9-.]+))?(?:\+([a-z0-9-.]+))?)?)?$
--- partialRegExp (version_range.go) is the same with [x*0] instead of 0 (allowWildcard).
--- Returns the 5 submatches ("" when absent) or nil.
-function semver.matchVersionLike(text, allowWildcard)
-    local pos = 1
-    local n = #text
-    local function readNumber()
-        local c = string.sub(text, pos, pos)
-        if allowWildcard and (c == "x" or c == "X" or c == "*" or c == "0") then
-            pos = pos + 1
-            return c
-        elseif not allowWildcard and c == "0" then
-            pos = pos + 1
-            return c
-        end
-        local s, e = string.find(text, "^[1-9]%d*", pos)
-        if s == nil then
-            return nil
-        end
-        pos = e + 1
-        return string.sub(text, s, e)
-    end
-    local m = { "", "", "", "", "" }
-    m[1] = readNumber()
-    if m[1] == nil then
-        return nil
-    end
-    if pos > n then
-        return m
-    end
-    if string.sub(text, pos, pos) ~= "." then
-        return nil
-    end
-    pos = pos + 1
-    m[2] = readNumber()
-    if m[2] == nil then
-        return nil
-    end
-    if pos > n then
-        return m
-    end
-    if string.sub(text, pos, pos) ~= "." then
-        return nil
-    end
-    pos = pos + 1
-    m[3] = readNumber()
-    if m[3] == nil then
-        return nil
-    end
-    if string.sub(text, pos, pos) == "-" then
-        local s, e = string.find(text, "^[%w%-%.]+", pos + 1)
-        if s ~= nil then
-            m[4] = string.sub(text, s, e)
-            pos = e + 1
-        end
-    end
-    if string.sub(text, pos, pos) == "+" then
-        local s, e = string.find(text, "^[%w%-%.]+", pos + 1)
-        if s ~= nil then
-            m[5] = string.sub(text, s, e)
-            pos = e + 1
-        end
-    end
-    if pos <= n then
-        return nil
-    end
-    return m
-end
+semver.versionRegexp = regexp.MustCompile("(?i)^(0|[1-9]\\d*)(?:\\.(0|[1-9]\\d*)(?:\\.(0|[1-9]\\d*)(?:-([a-z0-9-.]+))?(?:\\+([a-z0-9-.]+))?)?)?$")
 
+-- strings.Split(s, ".")
 local function splitDots(s)
     local parts = {}
     local start = 1
@@ -100,44 +32,19 @@ semver.splitDots = splitDots
 -- > identifiers immediately following the patch version. Identifiers MUST comprise only ASCII
 -- > alphanumerics and hyphen [0-9A-Za-z-]. Identifiers MUST NOT be empty. Numeric identifiers
 -- > MUST NOT include leading zeroes.
--- prereleaseRegexp: (?i)^(?:0|[1-9]\d*|[a-z-][a-z0-9-]*)(?:\.(?:0|[1-9]\d*|[a-zA-Z-][a-zA-Z0-9-]*))*$
-function semver.prereleasePartMatch(part)
-    return part == "0" or string.find(part, "^[1-9]%d*$") ~= nil or string.find(part, "^[%a%-][%w%-]*$") ~= nil
-end
-
-function semver.prereleaseMatch(s)
-    for _, part in ipairs(splitDots(s)) do
-        if not semver.prereleasePartMatch(part) then
-            return false
-        end
-    end
-    return true
-end
+semver.prereleaseRegexp = regexp.MustCompile("(?i)^(?:0|[1-9]\\d*|[a-z-][a-z0-9-]*)(?:\\.(?:0|[1-9]\\d*|[a-zA-Z-][a-zA-Z0-9-]*))*$")
+semver.prereleasePartRegexp = regexp.MustCompile("(?i)^(?:0|[1-9]\\d*|[a-z-][a-z0-9-]*)$")
 
 -- https://semver.org/#spec-item-10
 -- > Build metadata MAY be denoted by appending a plus sign and a series of dot separated
 -- > identifiers immediately following the patch or pre-release version. Identifiers MUST
 -- > comprise only ASCII alphanumerics and hyphen [0-9A-Za-z-]. Identifiers MUST NOT be empty.
--- buildRegExp: (?i)^[a-z0-9-]+(?:\.[a-z0-9-]+)*$
-function semver.buildPartMatch(part)
-    return string.find(part, "^[%w%-]+$") ~= nil
-end
-
-function semver.buildMatch(s)
-    for _, part in ipairs(splitDots(s)) do
-        if not semver.buildPartMatch(part) then
-            return false
-        end
-    end
-    return true
-end
+semver.buildRegExp = regexp.MustCompile("(?i)^[a-z0-9-]+(?:\\.[a-z0-9-]+)*$")
+semver.buildPartRegExp = regexp.MustCompile("(?i)^[a-z0-9-]+$")
 
 -- https://semver.org/#spec-item-9
 -- > Numeric identifiers MUST NOT include leading zeroes.
--- numericIdentifierRegExp: ^(?:0|[1-9]\d*)$
-function semver.numericIdentifierMatch(s)
-    return s == "0" or string.find(s, "^[1-9]%d*$") ~= nil
-end
+semver.numericIdentifierRegExp = regexp.MustCompile("^(?:0|[1-9]\\d*)$")
 
 -- Version: { major = int, minor = int, patch = int, prerelease = nil|array, build = nil|array }
 local Version = {}
@@ -273,8 +180,8 @@ function semver.comparePreReleaseIdentifier(left, right)
         return compareResult
     end
 
-    local leftIsNumeric = semver.numericIdentifierMatch(left)
-    local rightIsNumeric = semver.numericIdentifierMatch(right)
+    local leftIsNumeric = semver.numericIdentifierRegExp:MatchString(left)
+    local rightIsNumeric = semver.numericIdentifierRegExp:MatchString(right)
 
     if leftIsNumeric or rightIsNumeric then
         -- https://semver.org/#spec-item-11
@@ -347,16 +254,16 @@ end
 function semver.TryParseVersion(text)
     local result = semver.NewVersion()
 
-    local match = semver.matchVersionLike(text, false)
+    local match = semver.versionRegexp:FindStringSubmatch(text)
     if match == nil then
         return result, newParseError(text)
     end
 
-    local majorStr = match[1]
-    local minorStr = match[2]
-    local patchStr = match[3]
-    local prereleaseStr = match[4]
-    local buildStr = match[5]
+    local majorStr = match[2]
+    local minorStr = match[3]
+    local patchStr = match[4]
+    local prereleaseStr = match[5]
+    local buildStr = match[6]
 
     local err
 
@@ -380,14 +287,14 @@ function semver.TryParseVersion(text)
     end
 
     if prereleaseStr ~= "" then
-        if not semver.prereleaseMatch(prereleaseStr) then
+        if not semver.prereleaseRegexp:MatchString(prereleaseStr) then
             return result, newParseError(text)
         end
 
         result.prerelease = splitDots(prereleaseStr)
     end
     if buildStr ~= "" then
-        if not semver.buildMatch(buildStr) then
+        if not semver.buildRegExp:MatchString(buildStr) then
             return result, newParseError(text)
         end
 

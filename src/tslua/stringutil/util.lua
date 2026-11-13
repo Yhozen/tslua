@@ -1,5 +1,6 @@
 -- Package stringutil Exports common rune utilities for parsing and emitting javascript
 local stringutil = require("tslua.stringutil")
+local regexp = require("tslua.regexp")
 
 local sbyte = string.byte
 
@@ -217,31 +218,18 @@ function stringutil.StripQuotes(name)
     return name
 end
 
+stringutil.matchSlashSomething = regexp.MustCompile("\\\\.")
+
+function stringutil.matchSlashReplacer(in_)
+    return string.sub(in_, 2)
+end
+
 function stringutil.UnquoteString(str)
     -- strconv.Unquote is insufficient as that only handles a single character inside single quotes, as those are character literals in go
     local inner = stringutil.StripQuotes(str)
     -- In strada we do str.replace(/\\./g, s => s.substring(1)) - which is to say, replace all backslash-something with just something
     -- That's replicated here faithfully, but it seems wrong! This should probably be an actual unquote operation?
-    -- Go's regexp `.` matches one UTF-8 rune except '\n'.
-    local parts = {}
-    local i = 0
-    local n = #inner
-    local last = 0
-    while i < n do
-        if sbyte(inner, i + 1) == 0x5C and i + 1 < n then
-            local r, size = stringutil.DecodeRune(inner, i + 1)
-            if r ~= 0x0A then
-                parts[#parts + 1] = string.sub(inner, last + 1, i)
-                last = i + 1
-                i = i + 1 + size
-                goto continue
-            end
-        end
-        i = i + 1
-        ::continue::
-    end
-    parts[#parts + 1] = string.sub(inner, last + 1)
-    return table.concat(parts)
+    return stringutil.matchSlashSomething:ReplaceAllStringFunc(inner, stringutil.matchSlashReplacer)
 end
 
 function stringutil.LowerFirstChar(str)

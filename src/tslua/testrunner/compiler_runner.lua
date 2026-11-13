@@ -4,6 +4,7 @@ local baseline = require("tslua.testutil.baseline")
 local checker = require("tslua.checker")
 local core = require("tslua.core")
 local harnessutil = require("tslua.testutil.harnessutil")
+local regexp = require("tslua.regexp")
 local repo = require("tslua.repo")
 local testutil = require("tslua.testutil")
 local tsbaseline = require("tslua.testutil.tsbaseline")
@@ -13,19 +14,9 @@ local osvfs = require("tslua.vfs.osvfs")
 
 local CompilerTestType = testrunner.CompilerTestType
 
--- compilerBaselineRegex = regexp.MustCompile(`\.tsx?$`)
-testrunner.compilerBaselineRegex = {
-    MatchString = function(self, s)
-        return string.sub(s, -3) == ".ts" or string.sub(s, -4) == ".tsx"
-    end,
-}
+testrunner.compilerBaselineRegex = regexp.MustCompile("\\.tsx?$")
 testrunner.requireStr = "require("
--- referencesRegex = regexp.MustCompile(`reference\spath`)
-testrunner.referencesRegex = {
-    MatchString = function(self, s)
-        return string.find(s, "reference[\t\n\f\r ]path") ~= nil
-    end,
-}
+testrunner.referencesRegex = regexp.MustCompile("reference\\spath")
 
 -- Posix-style path to sources under test
 testrunner.srcFolder = "/.src"

@@ -1,5 +1,6 @@
 local fsbaselineutil = require("tslua.testutil.fsbaselineutil")
 local collections = require("tslua.collections")
+local regexp = require("tslua.regexp")
 local vfs = require("tslua.vfs")
 
 local iofs = vfs.iofs
@@ -84,42 +85,18 @@ function FSDiffer:BaselineFSwithDiff(baseline)
     self.writtenFiles.m = collections.NewSyncMap() -- Reset written files after baseline
 end
 
--- Go regexp `\x{FFFD}@[^@]+@[0-9]+`
-local REPLACEMENT_CHAR = "\xEF\xBF\xBD"
+fsbaselineutil.internalSymbolRegex = regexp.MustCompile("\\x{FFFD}@[^@]+@[0-9]+")
 
--- Replaces internal symbol names of shape �@symbolName@123 with �@symbolName@<symbolId>
+-- Replaces internal symbol names of shape \uFFFD@symbolName@123 with \uFFFD@symbolName@<symbolId>
 -- // to avoid baselining differences in symbol ids, which can change between runs.
 function fsbaselineutil.SanitizeInternalSymbolName(s)
-    if not string.find(s, REPLACEMENT_CHAR .. "@", 1, true) then
+    if not string.find(s, "\u{FFFD}@", 1, true) then
         return s
     end
-    local out = {}
-    local pos = 1
-    while true do
-        local i = string.find(s, REPLACEMENT_CHAR .. "@", pos, true)
-        if i == nil then
-            break
-        end
-        -- leftmost match starting at i: [^@]+ then @ then [0-9]+ (greedy)
-        local nameStart = i + #REPLACEMENT_CHAR + 1
-        local at = string.find(s, "@", nameStart, true)
-        local matched = false
-        if at ~= nil and at > nameStart then
-            local digits = string.match(s, "^[0-9]+", at + 1)
-            if digits ~= nil then
-                out[#out + 1] = string.sub(s, pos, at)
-                out[#out + 1] = "<symbolId>"
-                pos = at + 1 + #digits
-                matched = true
-            end
-        end
-        if not matched then
-            out[#out + 1] = string.sub(s, pos, i)
-            pos = i + 1
-        end
-    end
-    out[#out + 1] = string.sub(s, pos)
-    return table.concat(out)
+    return fsbaselineutil.internalSymbolRegex:ReplaceAllStringFunc(s, function(match)
+        local idStart = #match - #string.match(match, "@[^@]*$")
+        return string.sub(match, 1, idStart) .. "@<symbolId>"
+    end)
 end
 
 function FSDiffer:addFsEntryDiff(diffs, newDirContent, path)

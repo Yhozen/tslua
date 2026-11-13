@@ -185,6 +185,8 @@ function diagnostics.Format(text, args)
         valid[i] = toValidUTF8(arg)
     end
 
+    -- placeholderRegexp = regexp.MustCompile(`{(\d+)}`): the Lua pattern is equivalent (checked by
+    -- spec/regexp_standins_spec.lua) and much cheaper on this hot path.
     return (string.gsub(text, "{(%d+)}", function(digits)
         local index = math.tointeger(tonumber(digits))
         if index == nil or index >= #valid then

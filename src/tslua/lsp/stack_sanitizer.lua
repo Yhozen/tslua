@@ -1,4 +1,5 @@
 local lsp = require("tslua.lsp")
+local regexp = require("tslua.regexp")
 
 -- VS Code's telemetry pipeline redacts any string matching
 -- /(key|token|sig|secret|signature|password|passwd|pwd|android:value)[^a-zA-Z0-9]/i
@@ -7,34 +8,10 @@ local lsp = require("tslua.lsp")
 -- can appear in our sanitized output, when followed by punctuation we
 -- actually emit (`(`, `[`, `.`, `|`); reverse by removing the marker (replace
 -- `X_X` with the empty string) on the dashboard.
---
--- Go: regexp.MustCompile(`(?i)(key|token|signature|sig|pwd)([(\[.|])`) with leftmost-first
--- alternation, replaced by "${1}X_X${2}".
-lsp.genericSecretKeywords = { "key", "token", "signature", "sig", "pwd" }
-lsp.genericSecretFollowers = { ["("] = true, ["["] = true, ["."] = true, ["|"] = true }
+lsp.genericSecretKeywordRegex = regexp.MustCompile("(?i)(key|token|signature|sig|pwd)([(\\[.|])")
 
 function lsp.defeatGenericSecretRegex(s)
-    local out = {}
-    local i = 1
-    local n = #s
-    local lower = string.lower(s)
-    while i <= n do
-        local matched = false
-        for _, kw in ipairs(lsp.genericSecretKeywords) do
-            local e = i + #kw - 1
-            if string.sub(lower, i, e) == kw and lsp.genericSecretFollowers[string.sub(s, e + 1, e + 1)] then
-                out[#out + 1] = string.sub(s, i, e) .. "X_X" .. string.sub(s, e + 1, e + 1)
-                i = e + 2
-                matched = true
-                break
-            end
-        end
-        if not matched then
-            out[#out + 1] = string.sub(s, i, i)
-            i = i + 1
-        end
-    end
-    return table.concat(out)
+    return lsp.genericSecretKeywordRegex:ReplaceAllString(s, "${1}X_X${2}")
 end
 
 -- strings.Lines: the lines of s, each including its terminating "\n".

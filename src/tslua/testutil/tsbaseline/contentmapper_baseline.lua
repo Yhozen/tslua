@@ -2,11 +2,9 @@ local tsbaseline = require("tslua.testutil.tsbaseline")
 local baseline = require("tslua.testutil.baseline")
 local core = require("tslua.core")
 local diagnosticwriter = require("tslua.diagnosticwriter")
+local regexp = require("tslua.regexp")
 
--- ansiEscape = regexp.MustCompile("\x1b\\[[0-9;]*m")
-local function removeAnsiEscapes(s)
-    return (string.gsub(s, "\27%[[0-9;]*m", ""))
-end
+tsbaseline.ansiEscape = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 tsbaseline.contentMapperFormatOpts = { newLine = "\n", currentDirectory = "", useCaseSensitiveFileNames = false }
 
@@ -73,7 +71,7 @@ function tsbaseline.getContentMapperBaseline(program, diags)
         diagnosticwriter.ToDiagnostics(diagnosticwriter.WrapASTDiagnostics(fileDiagnostics)),
         tsbaseline.contentMapperFormatOpts
     )
-    b:WriteString(tsbaseline.removeTestPathPrefixes(removeAnsiEscapes(rendered:String()), false))
+    b:WriteString(tsbaseline.removeTestPathPrefixes(tsbaseline.ansiEscape:ReplaceAllString(rendered:String(), ""), false))
     return b:String()
 end
 

@@ -1,4 +1,5 @@
 local baseline = require("tslua.testutil.baseline")
+local regexp = require("tslua.regexp")
 local repo = require("tslua.repo")
 local stringutil = require("tslua.stringutil")
 
@@ -223,8 +224,12 @@ function baseline.getBaselineDiff(t, actual, expected, fileName, fixupOld, fixup
 
     local aCurLine = 1
     local bCurLine = 1
-    -- fixUnifiedDiff = regexp.MustCompile(`@@ -\d+,\d+ \+\d+,\d+ @@`)
-    s = string.gsub(s, "@@ %-(%d+),(%d+) %+(%d+),(%d+) @@", function(aLine, _, bLine, _)
+    s = baseline.fixUnifiedDiff:ReplaceAllStringFunc(s, function(match)
+        -- fmt.Sscanf(match, "@@ -%d,%d +%d,%d @@", &aLine, &aLineCount, &bLine, &bLineCount)
+        local aLine, _, bLine, _ = string.match(match, "^@@ %-(%d+),(%d+) %+(%d+),(%d+) @@$")
+        if aLine == nil then
+            error("failed to parse unified diff header: " .. match, 0)
+        end
         aLine = math.tointeger(tonumber(aLine))
         bLine = math.tointeger(tonumber(bLine))
         local aDiff = aLine - aCurLine
@@ -239,6 +244,8 @@ function baseline.getBaselineDiff(t, actual, expected, fileName, fixupOld, fixup
 
     return s
 end
+
+baseline.fixUnifiedDiff = regexp.MustCompile("@@ -\\d+,\\d+ \\+\\d+,\\d+ @@")
 
 function baseline.RunAgainstSubmodule(t, fileName, actual, opts)
     -- Record this baseline for tracking unused baselines

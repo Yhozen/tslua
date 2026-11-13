@@ -1,11 +1,13 @@
 local semver = require("tslua.semver")
+local regexp = require("tslua.regexp")
 
 -- https://github.com/npm/node-semver#range-grammar
 --
 -- range-set    ::= range ( logical-or range ) *
 -- range        ::= hyphen | simple ( ' ' simple ) * | ”
 -- logical-or   ::= ( ' ' ) * '||' ( ' ' ) *
--- logicalOrRegExp: \|\|          whitespaceRegExp: \s+ (Go \s = [\t\n\f\r ])
+semver.logicalOrRegExp = regexp.MustCompile("\\|\\|")
+semver.whitespaceRegExp = regexp.MustCompile("\\s+")
 
 -- https://github.com/npm/node-semver#range-grammar
 --
@@ -17,21 +19,12 @@ local semver = require("tslua.semver")
 -- build        ::= parts
 -- parts        ::= part ( '.' part ) *
 -- part         ::= nr | [-0-9A-Za-z]+
--- partialRegExp: see semver.matchVersionLike(text, true)
+semver.partialRegExp = regexp.MustCompile("(?i)^([x*0]|[1-9]\\d*)(?:\\.([x*0]|[1-9]\\d*)(?:\\.([x*0]|[1-9]\\d*)(?:-([a-z0-9-.]+))?(?:\\+([a-z0-9-.]+))?)?)?$")
 
 -- https://github.com/npm/node-semver#range-grammar
 --
 -- hyphen       ::= partial ' - ' partial
--- hyphenRegExp: (?i)^\s*([a-z0-9-+.*]+)\s+-\s+([a-z0-9-+.*]+)\s*$
-local operandClass = "[%w%-%+%.%*]"
-
-function semver.hyphenMatch(r)
-    local a, b = string.match(r, "^[\t\n\f\r ]*(" .. operandClass .. "+)[\t\n\f\r ]+%-[\t\n\f\r ]+(" .. operandClass .. "+)[\t\n\f\r ]*$")
-    if a == nil then
-        return nil
-    end
-    return { r, a, b }
-end
+semver.hyphenRegExp = regexp.MustCompile("(?i)^\\s*([a-z0-9-+.*]+)\\s+-\\s+([a-z0-9-+.*]+)\\s*$")
 
 -- https://github.com/npm/node-semver#range-grammar
 --
@@ -39,32 +32,7 @@ end
 -- primitive    ::= ( '<' | '>' | '>=' | '<=' | '=' ) partial
 -- tilde        ::= '~' partial
 -- caret        ::= '^' partial
--- rangeRegExp: (?i)^([~^<>=]|<=|>=)?\s*([a-z0-9-+.*]+)$
-function semver.rangeMatch(s)
-    local function try(op)
-        local rest = string.sub(s, #op + 1)
-        local operand = string.match(rest, "^[\t\n\f\r ]*(" .. operandClass .. "+)$")
-        if operand ~= nil then
-            return { s, op, operand }
-        end
-        return nil
-    end
-    local c = string.sub(s, 1, 1)
-    if c ~= "" and string.find("~^<>=", c, 1, true) then
-        local m = try(c)
-        if m ~= nil then
-            return m
-        end
-    end
-    local two = string.sub(s, 1, 2)
-    if two == "<=" or two == ">=" then
-        local m = try(two)
-        if m ~= nil then
-            return m
-        end
-    end
-    return try("")
-end
+semver.rangeRegExp = regexp.MustCompile("(?i)^([~^<>=]|<=|>=)?\\s*([a-z0-9-+.*]+)$")
 
 -- VersionRange: { alternatives = array of arrays of versionComparator }
 -- versionComparator: { operator = string, operand = semver.Version }
@@ -176,41 +144,12 @@ local function trimSpace(s)
     return (string.gsub(string.gsub(s, "^[\t\n\v\f\r \133\160]+", ""), "[\t\n\v\f\r \133\160]+$", ""))
 end
 
-local function splitPlain(s, sep)
-    local result = {}
-    local start = 1
-    while true do
-        local i = string.find(s, sep, start, true)
-        if i == nil then
-            result[#result + 1] = string.sub(s, start)
-            return result
-        end
-        result[#result + 1] = string.sub(s, start, i - 1)
-        start = i + #sep
-    end
-end
-
--- regexp \s+ Split(s, -1)
-local function splitWhitespace(s)
-    local result = {}
-    local start = 1
-    while true do
-        local i, j = string.find(s, "[\t\n\f\r ]+", start)
-        if i == nil then
-            result[#result + 1] = string.sub(s, start)
-            return result
-        end
-        result[#result + 1] = string.sub(s, start, i - 1)
-        start = j + 1
-    end
-end
-
 -- Returns (alternatives, ok).
 function semver.parseAlternatives(text)
     local alternatives = nil
 
     text = trimSpace(text)
-    local ranges = splitPlain(text, "||")
+    local ranges = semver.logicalOrRegExp:Split(text, -1)
     for _, r in ipairs(ranges) do
         r = trimSpace(r)
         if r == "" then
@@ -220,7 +159,7 @@ function semver.parseAlternatives(text)
         do
             local comparators = {}
 
-            local hyphenMatch = semver.hyphenMatch(r)
+            local hyphenMatch = semver.hyphenRegExp:FindStringSubmatch(r)
             if hyphenMatch ~= nil then
                 local parsedComparators, ok = semver.parseHyphen(hyphenMatch[2], hyphenMatch[3])
                 if ok then
@@ -231,8 +170,8 @@ function semver.parseAlternatives(text)
                     return nil, false
                 end
             else
-                for _, simple in ipairs(splitWhitespace(r)) do
-                    local match = semver.rangeMatch(trimSpace(simple))
+                for _, simple in ipairs(semver.whitespaceRegExp:Split(r, -1)) do
+                    local match = semver.rangeRegExp:FindStringSubmatch(trimSpace(simple))
                     if match == nil then
                         return nil, false
                     end
@@ -301,16 +240,16 @@ end
 -- partialVersion: { version = Version, majorStr, minorStr, patchStr }
 -- Produces a "partial" version. Returns (partialVersion, ok).
 function semver.parsePartial(text)
-    local match = semver.matchVersionLike(text, true)
+    local match = semver.partialRegExp:FindStringSubmatch(text)
     if match == nil then
         return { version = semver.NewVersion(), majorStr = "", minorStr = "", patchStr = "" }, false
     end
 
-    local majorStr = match[1]
-    local minorStr = match[2]
-    local patchStr = match[3]
-    local prereleaseStr = match[4]
-    local buildStr = match[5]
+    local majorStr = match[2]
+    local minorStr = match[3]
+    local patchStr = match[4]
+    local prereleaseStr = match[5]
+    local buildStr = match[6]
 
     if minorStr == "" then
         minorStr = "*"

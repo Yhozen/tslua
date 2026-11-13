@@ -1106,7 +1106,7 @@ function harnessutil.listFiles(path, spec, recursive)
     return harnessutil.listFilesWorker(spec, recursive, path)
 end
 
--- spec is a regexp stand-in: an object with MatchString(s) (or nil).
+-- spec is a *regexp.Regexp (or nil).
 function harnessutil.listFilesWorker(spec, recursive, folder)
     folder = tspath.GetNormalizedAbsolutePath(folder, repo.TestDataPath())
     local entries, err = osvfs.osReadDir(folder)

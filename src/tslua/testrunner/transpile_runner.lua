@@ -4,17 +4,13 @@ local core = require("tslua.core")
 local diagnosticwriter = require("tslua.diagnosticwriter")
 local harnessutil = require("tslua.testutil.harnessutil")
 local outputpaths = require("tslua.outputpaths")
+local regexp = require("tslua.regexp")
 local repo = require("tslua.repo")
 local tsbaseline = require("tslua.testutil.tsbaseline")
 local tspath = require("tslua.tspath")
 local osvfs = require("tslua.vfs.osvfs")
 
--- transpileBaselineRegex = regexp.MustCompile(`\.[cm]?[tj]sx?$`)
-testrunner.transpileBaselineRegex = {
-    MatchString = function(self, s)
-        return string.find(s, "%.[cm]?[tj]sx?$") ~= nil
-    end,
-}
+testrunner.transpileBaselineRegex = regexp.MustCompile("\\.[cm]?[tj]sx?$")
 
 testrunner.transpileVaryBy = {
     declarationmap = true,

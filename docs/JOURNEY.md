@@ -154,6 +154,21 @@ tests, API server).
   `a/b/` and keeps a non-`.lua` file's own name, which is how the lib `.d.ts` files land next
   to `tslua/bundled` (where it looks for them). Set `copy_directories = {}`, or `tests/`
   (thousands of files) is copied into the rock.
+- **Port the standard library when Go leans on it.** `tslua.regexp` is Go's `regexp` +
+  `regexp/syntax` (RE2: parser, simplifier, compiler, onepass/backtrack/NFA engines) ported file by
+  file; the Unicode tables (`unicode.Categories`/`Scripts`/fold tables, and `SimpleFold`/`IsPrint`
+  precomputed over all runes) come from `scripts/gen/regexptables`, the constants from
+  `scripts/gen/goconsts` run on `$(go env GOROOT)/src`. Go's own tests are the oracle: the test
+  tables are dumped to Lua by a `go test` in a scratch copy of the package (reflection-based
+  serializer), and re2-search.txt / the AT&T .dat files run as specs (re2-exhaustive, 5.8M lines, is
+  `#slow`). Go slice aliasing in the parser (`re.Rune0[:0]`, `sub[:0]` reuse) never leaked, so fresh
+  arrays were fine; `sync.Pool`s became fresh allocations (a pool may always return a new value).
+  Hand-written stand-ins hid Unicode case folding differences: `(?i)[a-z]` also matches U+017F and
+  U+212A, `\x{FFFD}` matches an invalid byte.
+- **Keep hot-path stand-ins, but check them.** The NFA costs ~3us/byte in Lua, so the test
+  harness's per-line regexps (`\r?\n` splits, the `// @option:` matcher, `\S`, diagnostics'
+  `{(\d+)}`) stay hand-written; `spec/regexp_standins_spec.lua` diffs them against `tslua.regexp`
+  on real test files.
 
 ## Roadblocks (and what we did)
 

@@ -9,7 +9,9 @@ local tsoptionstest = require("tslua.tsoptions.tsoptionstest")
 local tspath = require("tslua.tspath")
 
 -- The Go regexps of this file are ported as hand-written matchers with the same methods and RE2
--- semantics (\s = [\t\n\f\r ], \w = [0-9A-Za-z_], greedy quantifiers).
+-- semantics (\s = [\t\n\f\r ], \w = [0-9A-Za-z_], greedy quantifiers): they run on every line of
+-- every test file, where tslua.regexp's NFA (~3us/byte) would be slow.
+-- spec/regexp_standins_spec.lua checks them against tslua.regexp.
 
 local function isSpace(b)
     return b == 32 or b == 9 or b == 10 or b == 12 or b == 13
