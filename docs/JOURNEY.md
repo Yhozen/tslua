@@ -96,6 +96,10 @@ tests, API server).
 - **Performance of the harness, not the port.** Parsing `lib.d.ts` per test made a case take ~4s;
   running 100 cases per worker process with the parsed-source cache took it to ~0.25s, and the
   full suite to ~45 minutes on 4 cores.
+- **Goroutines talking over a pipe → coroutines.** The in-process content mappers (Go: `net.Pipe`
+  plus a goroutine running the server connection) became an in-memory pipe whose reader resumes the
+  serving coroutine when its buffer is empty; the client's background `Run` loop is advanced from
+  inside `Call`. Deadlock (both sides waiting to read) is detected instead of hanging.
 
 ## Roadblocks (and what we did)
 
@@ -141,3 +145,9 @@ tests, API server).
   so the cost is only wall-clock time. Agents commit often for this reason.
 - **Misrouted coordination.** Once a message meant for one agent went to another; agents now
   keep strict file ownership and refuse cross-ownership edits, which made the mistake harmless.
+- **Bidirectional child-process pipes.** `io.popen` is one-way, so content mapper processes are
+  started through `sh` with two FIFOs (`mkfifo`): popen's stdin is forwarded with `cat` under
+  `trap '' PIPE` (and then drained), so writing to a dead mapper never SIGPIPEs the Lua process;
+  stdout is a FIFO opened for blocking reads; stderr is collected from a temp file at close.
+  Blocking reads cannot time out, so the 5 s initialize timeout is not enforced
+  (`src/tslua/ipc/process.lua`).
