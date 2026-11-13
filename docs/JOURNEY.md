@@ -112,6 +112,21 @@ tests, API server).
   file is loaded gives `nil` forever (`nodebuilderscopes`, `ls.LanguageService`,
   `change.Tracker`). Rule: define shared class tables in the package `init.lua` before the
   requires, and have the owning file reuse (not replace) them.
+- **Renamed closure parameters.** Go closures often shadow an outer variable (`func(node *ast.Node)`
+  inside a function that has `node`); the Lua port renamed the parameter (`function(n)`) but left
+  some uses of `node`, which then silently refer to the outer value. Found two such checker bugs
+  (`isInPropertyInitializerOrClassStaticBlock`, `getInstantiationExpressionType`) with a scan that
+  flags Lua closures referencing a name that is a closure parameter in the Go original.
+- **Append aliasing.** Go `append` never changes the length of the slice the caller still holds;
+  Lua `core.Append`/`AppendIfUnique` grow the array in place. `getDeclaredTypeOfClassOrInterface`
+  read `len(outerTypeParameters)` after appending the local type parameters to it, so classes
+  declared inside generic functions lost their own type parameters. Take lengths before appending.
+- **Nil receivers.** Go methods may handle a nil receiver (`func (r *ResolvedModule) IsResolved()
+  bool { return r != nil && ... }`); in Lua `r:IsResolved()` on nil crashes. Guard the call site.
+- **Some upstream cases are just heavy.** relationComplexityError, templateLiteralTypes1,
+  declarationEmitPrivatePromiseLikeInterface need 2.5-10 s of CPU in Go and 115-170+ s in Lua
+  (no loops; diffuse cost in the relater and template literal inference), so they hit the 120 s
+  per-case limit while producing correct baselines when run with `--timeout 0`.
 - **Go map iteration order** is random; where it influenced output order we use sorted or
   first-seen order, and we never rely on `pairs` order.
 - **`$PWD` can be stale** in child processes; `osvfs.Getwd` now trusts it only if it names the
