@@ -276,7 +276,11 @@ function checkerPool:createCheckers()
     local wg = core.NewWorkGroup(program:SingleThreaded())
     for i = 1, checkerCount do
         wg:Queue(function()
-            self.checkers[i] = checker.NewChecker(program, nil)
+            local tracer = nil
+            if self.tracing ~= nil then
+                tracer = checker.NewTracer(self.tracing, i - 1)
+            end
+            self.checkers[i] = checker.NewChecker(program, tracer)
         end)
     end
 

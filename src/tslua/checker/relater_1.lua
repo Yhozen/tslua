@@ -4,6 +4,7 @@ local ast = require("tslua.ast")
 local collections = require("tslua.collections")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local jsnum = require("tslua.jsnum")
 local stringutil = require("tslua.stringutil")
 
@@ -350,6 +351,10 @@ function Checker:checkTypeRelatedToEx(source, target, relation, errorNode, headM
         -- Record this relation as having failed such that we don't attempt the overflowing operation again.
         local id = checker.getRelationKey(source, target, IntersectionState.None, relation == c.identityRelation, false --[[ignoreConstraints]])
         relation:set(id, RelationComparisonResult.Failed | RelationComparisonResult.ComplexityOverflow)
+        local tr = c.tracer
+        if tr ~= nil then
+            tr:Instant(tracing.PhaseCheckTypes, "checkTypeRelatedTo_DepthLimit", { sourceId = source.id, targetId = target.id, depth = #r.sourceStack, targetDepth = #r.targetStack })
+        end
         if errorNode == nil then
             errorNode = c.currentNode
         end
@@ -1373,6 +1378,13 @@ function Checker:getVariancesWorker(symbol, typeParameters)
     local c = self
     local links = c.varianceLinks:Get(symbol)
     if links.variances == nil then
+        local traceArgs
+        local popFn
+        local tr = c.tracer
+        if tr ~= nil then
+            traceArgs = { arity = core.Len(typeParameters), id = c:getDeclaredTypeOfSymbol(symbol).id }
+            popFn = tr:Push(tracing.PhaseCheckTypes, "getVariancesWorker", traceArgs, true)
+        end
         local stackIndex = c:getVarianceStackIndex(symbol)
         if stackIndex < 0 then
             local saveResolutionStart = c.resolutionStart
@@ -1457,6 +1469,15 @@ function Checker:getVariancesWorker(symbol, typeParameters)
             if core.Len(links.variances) == 0 then
                 links.variances = {}
             end
+        end
+        -- Go: deferred until return
+        if popFn ~= nil then
+            local formatted = {}
+            for i, v in ipairs(links.variances or {}) do
+                formatted[i] = checker.VarianceFlags_String(v)
+            end
+            traceArgs["variances"] = formatted
+            popFn()
         end
     end
     return links.variances

@@ -2,6 +2,7 @@ local checker = require("tslua.checker")
 local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local jsnum = require("tslua.jsnum")
 local scanner = require("tslua.scanner")
 
@@ -1060,6 +1061,10 @@ function Checker:removeSubtypes(types, hasObjectTypes)
                         -- caps union types at 1000 unique object types.
                         local estimatedCount = (count // (length - i)) * length
                         if estimatedCount > 1000000 then
+                            local tr = self.tracer
+                            if tr ~= nil then
+                                tr:Instant(tracing.PhaseCheckTypes, "removeSubtypes_DepthLimit", { estimatedCount = estimatedCount })
+                            end
                             self:error(self.currentNode, diagnostics.Expression_produces_a_union_type_that_is_too_complex_to_represent)
                             return nil
                         end
@@ -1717,6 +1722,10 @@ end
 function Checker:checkCrossProductUnion(types)
     local size = self:getCrossProductUnionSize(types)
     if size >= 100000 then
+        local tr = self.tracer
+        if tr ~= nil then
+            tr:Instant(tracing.PhaseCheckTypes, "checkCrossProductUnion_DepthLimit", { size = size })
+        end
         self:error(self.currentNode, diagnostics.Expression_produces_a_union_type_that_is_too_complex_to_represent)
         return false
     end

@@ -4,6 +4,7 @@ local ast = require("tslua.ast")
 local collections = require("tslua.collections")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local binder = require("tslua.binder")
 
 local defineStruct = checker.defineStruct
@@ -717,9 +718,19 @@ function Relater:recursiveTypeRelatedTo(source, target, reportErrors, intersecti
     local saveReliabilityFlags = c.reliabilityFlags
     c.reliabilityFlags = 0
     local result
+    local pop = nil
     if r.expandingFlags == ExpandingFlags.Both then
+        local tr = c.tracer
+        if tr ~= nil then
+            tr:Instant(tracing.PhaseCheckTypes, "recursiveTypeRelatedTo_DepthLimit", { sourceId = source.id, targetId = target.id, depth = #r.sourceStack, targetDepth = #r.targetStack })
+        end
         result = Ternary.Maybe
     else
+        local tr = c.tracer
+        if tr ~= nil then
+            -- Go: deferred until return
+            pop = tr:Push(tracing.PhaseCheckTypes, "structuredTypeRelatedTo", { sourceId = source.id, targetId = target.id }, false)
+        end
         result = r:structuredTypeRelatedTo(source, target, reportErrors, intersectionState)
     end
     local propagatingVarianceFlags = c.reliabilityFlags
@@ -750,6 +761,9 @@ function Relater:recursiveTypeRelatedTo(source, target, reportErrors, intersecti
         r.relation:set(id, RelationComparisonResult.Failed | propagatingVarianceFlags)
         r.relationCount = r.relationCount - 1
         r:resetMaybeStack(maybeStart, propagatingVarianceFlags, false)
+    end
+    if pop ~= nil then
+        pop()
     end
     return result
 end
@@ -1607,6 +1621,10 @@ function Relater:typeRelatedToDiscriminatedType(source, target)
     for _, sourceProperty in ipairs(sourcePropertiesFiltered) do
         numCombinations = numCombinations * checker.countTypes(c:getNonMissingTypeOfSymbol(sourceProperty))
         if numCombinations > 25 then
+            local tr = c.tracer
+            if tr ~= nil then
+                tr:Instant(tracing.PhaseCheckTypes, "typeRelatedToDiscriminatedType_DepthLimit", { sourceId = source.id, targetId = target.id, numCombinations = numCombinations })
+            end
             return Ternary.False
         end
         if numCombinations == 0 then
@@ -2637,11 +2655,20 @@ function Checker:isDistributionDependent(root)
     return root.isDistributive and (self:isTypeParameterPossiblyReferenced(root.checkType, root.node.trueType) or self:isTypeParameterPossiblyReferenced(root.checkType, root.node.falseType))
 end
 
--- c.tracer is always nil (tracing is out of scope), so this is a no-op like Go without a tracer.
-function Relater:traceUnionsOrIntersectionsTooLarge(source, target) -- luacheck: ignore 212
+function Relater:traceUnionsOrIntersectionsTooLarge(source, target)
     local tr = self.c.tracer
     if tr == nil then
         return
     end
-    error("not implemented: traceUnionsOrIntersectionsTooLarge (tracing)", 0)
+    if source.flags & TypeFlags.UnionOrIntersection ~= 0 and target.flags & TypeFlags.UnionOrIntersection ~= 0 then
+        if source.objectFlags & target.objectFlags & ObjectFlags.PrimitiveUnion ~= 0 then
+            -- There's a fast path for comparing primitive unions
+            return
+        end
+        local sourceSize = #source:Types()
+        local targetSize = #target:Types()
+        if sourceSize * targetSize > 1000000 then
+            tr:Instant(tracing.PhaseCheckTypes, "traceUnionsOrIntersectionsTooLarge_DepthLimit", { sourceId = source.id, sourceSize = sourceSize, targetId = target.id, targetSize = targetSize })
+        end
+    end
 end

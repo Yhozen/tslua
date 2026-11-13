@@ -1,5 +1,6 @@
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
+local tracing = require("tslua.tracing")
 
 local projectReferenceParseTask = {}
 projectReferenceParseTask.__index = projectReferenceParseTask
@@ -7,14 +8,22 @@ compiler.projectReferenceParseTask = projectReferenceParseTask
 
 function projectReferenceParseTask:parse(projectReferenceParser)
     local loader = projectReferenceParser.loader
-    self.resolved = loader.opts.host:GetResolvedProjectReference(self.configName, loader:toPath(self.configName))
-    if self.resolved == nil then
-        return
+    local pop = nil
+    local tr = loader.opts.tracing
+    if tr ~= nil then
+        -- Go: deferred until return
+        pop = tr:Push(tracing.PhaseParse, "parseJsonSourceFileConfigFileContent", { path = self.configName }, false)
     end
-    self.resolved:ParseInputOutputNames()
-    local subReferences = self.resolved:ResolvedProjectReferencePaths()
-    if core.Len(subReferences) > 0 then
-        self.subTasks = compiler.createProjectReferenceParseTasks(subReferences)
+    self.resolved = loader.opts.host:GetResolvedProjectReference(self.configName, loader:toPath(self.configName))
+    if self.resolved ~= nil then
+        self.resolved:ParseInputOutputNames()
+        local subReferences = self.resolved:ResolvedProjectReferencePaths()
+        if core.Len(subReferences) > 0 then
+            self.subTasks = compiler.createProjectReferenceParseTasks(subReferences)
+        end
+    end
+    if pop ~= nil then
+        pop()
     end
 end
 

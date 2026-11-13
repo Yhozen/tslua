@@ -10,6 +10,7 @@ local incremental = require("tslua.execute.incremental")
 local tsc = require("tslua.execute.tsc")
 local json = require("tslua.json")
 local tsoptions = require("tslua.tsoptions")
+local tracing = require("tslua.tracing")
 local tspath = require("tslua.tspath")
 
 local ExitStatus = tsc.ExitStatus
@@ -20,14 +21,25 @@ function execute.startTracingIfNeeded(sys, config, testing)
     if traceDir == "" then
         return nil
     end
-    error("not implemented: startTracingIfNeeded (--generateTrace)")
+    local configFilePath = ""
+    if config.configFile ~= nil and config.configFile.sourceFile ~= nil then
+        configFilePath = config.configFile.sourceFile:FileName()
+    end
+    local tr, err = tracing.StartTracing(sys:FS(), traceDir, configFilePath, testing ~= nil)
+    if err ~= nil then
+        sys:Writer():WriteString("Warning: Failed to start tracing: " .. tostring(err) .. "\n")
+    end
+    return tr
 end
 
 function execute.stopTracing(sys, tr)
     if tr == nil then
         return
     end
-    error("not implemented: stopTracing (--generateTrace)")
+    local err = tr:StopTracing()
+    if err ~= nil then
+        sys:Writer():WriteString("Warning: Failed to stop tracing: " .. tostring(err) .. "\n")
+    end
 end
 
 -- ctx is unused (Go context.Context); pass nil.

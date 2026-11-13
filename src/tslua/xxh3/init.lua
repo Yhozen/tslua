@@ -408,4 +408,158 @@ function xxh3.Hash128(b)
     return xxh3.hashAny128(b)
 end
 
+---- 64-bit hash (hash64.go, hasher.go)
+
+local function rotateLeft64(x, k)
+    return (x << k) | (x >> (64 - k))
+end
+
+local function xxhAvalancheSmall(x)
+    x = x ~ (x >> 33)
+    x = x * prime64_2
+    x = x ~ (x >> 29)
+    x = x * prime64_3
+    x = x ~ (x >> 32)
+    return x
+end
+
+local function rrmxmx(h64, len)
+    h64 = h64 ~ rotateLeft64(h64, 49) ~ rotateLeft64(h64, 24)
+    h64 = h64 * 0x9fb21c651e98df25
+    h64 = h64 ~ ((h64 >> 35) + len)
+    h64 = h64 * 0x9fb21c651e98df25
+    h64 = h64 ~ (h64 >> 28)
+    return h64
+end
+
+-- hashAny returns the 64-bit hash (a Lua integer holding the uint64 bits) of the string p.
+function xxh3.hashAny(p)
+    local l = #p
+    local acc
+
+    if l <= 16 then
+        if l > 8 then -- 9-16
+            local inputlo = readU64(p, 0) ~ (key64_024 ~ key64_032)
+            local inputhi = readU64(p, l - 8) ~ (key64_040 ~ key64_048)
+            local folded = mulFold64(inputlo, inputhi)
+            return xxh3Avalanche(l + reverseBytes64(inputlo) + inputhi + folded)
+        elseif l > 3 then -- 4-8
+            local input1 = readU32(p, 0)
+            local input2 = readU32(p, l - 4)
+            local input64 = input2 + (input1 << 32)
+            local keyed = input64 ~ (key64_008 ~ key64_016)
+            return rrmxmx(keyed, l)
+        elseif l == 3 then -- 3
+            local c12 = readU16(p, 0)
+            local c3 = readU8(p, 2)
+            acc = (c12 << 16) + c3 + (3 << 8)
+        elseif l > 1 then -- 2
+            local c12 = readU16(p, 0)
+            acc = ((c12 * ((1 << 24) + 1)) >> 8) + (2 << 8)
+        elseif l == 1 then -- 1
+            local c1 = readU8(p, 0)
+            acc = c1 * ((1 << 24) + (1 << 16) + 1) + (1 << 8)
+        else -- 0
+            return 0x2d06800538d394c2 -- xxh_avalanche(key64_056 ^ key64_064)
+        end
+
+        acc = acc ~ (key32_000 ~ key32_004)
+        return xxhAvalancheSmall(acc)
+    elseif l <= 128 then
+        acc = l * prime64_1
+
+        if l > 32 then
+            if l > 64 then
+                if l > 96 then
+                    acc = acc + mulFold64(readU64(p, 6 * 8) ~ key64_096, readU64(p, 7 * 8) ~ key64_104)
+                    acc = acc + mulFold64(readU64(p, l - 8 * 8) ~ key64_112, readU64(p, l - 7 * 8) ~ key64_120)
+                end -- 96
+                acc = acc + mulFold64(readU64(p, 4 * 8) ~ key64_064, readU64(p, 5 * 8) ~ key64_072)
+                acc = acc + mulFold64(readU64(p, l - 6 * 8) ~ key64_080, readU64(p, l - 5 * 8) ~ key64_088)
+            end -- 64
+            acc = acc + mulFold64(readU64(p, 2 * 8) ~ key64_032, readU64(p, 3 * 8) ~ key64_040)
+            acc = acc + mulFold64(readU64(p, l - 4 * 8) ~ key64_048, readU64(p, l - 3 * 8) ~ key64_056)
+        end -- 32
+        acc = acc + mulFold64(readU64(p, 0 * 8) ~ key64_000, readU64(p, 1 * 8) ~ key64_008)
+        acc = acc + mulFold64(readU64(p, l - 2 * 8) ~ key64_016, readU64(p, l - 1 * 8) ~ key64_024)
+
+        return xxh3Avalanche(acc)
+    elseif l <= 240 then
+        acc = l * prime64_1
+
+        for i = 0, 7 do
+            acc = acc + mulFold64(readU64(p, i * 16) ~ readU64(key, i * 16), readU64(p, i * 16 + 8) ~ readU64(key, i * 16 + 8))
+        end
+
+        -- avalanche
+        acc = xxh3Avalanche(acc)
+
+        -- trailing groups after 128
+        local top = l & ~15
+        for i = 8 * 16, top - 1, 16 do
+            acc = acc + mulFold64(readU64(p, i + 0) ~ readU64(key, i - 125), readU64(p, i + 8) ~ readU64(key, i - 117))
+        end
+
+        -- last 16 bytes
+        acc = acc + mulFold64(readU64(p, l - 16) ~ key64_119, readU64(p, l - 8) ~ key64_127)
+
+        return xxh3Avalanche(acc)
+    end
+
+    acc = l * prime64_1
+
+    local accs = {
+        prime32_3, prime64_1, prime64_2, prime64_3,
+        prime64_4, prime32_2, prime64_5, prime32_1,
+    }
+
+    accumScalar(accs, p, l)
+
+    -- merge accs
+    for i = 0, 3 do
+        acc = acc + mulFold64(accs[2 * i + 1] ~ readU64(key, 11 + 16 * i), accs[2 * i + 2] ~ readU64(key, 19 + 16 * i))
+    end
+
+    return xxh3Avalanche(acc)
+end
+
+-- HashString returns the 64-bit hash of the string.
+function xxh3.HashString(s)
+    return xxh3.hashAny(s)
+end
+
+-- Hash returns the 64-bit hash of the byte slice (a Lua string).
+function xxh3.Hash(b)
+    return xxh3.hashAny(b)
+end
+
+-- Hasher implements hash.Hash64. The written data is buffered and hashed on Sum64; XXH3 streaming
+-- yields the same value as hashing the concatenated input at once.
+local Hasher = {}
+Hasher.__index = Hasher
+xxh3.Hasher = Hasher
+
+-- New returns a new Hasher.
+function xxh3.New()
+    return setmetatable({ buf = {} }, Hasher)
+end
+
+-- Reset resets the Hash to its initial state.
+function Hasher:Reset()
+    self.buf = {}
+end
+
+-- WriteString adds more data to the running hash. Returns (n, err); it never returns an error.
+function Hasher:WriteString(s)
+    self.buf[#self.buf + 1] = s
+    return #s, nil
+end
+
+Hasher.Write = Hasher.WriteString
+
+-- Sum64 returns the 64-bit hash of the written data.
+function Hasher:Sum64()
+    return xxh3.hashAny(table.concat(self.buf))
+end
+
 return xxh3

@@ -3,6 +3,7 @@ local ast = require("tslua.ast")
 local collections = require("tslua.collections")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local jsnum = require("tslua.jsnum")
 local debug = require("tslua.debug")
 local evaluator = require("tslua.evaluator")
@@ -761,7 +762,10 @@ function Checker:instantiateTypeWithAlias(t, m, alias)
         -- We have reached 100 recursive type instantiations, or 5M type instantiations caused by the same statement
         -- or expression. There is a very high likelihood we're dealing with a combination of infinite generic types
         -- that perpetually generate new type identities, so we stop the recursion here by yielding the error type.
-        -- (Tracing is out of scope: c.tracer is always nil.)
+        local tr = self.tracer
+        if tr ~= nil then
+            tr:Instant(tracing.PhaseCheckTypes, "instantiateType_DepthLimit", { typeId = t.id, instantiationDepth = self.instantiationDepth, instantiationCount = self.instantiationCount })
+        end
         self:error(self.currentNode, diagnostics.Type_instantiation_is_excessively_deep_and_possibly_infinite)
         return self.errorType
     end

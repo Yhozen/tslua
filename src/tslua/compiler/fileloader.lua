@@ -3,6 +3,7 @@ local ast = require("tslua.ast")
 local contentmapper = require("tslua.contentmapper")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local module = require("tslua.module")
 local spanmap = require("tslua.spanmap")
 local tsoptions = require("tslua.tsoptions")
@@ -103,6 +104,11 @@ function compiler.processAllProgramFiles(opts, singleThreaded)
     }, fileLoader)
     loader:addProjectReferenceTasks(singleThreaded)
     loader.resolver = module.NewResolver(loader.projectReferenceFileMapper.host, compilerOptions, opts.typingsLocation, opts.projectName, opts.config:ContentMapperExtensions())
+    local pop = nil
+    if opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = opts.tracing:Push(tracing.PhaseProgram, "processRootFiles", { count = core.Len(rootFiles) }, false)
+    end
     for index1, rootFile in ipairs(rootFiles or {}) do
         loader:addRootFileTask(rootFile, nil, compiler.newFileIncludeReason(compiler.fileIncludeKindRootFile, index1 - 1))
     end
@@ -133,7 +139,11 @@ function compiler.processAllProgramFiles(opts, singleThreaded)
     loader.projectReferenceFileMapper.loader = nil
     loader.projectReferenceFileMapper.host = nil
 
-    return loader.filesParser:getProcessedFiles(loader)
+    local processedFiles = loader.filesParser:getProcessedFiles(loader)
+    if pop ~= nil then
+        pop()
+    end
+    return processedFiles
 end
 
 function fileLoader:toPath(file)
@@ -209,6 +219,10 @@ function fileLoader:resolveAutomaticTypeDirectives(containingFileName)
             -- Under bundler module resolution, this also triggers the "import" condition to be used.
             local resolutionMode = ModuleKind.ResolutionModeNone
             local resolved, trace = self.resolver:ResolveTypeReferenceDirective(name, containingFileName, resolutionMode, nil)
+            local traceDone = nil
+            if self.opts.tracing ~= nil then
+                traceDone = self.opts.tracing:Push(tracing.PhaseProgram, "processTypeReferenceDirective", { directive = name, hasResolved = resolved:IsResolved(), refKind = compiler.fileIncludeKindAutomaticTypeDirectiveFile }, false)
+            end
             typeResolutionsInFile[compiler.modeAwareCacheKey(name, resolutionMode)] = resolved
             typeResolutionsTrace = core.AppendAll(typeResolutionsTrace, trace)
             if resolved:IsResolved() then
@@ -234,6 +248,9 @@ function fileLoader:resolveAutomaticTypeDirectives(containingFileName)
                         args = { name },
                     })
                 ))
+            end
+            if traceDone ~= nil then
+                traceDone()
             end
         end
     end
@@ -321,6 +338,11 @@ function compiler.newSourceFileMetaData(packageJsonType, packageJsonDirectory, i
 end
 
 function fileLoader:parseSourceFile(t)
+    local pop = nil
+    if self.opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = self.opts.tracing:Push(tracing.PhaseParse, "createSourceFile", { path = t.normalizedFilePath }, true)
+    end
     local path = self:toPath(t.normalizedFilePath)
     local options = self.projectReferenceFileMapper:getCompilerOptionsForFile(t)
     local parseOptions = {
@@ -328,10 +350,16 @@ function fileLoader:parseSourceFile(t)
         path = path,
         externalModuleIndicatorOptions = ast.GetExternalModuleIndicatorOptions(t.normalizedFilePath, options, t.metadata),
     }
+    local file
     if tspath.FileExtensionIsOneOf(t.normalizedFilePath, self.contentMapperExtensions or {}) then
-        return self:parseContentMappedFile(parseOptions)
+        file = self:parseContentMappedFile(parseOptions)
+    else
+        file = self.opts.host:GetSourceFile(parseOptions)
     end
-    return self.opts.host:GetSourceFile(parseOptions)
+    if pop ~= nil then
+        pop()
+    end
+    return file
 end
 
 -- parseContentMappedFile produces a content-mapped virtual source file via the host's content
@@ -706,6 +734,11 @@ function fileLoader:resolveTypeReferenceDirectives(t)
     if core.Len(file.typeReferenceDirectives) == 0 then
         return
     end
+    local pop = nil
+    if self.opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = self.opts.tracing:Push(tracing.PhaseProgram, "resolveTypeReferenceDirectiveNamesWorker", { containingFileName = file:FileName() }, false)
+    end
     local meta = t.metadata
 
     local typeResolutionsInFile = {}
@@ -715,6 +748,10 @@ function fileLoader:resolveTypeReferenceDirectives(t)
         local redirect, fileName = self.projectReferenceFileMapper:getRedirectForResolution(file)
         local resolutionMode = compiler.getModeForTypeReferenceDirectiveInFile(ref, file, meta, module.GetCompilerOptionsWithRedirect(self.opts.config:CompilerOptions(), redirect))
         local resolved, trace = self.resolver:ResolveTypeReferenceDirective(ref.fileName, fileName, resolutionMode, redirect)
+        local traceDone = nil
+        if self.opts.tracing ~= nil then
+            traceDone = self.opts.tracing:Push(tracing.PhaseProgram, "processTypeReferenceDirective", { directive = ref.fileName, hasResolved = resolved:IsResolved(), refKind = compiler.fileIncludeKindTypeReferenceDirective, refPath = t.path }, false)
+        end
         typeResolutionsInFile[compiler.modeAwareCacheKey(ref.fileName, resolutionMode)] = resolved
         local includeReason = compiler.newFileIncludeReason(
             compiler.fileIncludeKindTypeReferenceDirective,
@@ -736,15 +773,26 @@ function fileLoader:resolveTypeReferenceDirectives(t)
                 includeReason
             ))
         end
+        if traceDone ~= nil then
+            traceDone()
+        end
     end
 
     t.typeResolutionsInFile = typeResolutionsInFile
     t.typeResolutionsTrace = typeResolutionsTrace
+    if pop ~= nil then
+        pop()
+    end
 end
 
 compiler.externalHelpersModuleNameText = "tslib" -- TODO(jakebailey): dedupe
 
 function fileLoader:resolveImportsAndModuleAugmentations(t)
+    local pop = nil
+    if self.opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = self.opts.tracing:Push(tracing.PhaseProgram, "resolveModuleNamesWorker", { containingFileName = t.file:FileName() }, false)
+    end
     local file = t.file
     local meta = t.metadata
 
@@ -852,6 +900,9 @@ function fileLoader:resolveImportsAndModuleAugmentations(t)
         t.resolutionsInFile = resolutionsInFile
         t.resolutionsTrace = resolutionsTrace
     end
+    if pop ~= nil then
+        pop()
+    end
 end
 
 function fileLoader:createSyntheticImport(text, file)
@@ -896,7 +947,15 @@ function fileLoader:pathForLibFile(name)
     return libPath
 end
 
+-- Returns (*module.ResolvedModule, []module.DiagAndArgs).
 function fileLoader:resolveLibrary(libraryName, resolveFrom)
+    local tr = self.opts.tracing
+    if tr ~= nil then
+        local pop = tr:Push(tracing.PhaseProgram, "resolveLibrary", { resolveFrom = resolveFrom }, false)
+        local resolved, trace = self.resolver:ResolveModuleName(libraryName, resolveFrom, ModuleKind.CommonJS, nil)
+        pop()
+        return resolved, trace
+    end
     return self.resolver:ResolveModuleName(libraryName, resolveFrom, ModuleKind.CommonJS, nil)
 end
 

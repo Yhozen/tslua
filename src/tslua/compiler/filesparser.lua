@@ -2,6 +2,7 @@ local compiler = require("tslua.compiler")
 local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local tsoptions = require("tslua.tsoptions")
 local tspath = require("tslua.tspath")
 
@@ -74,9 +75,20 @@ function parseTask:load(loader)
         -- exists only to carry its processing diagnostic, so nothing is parsed.
         return
     end
+    -- Go: the trace pop is deferred until return
+    local pop = nil
+    if loader.opts.tracing ~= nil then
+        pop = loader.opts.tracing:Push(tracing.PhaseProgram, "findSourceFile", { fileName = self.normalizedFilePath }, false)
+    end
+    local function done()
+        if pop ~= nil then
+            pop()
+        end
+    end
     local redirect = loader.projectReferenceFileMapper:getParseFileRedirect(self)
     if redirect ~= "" then
         self:redirect(loader, redirect)
+        done()
         return
     end
 
@@ -105,6 +117,7 @@ function parseTask:load(loader)
                         })
                     ))
                 end
+                done()
                 return
             end
         end
@@ -125,6 +138,7 @@ function parseTask:load(loader)
         file = loader:parseSourceFile(self)
     end
     if file == nil then
+        done()
         return
     end
 
@@ -184,6 +198,7 @@ function parseTask:load(loader)
             includeReason = compiler.newFileIncludeReason(compiler.fileIncludeKindContentMapperSupplemental, self.path),
         })
     end
+    done()
 end
 
 function parseTask:redirect(loader, fileName)
@@ -197,12 +212,20 @@ function parseTask:redirect(loader, fileName)
 end
 
 function parseTask:loadAutomaticTypeDirectives(loader)
+    local pop = nil
+    if loader.opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = loader.opts.tracing:Push(tracing.PhaseProgram, "processTypeReferences", nil, false)
+    end
     local toParseTypeRefs, typeResolutionsInFile, typeResolutionsTrace, pDiagnostics = loader:resolveAutomaticTypeDirectives(self.normalizedFilePath)
     self.typeResolutionsInFile = typeResolutionsInFile
     self.typeResolutionsTrace = typeResolutionsTrace
     self.processingDiagnostics = core.AppendAll(self.processingDiagnostics, pDiagnostics)
     for _, typeResolution in ipairs(toParseTypeRefs or {}) do
         self:addSubTask(typeResolution, nil)
+    end
+    if pop ~= nil then
+        pop()
     end
 end
 

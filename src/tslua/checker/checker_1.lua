@@ -3,6 +3,7 @@ local ast = require("tslua.ast")
 local collections = require("tslua.collections")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local evaluator = require("tslua.evaluator")
 local jsnum = require("tslua.jsnum")
 local binder = require("tslua.binder")
@@ -1820,7 +1821,13 @@ end
 function Checker:checkSourceFile(ctx, sourceFile, checkUnused)
     self.ctx = ctx
     local links = self.sourceFileLinks:Get(sourceFile)
+    local pop = nil
     if not links.typeChecked then
+        local tr = self.tracer
+        if tr ~= nil then
+            -- Go: deferred until return
+            pop = tr:Push(tracing.PhaseCheck, "checkSourceFile", { path = sourceFile:FileName() }, true)
+        end
         -- Grammar checking
         self:checkGrammarSourceFile(sourceFile)
         self.renamedBindingElementsInTypes = nil
@@ -1848,6 +1855,9 @@ function Checker:checkSourceFile(ctx, sourceFile, checkUnused)
         self.wasCanceled = true
     end
     self.ctx = nil
+    if pop ~= nil then
+        pop()
+    end
 end
 
 function Checker:checkSourceElements(nodes)
@@ -2126,6 +2136,12 @@ function Checker:checkDeferredNodes(context)
 end
 
 function Checker:checkDeferredNode(node)
+    local pop = nil
+    local tr = self.tracer
+    if tr ~= nil then
+        -- Go: deferred until return
+        pop = tr:Push(tracing.PhaseCheck, "checkDeferredNode", { kind = node.kind, pos = node:Pos(), ["end"] = node:End(), path = ast.GetSourceFileOfNode(node):FileName() }, false)
+    end
     local saveCurrentNode = self.currentNode
     self.currentNode = node
     self.instantiationCount = 0
@@ -2158,6 +2174,9 @@ function Checker:checkDeferredNode(node)
         self:checkContextualDeprecations(node)
     end
     self.currentNode = saveCurrentNode
+    if pop ~= nil then
+        pop()
+    end
 end
 
 function Checker:checkJSDocComments(node)
@@ -2262,12 +2281,21 @@ function Checker:checkTypeParameterDeferred(node)
             if ast.IsTypeOrJSTypeAliasDeclaration(node.parent) and self:getDeclaredTypeOfSymbol(symbol).objectFlags & (checker.ObjectFlags.Anonymous | checker.ObjectFlags.Mapped) == 0 then
                 self:error(node, diagnostics.Variance_annotations_are_only_supported_in_type_aliases_for_object_function_constructor_and_mapped_types)
             elseif modifiers == ModifierFlags.In or modifiers == ModifierFlags.Out then
+                local pop = nil
+                local tr = self.tracer
+                if tr ~= nil then
+                    -- Go: deferred until return
+                    pop = tr:Push(tracing.PhaseCheckTypes, "checkTypeParameterDeferred", { parent = self:getDeclaredTypeOfSymbol(symbol).id, id = typeParameter.id }, false)
+                end
                 local source = self:createMarkerType(symbol, typeParameter, core.IfElse(modifiers == ModifierFlags.Out, self.markerSubTypeForCheck, self.markerSuperTypeForCheck))
                 local target = self:createMarkerType(symbol, typeParameter, core.IfElse(modifiers == ModifierFlags.Out, self.markerSuperTypeForCheck, self.markerSubTypeForCheck))
                 local saveVarianceTypeParameter = typeParameter
                 self.varianceTypeParameter = typeParameter
                 self:checkTypeAssignableTo(source, target, node, diagnostics.Type_0_is_not_assignable_to_type_1_as_implied_by_variance_annotation)
                 self.varianceTypeParameter = saveVarianceTypeParameter
+                if pop ~= nil then
+                    pop()
+                end
             end
         end
     end

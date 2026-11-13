@@ -40,6 +40,7 @@ require("tslua.checker.nodecopy")
 require("tslua.checker.pseudotypenodebuilder")
 require("tslua.checker.symbolaccessibility")
 require("tslua.checker.symboltracker")
+require("tslua.checker.tracer")
 require("tslua.checker.jsdoc")
 
 return checker

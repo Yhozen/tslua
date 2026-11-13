@@ -3,6 +3,7 @@ local ast = require("tslua.ast")
 local binder = require("tslua.binder")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local outputpaths = require("tslua.outputpaths")
 local printer = require("tslua.printer")
 local sourcemap = require("tslua.sourcemap")
@@ -41,9 +42,17 @@ function compiler.newEmitter(fields)
 end
 
 function emitter:emit()
+    local pop = nil
+    if self.tr ~= nil then
+        -- Go: deferred until return
+        pop = self.tr:Push(tracing.PhaseEmit, "emit", { path = self.sourceFile:Path() }, true)
+    end
     self:emitJSFile(self.sourceFile, self.paths:JsFilePath(), self.paths:SourceMapFilePath())
     self:emitDeclarationFile(self.sourceFile, self.paths:DeclarationFilePath(), self.paths:DeclarationMapPath())
     self.emitResult.diagnostics = self.emitterDiagnostics:GetDiagnostics()
+    if pop ~= nil then
+        pop()
+    end
 end
 
 -- declarationTransformer interface: TransformSourceFile(sourceFile), GetDiagnostics()
@@ -57,18 +66,34 @@ function emitter:getDeclarationTransformers(emitContext, sourceFile, declaration
 end
 
 function emitter:runScriptTransformers(emitContext, sourceFile)
+    local pop = nil
+    if self.tr ~= nil then
+        -- Go: deferred until return
+        pop = self.tr:Push(tracing.PhaseEmit, "transformNodes", { path = sourceFile:Path() }, false)
+    end
     for _, transformer in ipairs(compiler.getScriptTransformers(emitContext, self.host, sourceFile)) do
         sourceFile = transformer:TransformSourceFile(sourceFile)
+    end
+    if pop ~= nil then
+        pop()
     end
     return sourceFile
 end
 
 -- Returns (*ast.SourceFile, []*ast.Diagnostic).
 function emitter:runDeclarationTransformers(emitContext, sourceFile, declarationFilePath, declarationMapPath)
+    local pop = nil
+    if self.tr ~= nil then
+        -- Go: deferred until return
+        pop = self.tr:Push(tracing.PhaseEmit, "transformNodes", { path = sourceFile:Path() }, false)
+    end
     local diags = nil
     for _, transformer in ipairs(self:getDeclarationTransformers(emitContext, sourceFile, declarationFilePath, declarationMapPath)) do
         sourceFile = transformer:TransformSourceFile(sourceFile)
         diags = core.AppendAll(diags, transformer:GetDiagnostics())
+    end
+    if pop ~= nil then
+        pop()
     end
     return sourceFile, diags
 end
@@ -175,6 +200,12 @@ function emitter:emitJSFile(sourceFile, jsFilePath, sourceMapFilePath)
         return
     end
 
+    local pop = nil
+    if self.tr ~= nil then
+        -- Go: deferred until return
+        pop = self.tr:Push(tracing.PhaseEmit, "emitJsFileOrBundle", { jsFilePath = jsFilePath }, true)
+    end
+
     local emitContext, putEmitContext = printer.GetEmitContext()
 
     sourceFile = self:runScriptTransformers(emitContext, sourceFile)
@@ -199,6 +230,9 @@ function emitter:emitJSFile(sourceFile, jsFilePath, sourceMapFilePath)
     if putEmitContext ~= nil then
         putEmitContext()
     end
+    if pop ~= nil then
+        pop()
+    end
 end
 
 function emitter:emitDeclarationFile(sourceFile, declarationFilePath, declarationMapPath)
@@ -212,10 +246,19 @@ function emitter:emitDeclarationFile(sourceFile, declarationFilePath, declaratio
     -- to double-map the positions using the content-mapped file's spanmap.
     local emitDeclarationMap = self.emitOnly ~= EmitOnly.BuilderSignature and core.Tristate_IsTrue(options.declarationMap) and sourceFile:ContentMapper() == ""
 
+    local pop = nil
+    if self.tr ~= nil then
+        -- Go: deferred until return
+        pop = self.tr:Push(tracing.PhaseEmit, "emitDeclarationFileOrBundle", { declarationFilePath = declarationFilePath }, true)
+    end
+
     local emitContext, putEmitContext = printer.GetEmitContext()
     local done = function()
         if putEmitContext ~= nil then
             putEmitContext()
+        end
+        if pop ~= nil then
+            pop()
         end
     end
     local diags

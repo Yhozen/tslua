@@ -4,6 +4,7 @@ local binder = require("tslua.binder")
 local collections = require("tslua.collections")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local module = require("tslua.module")
 local outputpaths = require("tslua.outputpaths")
 local parser = require("tslua.parser")
@@ -303,10 +304,18 @@ end
 function compiler.NewProgram(opts)
     opts = copyProgramOptions(opts)
     local p = newProgramTable(opts)
+    local pop = nil
+    if p.opts.tracing ~= nil then
+        -- Go: deferred until return
+        pop = p.opts.tracing:Push(tracing.PhaseProgram, "createProgram", { configFilePath = opts.config:CompilerOptions().configFilePath }, true)
+    end
     setProcessedFiles(p, compiler.processAllProgramFiles(p.opts, p:SingleThreaded()))
     p:initCheckerPool()
     p:verifyCompilerOptions()
     p:collectContentMapperOptionDiagnostics()
+    if pop ~= nil then
+        pop()
+    end
     return p
 end
 
@@ -591,6 +600,12 @@ function Program:BindSourceFiles()
     for _, file in ipairs(self.files) do
         if not file:IsBound() then
             wg:Queue(function()
+                if self.opts.tracing ~= nil then
+                    local pop = self.opts.tracing:Push(tracing.PhaseBind, "bindSourceFile", { path = file:Path() }, true)
+                    binder.BindSourceFile(file)
+                    pop()
+                    return
+                end
                 binder.BindSourceFile(file)
             end)
         end
@@ -1898,6 +1913,12 @@ end
 
 function Program:Emit(ctx, options)
     options = compiler.NewEmitOptions(options)
+    local pop = nil
+    local tr = self.opts.tracing
+    if tr ~= nil then
+        -- Go: deferred until return
+        pop = tr:Push(tracing.PhaseEmit, "emit", nil, true)
+    end
 
     if not options.forceEmit and options.emitOnly ~= EmitOnly.BuilderSignature then
         local result = compiler.HandleNoEmitOptions(
@@ -1907,6 +1928,9 @@ function Program:Emit(ctx, options)
             nil
         )
         if result ~= nil then
+            if pop ~= nil then
+                pop()
+            end
             return result
         end
     end
@@ -1952,9 +1976,13 @@ function Program:Emit(ctx, options)
     wg:RunAndWait()
 
     -- collect results from emit, preserving input order
-    return compiler.CombineEmitResults(core.Map(emitters, function(e)
+    local result = compiler.CombineEmitResults(core.Map(emitters, function(e)
         return e.emitResult
     end))
+    if pop ~= nil then
+        pop()
+    end
+    return result
 end
 
 function compiler.CombineEmitResults(results)

@@ -2,6 +2,7 @@ local checker = require("tslua.checker")
 local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local evaluator = require("tslua.evaluator")
 local debug = require("tslua.debug")
 local scanner = require("tslua.scanner")
@@ -2494,7 +2495,14 @@ function Checker:checkVariableDeclarationList(node)
 end
 
 function Checker:checkVariableDeclaration(node)
-    -- c.tracer is always nil (tracing is out of scope).
+    local tr = self.tracer
+    if tr ~= nil then
+        local pop = tr:Push(tracing.PhaseCheck, "checkVariableDeclaration", { kind = node.kind, pos = node:Pos(), ["end"] = node:End(), path = ast.GetSourceFileOfNode(node):FileName() }, false)
+        self:checkGrammarVariableDeclaration(node:AsVariableDeclaration())
+        self:checkVariableLikeDeclaration(node)
+        pop()
+        return
+    end
     self:checkGrammarVariableDeclaration(node:AsVariableDeclaration())
     self:checkVariableLikeDeclaration(node)
 end

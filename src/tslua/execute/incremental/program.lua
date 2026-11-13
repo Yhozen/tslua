@@ -4,6 +4,7 @@ local collections = require("tslua.collections")
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local json = require("tslua.json")
 local outputpaths = require("tslua.outputpaths")
 local tsoptions = require("tslua.tsoptions")
@@ -324,66 +325,77 @@ local function stringSlicesEqual(a, b)
 end
 
 function Program:emitBuildInfo(ctx, options)
-    local buildInfoFileName = outputpaths.GetBuildInfoFileName(self.snapshot.options, tspath.NewComparePathsOptions(
-        self.program:UseCaseSensitiveFileNames(),
-        self.program:GetCurrentDirectory()
-    ))
-    if buildInfoFileName == "" or self.program:IsEmitBlocked(buildInfoFileName) then
-        return nil
-    end
-    if self.snapshot.hasErrors == Tristate.TSUnknown then
-        self:ensureHasErrorsForState(ctx, self.program)
-        if self.snapshot.hasErrors ~= self.snapshot.hasErrorsFromOldState or self.snapshot.hasSemanticErrors ~= self.snapshot.hasSemanticErrorsFromOldState then
-            self.snapshot.buildInfoEmitPending = true
+    -- Go defers the trace pop until return: the body runs in a closure.
+    local function emitBuildInfo()
+        local buildInfoFileName = outputpaths.GetBuildInfoFileName(self.snapshot.options, tspath.NewComparePathsOptions(
+            self.program:UseCaseSensitiveFileNames(),
+            self.program:GetCurrentDirectory()
+        ))
+        if buildInfoFileName == "" or self.program:IsEmitBlocked(buildInfoFileName) then
+            return nil
         end
-    end
-    if self.snapshot.packageJsons == nil then
-        self:ensurePackageJsonsForState()
-        if not stringSlicesEqual(self.snapshot.packageJsons, self.snapshot.packageJsonsFromOldState) or
-            not stringSlicesEqual(self.snapshot.missingPackageJsons, self.snapshot.missingPackageJsonsFromOldState) then
-            self.snapshot.buildInfoEmitPending = true
+        if self.snapshot.hasErrors == Tristate.TSUnknown then
+            self:ensureHasErrorsForState(ctx, self.program)
+            if self.snapshot.hasErrors ~= self.snapshot.hasErrorsFromOldState or self.snapshot.hasSemanticErrors ~= self.snapshot.hasSemanticErrorsFromOldState then
+                self.snapshot.buildInfoEmitPending = true
+            end
         end
-    end
-    if not self.snapshot.buildInfoEmitPending then
-        return nil
-    end
-    if incremental.ctxErr(ctx) ~= nil then
-        return nil
-    end
-    local buildInfo, err = incremental.snapshotToBuildInfo(self.snapshot, self.program, buildInfoFileName)
-    if err ~= nil then
+        if self.snapshot.packageJsons == nil then
+            self:ensurePackageJsonsForState()
+            if not stringSlicesEqual(self.snapshot.packageJsons, self.snapshot.packageJsonsFromOldState) or
+                not stringSlicesEqual(self.snapshot.missingPackageJsons, self.snapshot.missingPackageJsonsFromOldState) then
+                self.snapshot.buildInfoEmitPending = true
+            end
+        end
+        if not self.snapshot.buildInfoEmitPending then
+            return nil
+        end
+        if incremental.ctxErr(ctx) ~= nil then
+            return nil
+        end
+        local buildInfo, err = incremental.snapshotToBuildInfo(self.snapshot, self.program, buildInfoFileName)
+        if err ~= nil then
+            return compiler.newEmitResult({
+                emitSkipped = true,
+                diagnostics = {
+                    compiler.ContentMapperProjectDiagnostic(err),
+                },
+            })
+        end
+        local text
+        text, err = json.Marshal(buildInfo)
+        if err ~= nil then
+            error("Failed to marshal build info: " .. tostring(err), 0)
+        end
+        if options.writeFile ~= nil then
+            err = options.writeFile(buildInfoFileName, text, compiler.newWriteFileData({
+                buildInfo = buildInfo,
+            }))
+        else
+            err = self.program:Host():FS():WriteFile(buildInfoFileName, text)
+        end
+        if err ~= nil then
+            return compiler.newEmitResult({
+                emitSkipped = true,
+                diagnostics = {
+                    ast.NewCompilerDiagnostic(diagnostics.Could_not_write_file_0_Colon_1, buildInfoFileName, tostring(err)),
+                },
+            })
+        end
+        self.snapshot.buildInfoEmitPending = false
         return compiler.newEmitResult({
-            emitSkipped = true,
-            diagnostics = {
-                compiler.ContentMapperProjectDiagnostic(err),
-            },
+            emitSkipped = false,
+            emittedFiles = { buildInfoFileName },
         })
     end
-    local text
-    text, err = json.Marshal(buildInfo)
-    if err ~= nil then
-        error("Failed to marshal build info: " .. tostring(err), 0)
+    local tr = self.program:Tracing()
+    if tr ~= nil then
+        local pop = tr:Push(tracing.PhaseEmit, "emitBuildInfo", nil, true)
+        local result = emitBuildInfo()
+        pop()
+        return result
     end
-    if options.writeFile ~= nil then
-        err = options.writeFile(buildInfoFileName, text, compiler.newWriteFileData({
-            buildInfo = buildInfo,
-        }))
-    else
-        err = self.program:Host():FS():WriteFile(buildInfoFileName, text)
-    end
-    if err ~= nil then
-        return compiler.newEmitResult({
-            emitSkipped = true,
-            diagnostics = {
-                ast.NewCompilerDiagnostic(diagnostics.Could_not_write_file_0_Colon_1, buildInfoFileName, tostring(err)),
-            },
-        })
-    end
-    self.snapshot.buildInfoEmitPending = false
-    return compiler.newEmitResult({
-        emitSkipped = false,
-        emittedFiles = { buildInfoFileName },
-    })
+    return emitBuildInfo()
 end
 
 function Program:ensureHasErrorsForState(ctx, program)

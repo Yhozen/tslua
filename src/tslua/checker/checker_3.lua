@@ -2,6 +2,7 @@ local checker = require("tslua.checker")
 local ast = require("tslua.ast")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local jsnum = require("tslua.jsnum")
 local debug = require("tslua.debug")
 local scanner = require("tslua.scanner")
@@ -513,6 +514,12 @@ function Checker:checkExpression(node)
 end
 
 function Checker:checkExpressionEx(node, checkMode)
+    local pop = nil
+    local tr = self.tracer
+    if tr ~= nil then
+        -- Go: deferred until return
+        pop = tr:Push(tracing.PhaseCheck, "checkExpression", { kind = node.kind, pos = node:Pos(), ["end"] = node:End(), path = ast.GetSourceFileOfNode(node):FileName() }, false)
+    end
     local saveCurrentNode = self.currentNode
     self.currentNode = node
     self.instantiationCount = 0
@@ -522,6 +529,9 @@ function Checker:checkExpressionEx(node, checkMode)
         self:checkConstEnumAccess(node, t)
     end
     self.currentNode = saveCurrentNode
+    if pop ~= nil then
+        pop()
+    end
     return t
 end
 

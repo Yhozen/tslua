@@ -5,6 +5,7 @@ local ast = require("tslua.ast")
 local binder = require("tslua.binder")
 local core = require("tslua.core")
 local diagnostics = require("tslua.diagnostics")
+local tracing = require("tslua.tracing")
 local evaluator = require("tslua.evaluator")
 local scanner = require("tslua.scanner")
 
@@ -168,7 +169,10 @@ function Checker:getTypeAtFlowNode(f, flow)
     if f.depth == 2000 then
         -- We have made 2000 recursive invocations. To avoid overflowing the call stack we report an error
         -- and disable further control flow analysis in the containing function or module body.
-        -- (Tracing is out of scope: c.tracer is always nil.)
+        local tr = self.tracer
+        if tr ~= nil then
+            tr:Instant(tracing.PhaseCheckTypes, "getTypeAtFlowNode_DepthLimit", { depth = f.depth })
+        end
         self.flowAnalysisDisabled = true
         self:reportFlowControlError(f.reference)
         return FlowType(self.errorType)

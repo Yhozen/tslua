@@ -2,6 +2,7 @@ local tsc = require("tslua.execute.tsc")
 local compiler = require("tslua.compiler")
 local core = require("tslua.core")
 local incremental = require("tslua.execute.incremental")
+local tracing = require("tslua.tracing")
 local tspath = require("tslua.tspath")
 
 function tsc.GetTraceWithWriterFromSys(w, locale, testing)
@@ -59,12 +60,27 @@ function tsc.EmitFilesAndReportErrors(input)
             -- Options diagnostics include global diagnostics (even though we collect them separately),
             -- and global diagnostics create checkers, which then bind all of the files. Do this binding
             -- early so we can track the time.
+            local pop = nil
+            local tr = input.tracing
+            if tr ~= nil then
+                -- Go: deferred until return
+                pop = tr:Push(tracing.PhaseBind, "bindSourceFiles", nil, true)
+            end
             local bindStart = input.sys:Now()
             local diags = input.programLike:GetBindDiagnostics(c, file)
             result.times.bindTime = input.sys:Now() - bindStart
+            if pop ~= nil then
+                pop()
+            end
             return diags
         end,
         function(c, file)
+            local pop = nil
+            local tr = input.tracing
+            if tr ~= nil then
+                -- Go: deferred until return
+                pop = tr:Push(tracing.PhaseCheck, "checkSourceFiles", nil, true)
+            end
             local checkStart = input.sys:Now()
             local diags = input.programLike:GetSemanticDiagnostics(c, file)
             result.times.checkTime = input.sys:Now() - checkStart
@@ -76,6 +92,9 @@ function tsc.EmitFilesAndReportErrors(input)
                     result.times.checkTime = result.times.checkTime - nestedEmitTime
                 end
                 result.times.emitTime = result.times.emitTime + nestedEmitTime
+            end
+            if pop ~= nil then
+                pop()
             end
             return diags
         end
