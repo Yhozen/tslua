@@ -118,6 +118,12 @@ tests, API server).
   plus a goroutine running the server connection) became an in-memory pipe whose reader resumes the
   serving coroutine when its buffer is empty; the client's background `Run` loop is advanced from
   inside `Call`. Deadlock (both sides waiting to read) is detected instead of hanging.
+- **Upstream unit tests as specs.** The Go `*_test.go` files of the compiler packages are ported
+  one-to-one as `spec/<pkg>_<file>_spec.lua` (same test and subtest names). Table expressions that
+  Go evaluates (`math.Inf`, `-0.0`, `%v` of a `Number`) are dumped by a Go oracle via
+  `go test -overlay` instead of being translated by hand. Race tests that gate goroutines on
+  channels run as coroutines under a small cooperative scheduler. These caught a real bug:
+  `x + 0.0` as an "int to float" conversion turns `-0` into `+0` (`-0 ** -3` came out `+Inf`).
 
 ## Roadblocks (and what we did)
 
