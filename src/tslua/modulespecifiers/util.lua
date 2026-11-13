@@ -1,6 +1,7 @@
 local modulespecifiers = require("tslua.modulespecifiers")
 local core = require("tslua.core")
 local module = require("tslua.module")
+local regexp = require("tslua.regexp")
 local tsoptions = require("tslua.tsoptions")
 local tspath = require("tslua.tspath")
 
@@ -72,9 +73,11 @@ function modulespecifiers.IsExcludedByRegex(moduleSpecifier, excludes)
     return false
 end
 
--- Go compiles the pattern with the regexp package (RE2 syntax). There is no RE2 engine in the
--- Lua port; the exclude regexes only come from language-service user preferences, which `tsc`
--- never sets.
+-- regexPatternCache maps regexPatternCacheKey{pattern, caseInsensitive} (encoded as a string key)
+-- to the compiled *regexp.Regexp, or false for patterns that failed to compile (Go stores nil).
+modulespecifiers.regexPatternCache = {}
+modulespecifiers.regexPatternCacheLen = 0
+
 function modulespecifiers.stringToRegex(pattern)
     local caseInsensitive = false
 
@@ -101,7 +104,31 @@ function modulespecifiers.stringToRegex(pattern)
             end
         end
     end
-    error("not implemented: stringToRegex (Go regexp.Compile of " .. pattern .. ", caseInsensitive=" .. tostring(caseInsensitive) .. ")")
+    local key = (caseInsensitive and "1" or "0") .. pattern
+
+    local re = modulespecifiers.regexPatternCache[key]
+    if re ~= nil then
+        return re or nil
+    end
+
+    if modulespecifiers.regexPatternCacheLen > 1000 then
+        modulespecifiers.regexPatternCache = {}
+        modulespecifiers.regexPatternCacheLen = 0
+    end
+
+    local compilePattern = pattern
+    if caseInsensitive then
+        compilePattern = "(?i:" .. pattern .. ")"
+    end
+
+    local compiled, err = regexp.Compile(compilePattern)
+    modulespecifiers.regexPatternCacheLen = modulespecifiers.regexPatternCacheLen + 1
+    if err ~= nil then
+        modulespecifiers.regexPatternCache[key] = false
+        return nil
+    end
+    modulespecifiers.regexPatternCache[key] = compiled
+    return compiled
 end
 
 --[[
