@@ -38,7 +38,7 @@ function textWriter:GetColumn()
     end
     -- Count UTF-16 code units from the last line start.
     -- For ASCII-only output (the common case), this equals the byte count.
-    return core.UTF16Len(string.sub(self.builder:String(), self.linePos + 1))
+    return core.UTF16Len(self.builder:Suffix(self.linePos))
 end
 
 function textWriter:GetIndent()

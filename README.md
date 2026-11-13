@@ -28,8 +28,11 @@ The numbers are the line counts of `tests/passing/*.txt`, which every gate check
 - `src/tslua/<package>/` — one Lua package per Go package of `internal/`, one Lua file per Go file.
 - `src/tslua/bundled/libs/` — the `lib.*.d.ts` files.
 - `spec/` — busted ports of the Go `_test.go` files (`<pkg>_<file>_spec.lua`) plus a few smoke tests.
+  `spec/regressions_spec.lua` holds the repros of problems found on real-world projects.
 - `tests/passing/` — regression lists; `tests/fourslash/` — fourslash tests converted to Lua.
 - `scripts/gen/` — generators for constants, diagnostic messages, the AST, LSP types and fourslash tests.
+- `scripts/realworld/run.mjs` — differential test against `tsgo` on ~18 public projects (pinned commits):
+  diagnostics, exit codes and every emitted `.js`/`.d.ts`/`.map`/`.tsbuildinfo` byte for byte.
 - `docs/PORTING.md`, `docs/AST.md`, `docs/CHECKER.md` — conventions; `docs/JOURNEY.md` — log of progress, learnings and roadblocks.
 
 ## Usage
@@ -51,6 +54,7 @@ make spec              # busted, skipping specs tagged #slow; `make spec-all` ru
 lua bin/tslua-test --passing --jobs 4 --batch 100 -q  # compiler/conformance gate (make baselines-passing)
 lua bin/tslua-tsctest --passing --jobs 4 -q           # tsc scenario gate (make tsctests-passing)
 lua bin/tslua-fourslash --passing --jobs 4 -q         # fourslash gate (make fourslash-passing)
+node scripts/realworld/run.mjs [label|project ...]     # real-world projects vs /tmp/tsgo (slow: ~2 h)
 ```
 
 Each runner takes case names or `--filter <pattern>` to run a slice, `--shard I/N` to run one of N

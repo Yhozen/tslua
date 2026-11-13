@@ -623,23 +623,23 @@ end
 -- represent the given UTF-8 encoded string.
 function core.UTF16Len(s)
     local n = #s
-    for i = 1, n do
-        if string.byte(s, i) >= 0x80 then
-            local count = i - 1
-            local pos = i - 1
-            while pos < n do
-                local r, size = core.DecodeRune(s, pos)
-                pos = pos + size
-                if r >= 0x10000 then
-                    count = count + 2
-                else
-                    count = count + 1
-                end
-            end
-            return count
+    -- Lua: find the first non-ASCII byte in C; ASCII-only strings are the common case.
+    local i = string.find(s, "[\128-\255]")
+    if i == nil then
+        return n
+    end
+    local count = i - 1
+    local pos = i - 1
+    while pos < n do
+        local r, size = core.DecodeRune(s, pos)
+        pos = pos + size
+        if r >= 0x10000 then
+            count = count + 2
+        else
+            count = count + 1
         end
     end
-    return n
+    return count
 end
 
 function core.Flatten(array)

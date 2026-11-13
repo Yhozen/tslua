@@ -165,7 +165,8 @@ function Parser:parseJSDocComment(parent, start, end_, fullStart)
         end_ = #p.sourceText
     end
     -- Check for /** (JSDoc opening part)
-    if not parser.isJSDocLikeText(string.sub(p.sourceText, start + 1)) then
+    -- Lua: isJSDocLikeText looks at 4 bytes; Go slices text[start:] in O(1), string.sub copies.
+    if not parser.isJSDocLikeText(string.sub(p.sourceText, start + 1, start + 4)) then
         -- TODO: This should be a panic, unless parseSingleJSDocComment is calling this (not ported yet)
         return nil
     end
@@ -182,18 +183,10 @@ function Parser:parseJSDocComment(parent, start, end_, fullStart)
     -- initial indent is start+4 to account for leading `/** `
     -- + 1 because \n is one character before the first character in the line and,
     -- if there is no \n before start, -1 is one index before the first character in the string
-    local lastNewLine = -1
-    do
-        local prefix = string.sub(p.sourceText, 1, start)
-        local i = 0
-        while true do
-            local j = string.find(prefix, "\n", i + 1, true)
-            if j == nil then
-                break
-            end
-            lastNewLine = j - 1
-            i = j
-        end
+    -- strings.LastIndex(p.sourceText[:start], "\n"), scanning backward from start
+    local lastNewLine = start - 1
+    while lastNewLine >= 0 and string.byte(p.sourceText, lastNewLine + 1) ~= 10 do
+        lastNewLine = lastNewLine - 1
     end
     local initialIndent = start + 4 - (lastNewLine + 1)
     -- -2 for trailing `*/`

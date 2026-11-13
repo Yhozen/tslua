@@ -55,6 +55,33 @@ function StringsBuilder:String()
     return self.parts[1]
 end
 
+-- Suffix returns String()[pos:] (pos is a 0-based byte offset). Go slices the builder's buffer;
+-- joining all parts on every call is quadratic, so only the parts covering [pos:] are joined (in
+-- place, so the next call walks only what was written since).
+function StringsBuilder:Suffix(pos)
+    local parts, n = self.parts, self.n
+    local i, start = n, self.len
+    while i >= 1 and start > pos do
+        start = start - #parts[i]
+        i = i - 1
+    end
+    if i == n then
+        return ""
+    end
+    local s = table.concat(parts, "", i + 1, n)
+    if n - i > 1 then
+        for j = n, i + 2, -1 do
+            parts[j] = nil
+        end
+        parts[i + 1] = s
+        self.n = i + 1
+    end
+    if start < pos then
+        s = string.sub(s, pos - start + 1)
+    end
+    return s
+end
+
 function StringsBuilder:Reset()
     self.parts = {}
     self.n = 0

@@ -30,7 +30,7 @@ function ast.ComputePositionMap(text)
         if b < 0x80 then
             i = i + 1
         else
-            local r, size = stringutil.DecodeJSStringRune(string.sub(text, i + 1))
+            local r, size = stringutil.DecodeJSStringRune(text, i)
             local utf16Size = 1
             if r >= 0x10000 then
                 utf16Size = 2

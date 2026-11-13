@@ -94,6 +94,51 @@ tests, API server).
 - `luarocks make` installs the modules, `bin/tslua` and the lib `.d.ts` files next to
   `tslua/bundled`; an installed `tslua` compiles outside the checkout.
 
+### 2026-11-13 — real-world projects
+
+`scripts/realworld/run.mjs` clones 18 public projects at pinned commits, installs their
+dependencies (`--ignore-scripts`), and runs `tsgo` (built from `vendor/typescript-go`) and
+`bin/tslua` in the same cwd: stdout, exit code and every emitted file are compared byte for byte.
+Where TypeScript 7 rejects a project's config (`baseUrl`, `moduleResolution: node`, `target:
+es5`, removed options) an equivalent tsconfig outside the project is used; the TS 7 config
+errors themselves were compared too. All 40 jobs are identical:
+
+| project | own files / lines (program files) | jobs (options) | diagnostics | emit |
+| --- | --- | --- | --- | --- |
+| ms | 8 / 1.3k (285) | as-is, `--types`, js+d.ts+maps, `--emitDeclarationOnly` (isolatedDeclarations) | = | = |
+| tiny-invariant | 7 / 0.2k (32) | as-is, es2015 cjs | = | = |
+| mitt | 4 / 0.4k (90) | as-is, emit, `--traceResolution`, `--watch` with two edits | = | = |
+| cac | 18 / 1.4k (295) | emit, `--explainFiles` | = | = |
+| ts-pattern | 20 / 4.2k (114) | emit + maps, es2017 cjs, `--listFiles` | = | = |
+| p-queue | 5 / 1.6k (197) | esnext, es2015 cjs (`#private` lowering) | = | = |
+| ky | 31 / 4.9k (95) | emit, es2015, es2022 `useDefineForClassFields: false` | = | = |
+| chalk (JS, checkJs) | 7 / 1.1k (64) | js + d.ts from JS, `--locale ja --pretty` | = | = |
+| neverthrow | 8 / 5.5k (460) | esnext, es2015 cjs (async downlevel) | = | = |
+| inversify | 30 / 7.1k (218) | legacy decorators + metadata (cjs), ES decorators (esm) | = | = |
+| zustand (tsx) | 32 / 10.4k (291) | react-jsx, react-jsxdev cjs, classic react | = | = |
+| preact (JS, checkJs, jsx) | 17 / 6.2k (32) | js + d.ts + maps, `--pretty` | = | = |
+| superstruct | 249 / 6.0k (506) | emit `--pretty`, `--incremental` + inline maps/sources | = | = |
+| zod 3.23 | 82 / 15.3k (239) | es2018 d.ts + maps, es2016 cjs `--removeComments` | = | = |
+| rxjs 7.8 | 251 / 21.4k (340) | es2015, importHelpers, stripInternal, d.ts + maps | = | = |
+| type-fest (subset) | 117 / 11.1k (188) | check of the closure of 3 files (all of source/ is ~40 s in Go) | = | — |
+| TypeScript 5.x src/compiler | 78 / 195k (225) | composite, d.ts + declarationMap, isolatedDeclarations | = | = |
+| date-fns 4 | 1,229 / 71k (1,316) | core src emit; `-b` of 4 composite projects: clean, no-op, after an edit | = | = |
+
+Also identical: `--showConfig` and `--listFilesOnly` of every project, synthetic CRLF/BOM/
+non-ASCII and deeply nested inputs. Lua takes 25-45x Go's time (type-fest: 16 min vs 23 s, the
+TypeScript compiler 6 min vs 13 s). No output difference was found; profiling the slow runs
+found three Lua-only quadratic costs, fixed and pinned in `spec/regressions_spec.lua`:
+`textWriter:GetColumn` joined the whole output for every source map mapping;
+`parseJSDocComment` copied the file before and after each comment and scanned every newline from
+the start of the file (checking `lib.dom.d.ts`, 6k JSDoc comments: 44 s -> 26 s); `UTF16Len`
+looped in Lua over ASCII text. `ComputePositionMap` copied the rest of the text per non-ASCII
+character.
+
+Trap for the next person: `--noEmit` on a `composite`/`incremental` project still writes its
+`.tsbuildinfo` into the project, and compilers rewrite existing outputs in place, so per-compiler
+copies of a project for `-b` comparisons must be real copies (`cp -a --reflink=auto`), not hard
+links: a stale buildinfo shared through a hard link made the two builds disagree.
+
 ## Learnings
 
 - **Write the conventions first.** The biggest multiplier was `docs/PORTING.md` + `docs/AST.md`
@@ -169,6 +214,16 @@ tests, API server).
   harness's per-line regexps (`\r?\n` splits, the `// @option:` matcher, `\S`, diagnostics'
   `{(\d+)}`) stay hand-written; `spec/regexp_standins_spec.lua` diffs them against `tslua.regexp`
   on real test files.
+
+- **Go slicing is O(1), `string.sub` copies.** `text[start:]`, `text[:end]` and
+  `builder.String()[pos:]` are free in Go; the literal Lua translation copies, and inside a loop
+  over a file or an output it becomes quadratic. The upstream baselines never notice (small files,
+  the harness caches parsed libs); real projects with `lib.dom.d.ts` or long lines with
+  `--sourceMap` do. Pass bounds (`string.sub(s, i, i + 3)`, a `pos` argument) or search
+  backward instead of materializing the slice.
+- **Real-world parity checks are cheap to set up and found nothing the suites missed** (for
+  output). Most time went to finding configs TypeScript 7 still accepts; a tsconfig outside the
+  project with `rootDir`/`typeRoots` pointing back keeps the clone untouched.
 
 ## Roadblocks (and what we did)
 
