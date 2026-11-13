@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LUA_VERSION: "5.4"
+
+jobs:
+  lint:
+    name: lint + rock
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: ${{ env.LUA_VERSION }}
+      - uses: leafo/gh-actions-luarocks@v4
+      - run: luarocks install luacheck
+      - run: make lint
+      - name: luarocks make (installs modules, bundled libs and bin/tslua)
+        run: |
+          luarocks make --tree "$RUNNER_TEMP/tree" tslua-dev-1.rockspec
+          mkdir -p "$RUNNER_TEMP/proj" && cd "$RUNNER_TEMP/proj"
+          printf 'const x: number = "a";\nexport {};\n' > a.ts
+          set +e; "$RUNNER_TEMP/tree/bin/tslua" a.ts > out.txt; rc=$?; set -e
+          cat out.txt
+          test "$rc" = 2 && grep -q "error TS2322" out.txt && test -f a.js
+
+  # Everything below needs the upstream checkout (test inputs and reference baselines).
+  spec:
+    name: busted (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            args: ""
+          - name: slow
+            args: "--tags=slow --run=all"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: busted ${{ matrix.args }}
+
+  baselines:
+    name: compiler baselines ${{ matrix.shard }}/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: lua bin/tslua-test --passing --jobs "$(nproc)" --batch 100 -q --shard ${{ matrix.shard }}/8
+
+  tsctests:
+    name: tsc scenarios ${{ matrix.shard }}/2
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: lua bin/tslua-tsctest --passing --jobs "$(nproc)" -q --shard ${{ matrix.shard }}/2
+
+  fourslash:
+    name: fourslash ${{ matrix.shard }}/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: lua bin/tslua-fourslash --passing --jobs "$(nproc)" -q --shard ${{ matrix.shard }}/8

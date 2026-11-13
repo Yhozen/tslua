@@ -86,6 +86,14 @@ tests, API server).
   baselines run Go's deterministic mode (a counter instead of wall-clock time, sampled events
   dropped), so trace output is byte-identical; the 2 generateTrace scenarios pass.
 
+### 2026-11-13 — repo health: CI, rock
+
+- `.github/workflows/ci.yml`: lint + `luarocks make` smoke test, busted (default and `#slow`),
+  and the three regression gates sharded with the new `--shard I/N` runner option (8 compiler,
+  2 tsc, 8 fourslash jobs); the upstream checkout is cached by `UPSTREAM_COMMIT`.
+- `luarocks make` installs the modules, `bin/tslua` and the lib `.d.ts` files next to
+  `tslua/bundled`; an installed `tslua` compiles outside the checkout.
+
 ## Learnings
 
 - **Write the conventions first.** The biggest multiplier was `docs/PORTING.md` + `docs/AST.md`
@@ -134,6 +142,18 @@ tests, API server).
   literals (package-level expectation lists); always copying is quadratic. The goruntime shim
   appends in place only to arrays it created through append (tracked weakly), like the spare
   capacity of Go slices grown by append.
+
+- **Lint what you think you lint.** `luacheck <dir>` only checks `*.lua` files, so the
+  extensionless `bin/*` scripts were never linted; the Makefile lists them explicitly.
+- **Nil receivers, static form.** When a Go method handles a nil receiver, call the Lua method
+  through its table (`autoimport.Registry.IsPreparedForImportingFile(registry, ...)`) instead of
+  `registry:IsPreparedForImportingFile(...)`, so the nil check inside the port actually runs.
+  Likewise, constructors of Go structs built from literals with missing fields
+  (`&PackageJson{Parseable: false}`) should zero-fill every field themselves.
+- **Non-Lua files in a rock.** LuaRocks' builtin `install.lua` maps a key `a.b.c` to the directory
+  `a/b/` and keeps a non-`.lua` file's own name, which is how the lib `.d.ts` files land next
+  to `tslua/bundled` (where it looks for them). Set `copy_directories = {}`, or `tests/`
+  (thousands of files) is copied into the rock.
 
 ## Roadblocks (and what we did)
 

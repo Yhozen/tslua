@@ -1,0 +1,19 @@
+name: setup
+description: Lua 5.4 + LuaRocks + busted, and the upstream typescript-go checkout (cached by UPSTREAM_COMMIT).
+runs:
+  using: composite
+  steps:
+    - uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: "5.4"
+    - uses: leafo/gh-actions-luarocks@v4
+    - shell: bash
+      run: luarocks install busted
+    - id: upstream-cache
+      uses: actions/cache@v4
+      with:
+        path: vendor/typescript-go
+        key: upstream-${{ hashFiles('UPSTREAM_COMMIT') }}
+    - if: steps.upstream-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: ./scripts/fetch-upstream.sh
