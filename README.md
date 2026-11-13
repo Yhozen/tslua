@@ -1,11 +1,30 @@
 # tslua
 
-A faithful port of the TypeScript 7 compiler ([microsoft/typescript-go](https://github.com/microsoft/typescript-go))
-to Lua 5.4.
+> Everyone is competing for the better, faster TypeScript compiler.
+> We went the opposite direction.
 
-The port is mechanical: same algorithms, same function decomposition, same diagnostics. It follows
-the approach of [tsrs](https://github.com/oxc-project/tsrs): the Go source is the specification and
-the upstream test suites are the oracle. Performance is not a goal.
+Microsoft rewrote `tsc` in Go and made it 10× faster. Then [tsrs](https://github.com/oxc-project/tsrs)
+ported that to Rust and made it up to 8× faster again. We looked at that trajectory and asked the
+only reasonable question: *what if it were 25–45× slower?*
+
+So here it is: a faithful port of the TypeScript 7 compiler
+([microsoft/typescript-go](https://github.com/microsoft/typescript-go)) to **Lua 5.4**. No JIT, no
+C extensions, no goroutines, no regrets.
+
+| Compiler | Language | Type-checks date-fns `-b` in |
+| -------- | -------- | ---------------------------- |
+| `tsgo`   | Go       | 47 s                         |
+| `tslua`  | Lua 5.4  | 28 min (time to make a nice pour-over) |
+
+The good news: it's *correct*. Same algorithms, same function decomposition, same diagnostics,
+byte for byte. On 18 real-world projects, including TypeScript's own compiler, `tslua` produced
+exactly the same diagnostics and emitted files as `tsgo`. It just takes its time getting there,
+the way the scenic route does. It follows the approach of tsrs: the Go source is the
+specification and the upstream test suites are the oracle. Performance is not a goal. Performance
+is not even a hobby.
+
+Why? Because now you can type-check TypeScript inside Neovim's Lua runtime, a game engine, a
+Redis script, or your router's firmware. Nobody asked for this. You're welcome.
 
 ## Status
 
@@ -18,7 +37,7 @@ LSP server, project system, formatter and API server.
 | ---------------------------------------------- | ----------------------------------------------------------------------- |
 | Compiler + conformance baselines (`tslua-test`) | 13,173 configurations: errors, types, symbols; 13,165 js (of ~13,200 run; Go's harness skips the rest) |
 | `tsc` / `tsc -b` / `--watch` scenarios (`tslua-tsctest`) | 504 / 504                                                     |
-| Fourslash language-service tests (`tslua-fourslash`) | 4,086 of 4,510 converted tests (420 skipped exactly as Go skips them) |
+| Fourslash language-service tests (`tslua-fourslash`) | 4,090 of 4,510 converted tests (420 skipped exactly as Go skips them) |
 | Go unit tests (`busted`, `spec/`)              | all pass (a few are pending for the same reasons Go skips them)         |
 
 The numbers are the line counts of `tests/passing/*.txt`, which every gate checks for regressions.
