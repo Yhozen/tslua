@@ -219,9 +219,10 @@ local function runLSP(args)
             end
             return out, nil
         end,
-        -- Spawning child processes with piped stdio (content mappers) needs more than the Lua
-        -- standard library offers.
-        spawn = nil,
+        -- Content mapper processes (cmd/tsgo spawnProcess), see tslua.ipc process.lua.
+        spawn = function(command, dir, stderr)
+            return require("tslua.ipc").SpawnProcess(command, dir, stderr)
+        end,
         progressDelay = 0.25,
         -- The parent process watchdog needs a concurrent ticker; it is not started.
         setParentProcessID = nil,
