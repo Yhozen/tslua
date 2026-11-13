@@ -20,6 +20,8 @@ fourslash.diffTableWriter = diffTableWriter
 local FourslashTest = fourslash.FourslashTest
 
 -- Go calls these *project.ConfigFileRegistry methods on a nil registry (they check c != nil).
+local noProgram = {}
+
 local nilConfigFileRegistry = {
     GetTestConfigEntry = function() return nil end,
     GetTestConfigFileNamesEntry = function() return nil end,
@@ -208,11 +210,15 @@ function FourslashTest:printProjectsDiff(t, snapshot, w)
     for i11, project_ in gort.ipairs(snapshot.projectCollection:Projects()) do
         local program = project_:GetProgram()
         local oldProgram = nil
-        currentProjects[project_:Name()] = program
+        -- (a nil *compiler.Program is a map value in Go: stored as the noProgram sentinel)
+        currentProjects[project_:Name()] = program or noProgram
         local projectChange = ""
         do
             local existing, ok = gort.MapLookup(self.stateBaseline.serializedProjects, project_:Name(), nil)
             if ok then
+                if existing == noProgram then
+                    existing = nil
+                end
                 oldProgram = existing
                 if oldProgram ~= program then
                     projectChange = "*modified*"
@@ -264,6 +270,9 @@ function FourslashTest:printProjectsDiff(t, snapshot, w)
             end)
     end
     for projectName, info in gort.pairs(self.stateBaseline.serializedProjects) do
+        if info == noProgram then
+            info = nil
+        end
         do
             local _, found = gort.MapLookup(currentProjects, projectName, nil)
             if not found then
