@@ -131,10 +131,11 @@ function LanguageService:ResolveCodeLens(ctx, codeLens, showLocationsCommandName
     }
     if core.Len(locs) > 0 and showLocationsCommandName ~= nil then
         cmd.command = showLocationsCommandName
+        -- values in []any slots marshal through their Go types (lsproto.NewTyped)
         cmd.arguments = {
             uri,
-            codeLens.range.start,
-            locs,
+            lsproto.NewTyped("Position", codeLens.range.start),
+            lsproto.NewTyped("[]Location", locs),
         }
     end
 
