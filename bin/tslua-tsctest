@@ -18,7 +18,7 @@ options:
   --filter <pattern>    only cases whose id contains <pattern> (plain text, or a Lua pattern)
   --unit                run the imperative tests of contentmapper_watch_test.go instead of the
                         baseline scenarios (positional arguments filter the test names)
-  --include-skipped     also run out-of-scope scenarios (showConfig, generateTrace)
+  --include-skipped     also run out-of-scope scenarios (currently none)
   --jobs N              run cases in N parallel `lua` subprocesses (default 1: in-process)
   --batch K             cases per subprocess with --jobs (default 4)
   --timeout S           per-case timeout in seconds (default 300; 0 disables)
@@ -45,10 +45,8 @@ local SUBFOLDERS = { "tsc", "tsbuild", "tscWatch", "tsbuildWatch" }
 local SCENARIO_MODULES = { "scenarios_tsc", "scenarios_tscbuild", "scenarios_tscwatch", "scenarios_showconfig" }
 
 -- Scenarios that are out of scope of the port (see docs/PORTING.md): reported as skipped.
-local OUT_OF_SCOPE = {
-    TestShowConfig = "out of scope: --showConfig scenarios",
-    TestGenerateTrace = "out of scope: --generateTrace",
-}
+-- (none: --showConfig and --generateTrace are in scope now)
+local OUT_OF_SCOPE = {}
 
 local function shellQuote(s)
     return "'" .. string.gsub(s, "'", "'\\''") .. "'"

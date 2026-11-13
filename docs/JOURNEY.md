@@ -62,11 +62,29 @@ tests, API server).
 
 - tsc scenario runner (`bin/tslua-tsctest`): **483/504** upstream command-line scenarios
   byte-identical (tsbuild 192/192, tscWatch 42/42, tsbuildWatch 65/65, tsc 184/205); the rest
-  are showConfig, localization and generateTrace, now being brought into scope. Scenarios were
+  were showConfig, localization and generateTrace, brought into scope next (see below). Scenarios were
   extracted by running the upstream Go tests with a patched runner that dumps each evaluated
   scenario (they are Go code, not data) — another case of letting Go produce the Lua inputs.
 - LSP: protocol types generated from the same metaModel upstream uses; JSON codec matched a Go
   oracle on ~50k random/mutated messages; `bin/tslua --lsp --stdio` serves requests.
+
+### 2026-11-12 — showConfig, localization, tracing
+
+- `--showConfig` (`tsoptions/showconfig.go`): the Go code walks `core.CompilerOptions` with
+  reflection; the Lua port walks `core.CompilerOptions.Fields` (declaration order, field kinds),
+  which is exactly the information reflection gave Go. All 17 showConfig scenarios pass.
+- Localization: `scripts/gen/loctables` (Go) turns the locale `.json.gz` files Go embeds into
+  Lua tables, and precomputes what `golang.org/x/text/language` would do for the one matcher the
+  compiler builds (match results per language / language-region / language-script, the subtag
+  registry, aliases). Verified against x/text on ~17k tags (parse results, including Go's
+  partial-tag-on-error behavior, and match indices): 0 mismatches.
+- Tracing: `internal/tracing` + `checker/tracer.go`, and every tracer call the earlier waves had
+  dropped (checker, relater, flow, file loader, emitter, program, tsc emit, incremental). Go's
+  `defer tr.Push(...)()` becomes a `pop` local called on every return path (or a closure body
+  when a function has many returns). Thread ids hash with xxh3-64, so `tslua.xxh3` gained
+  `HashString`/`New`/`Sum64` (checked against zeebo/xxh3 for lengths 0..3000). The
+  baselines run Go's deterministic mode (a counter instead of wall-clock time, sampled events
+  dropped), so trace output is byte-identical; the 2 generateTrace scenarios pass.
 
 ## Learnings
 
