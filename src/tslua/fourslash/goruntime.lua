@@ -469,8 +469,8 @@ function M.fmt.Sprintf(format, ...)
             text = string.format("%d", v)
         elseif (verb == "f" or verb == "g" or verb == "e") and type(v) == "number" then
             text = string.format("%" .. prec .. verb, v)
-        elseif verb == "x" and type(v) == "number" then
-            text = string.format("%x", v)
+        elseif (verb == "x" or verb == "X") and type(v) == "number" then
+            text = string.format("%" .. verb, v)
         else
             text = formatValue(v, verb)
             if prec ~= "" and verb == "s" then

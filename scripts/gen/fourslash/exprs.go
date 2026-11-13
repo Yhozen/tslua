@@ -563,8 +563,33 @@ func (g *gen) funcLit(e *ast.FuncLit) string {
 
 func (g *gen) args(call *ast.CallExpr) []string {
 	var args []string
+	var sig *types.Signature
+	if tv, ok := g.info.Types[call.Fun]; ok {
+		sig, _ = tv.Type.(*types.Signature)
+	}
 	for i, a := range call.Args {
 		s := g.expr(a)
+		// a named scalar with a String method passed as an interface (fmt verbs): Go calls String()
+		if sig != nil && !call.Ellipsis.IsValid() {
+			var pt types.Type
+			if sig.Variadic() && i >= sig.Params().Len()-1 {
+				pt = sig.Params().At(sig.Params().Len() - 1).Type().(*types.Slice).Elem()
+			} else if i < sig.Params().Len() {
+				pt = sig.Params().At(i).Type()
+			}
+			if _, isIface := pt.(*types.Interface); isIface || (pt != nil && types.IsInterface(pt)) {
+				if named, ok := g.info.TypeOf(a).(*types.Named); ok {
+					if _, isBasic := named.Underlying().(*types.Basic); isBasic {
+						ms := types.NewMethodSet(named)
+						if sel := ms.Lookup(named.Obj().Pkg(), "String"); sel != nil {
+							if _, ok := luaModule(named.Obj().Pkg().Path()); ok {
+								s = g.pkgAlias(named.Obj().Pkg()) + "." + named.Obj().Name() + "_String(" + s + ")"
+							}
+						}
+					}
+				}
+			}
+		}
 		if call.Ellipsis.IsValid() && i == len(call.Args)-1 {
 			s = g.gort() + ".unpack(" + s + ")"
 		}

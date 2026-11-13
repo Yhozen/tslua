@@ -122,7 +122,7 @@ function FourslashTest:VerifyBaselineVSHover(t)
 end
 
 function fourslash.renderVSContainerElement(el, indent)
-    local lines = { gort.fmt.Sprintf("%sContainerElement (Style=%s)", indent, el.style) }
+    local lines = { gort.fmt.Sprintf("%sContainerElement (Style=%s)", indent, lsproto.VSContainerElementStyle_String(el.style)) }
     local childIndent = indent .. "  "
     for i141, child in gort.ipairs(el.elements) do
         if child.imageElement ~= nil then
@@ -162,6 +162,23 @@ function fourslash.hoverContentString(hover)
     return ""
 end
 
+-- hoverWithVerbosity: { hover, verbosityLevel }; Lua-only MarshalJSON (Go writes a nil Hover as null).
+local hoverWithVerbosity = {}
+hoverWithVerbosity.__index = hoverWithVerbosity
+fourslash.hoverWithVerbosity = hoverWithVerbosity
+
+function hoverWithVerbosity:MarshalJSON()
+    local h = "null"
+    if self.hover ~= nil then
+        local raw, err = json.Marshal(self.hover)
+        if err ~= nil then
+            return nil, err
+        end
+        h = raw
+    end
+    return "{\"hover\":" .. h .. ",\"verbosityLevel\":" .. json.formatNumber(self.verbosityLevel) .. "}", nil
+end
+
 function FourslashTest:VerifyBaselineHoverWithVerbosity(t, verbosityLevels)
     local markersAndItems = nil
     for i145, marker in gort.ipairs(self:Markers()) do
@@ -185,7 +202,7 @@ function FourslashTest:VerifyBaselineHoverWithVerbosity(t, verbosityLevels)
                         verbosityLevel = verbLevel,
                     })
                 local result = fourslash.sendRequest(t, self, lsproto.TextDocumentHoverInfo, params)
-                local item = { hover = result.hover, verbosityLevel = level }
+                local item = setmetatable({ hover = result.hover, verbosityLevel = level }, hoverWithVerbosity)
                 if (i > 0) and (level > levels[(i - 1) + 1]) then
                     local prevItem = markersAndItems[(gort.len(markersAndItems) - 1) + 1].item
                     if ((prevItem ~= nil) and (prevItem.hover ~= nil)) and (not prevItem.hover.canIncreaseVerbosity) then
